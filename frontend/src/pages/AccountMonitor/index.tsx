@@ -2355,37 +2355,66 @@ const AccountMonitor: React.FC = () => {
         </Tag>
       ),
     },
-    {
-      title: '账户安全',
-      key: 'security',
-      width: 180,
-      filters: [
-        { text: '2FA已绑定', value: '2fa_bound' },
-        { text: '2FA未绑定', value: '2fa_unbound' },
-        { text: '受保护', value: 'protected' },
-        { text: '未受保护', value: 'unprotected' },
-      ],
-      onFilter: (value: any, record: InfiniAccount) => {
-        const strValue = value.toString();
-        switch (strValue) {
-          case '2fa_bound': return record.google2faIsBound === true;
-          case '2fa_unbound': return record.google2faIsBound === false;
-          case 'protected': return record.isProtected === true;
-          case 'unprotected': return record.isProtected === false;
-          default: return true;
-        }
-      },
-      render: (record: InfiniAccount) => (
-        <Space>
-          <Tooltip title={record.google2faIsBound ? "Google 2FA 已绑定" : "Google 2FA 未绑定"}>
-            <Tag color={record.google2faIsBound ? "green" : "orange"}>2FA</Tag>
-          </Tooltip>
-          <Tooltip title={record.isProtected ? "账户已受保护" : "账户未受保护"}>
-            <Tag color={record.isProtected ? "green" : "red"}>保护</Tag>
-          </Tooltip>
-        </Space>
-      ),
+  {
+    title: '账户安全',
+    key: 'security',
+    width: 180,
+    filters: [
+      { text: '2FA已绑定', value: '2fa_bound' },
+      { text: '2FA未绑定', value: '2fa_unbound' },
+      { text: '受保护', value: 'protected' },
+      { text: '未受保护', value: 'unprotected' },
+    ],
+    onFilter: (value: any, record: InfiniAccount) => {
+      const strValue = value.toString();
+      switch (strValue) {
+        case '2fa_bound': return record.google2faIsBound === true;
+        case '2fa_unbound': return record.google2faIsBound === false;
+        case 'protected': return record.isProtected === true;
+        case 'unprotected': return record.isProtected === false;
+        default: return true;
+      }
     },
+    render: (record: InfiniAccount) => (
+      <Space>
+        <Tooltip title={record.google2faIsBound ? "Google 2FA 已绑定" : "Google 2FA 未绑定"}>
+          <Tag color={record.google2faIsBound ? "green" : "orange"}>2FA</Tag>
+        </Tooltip>
+        <Tooltip title={record.isProtected ? "账户已受保护" : "账户未受保护"}>
+          <Tag color={record.isProtected ? "green" : "red"}>保护</Tag>
+        </Tooltip>
+      </Space>
+    ),
+  },
+  {
+    title: '所属分组',
+    dataIndex: 'groups',
+    key: 'groups',
+    width: 180,
+    ellipsis: true,
+    filters: groups.map(group => ({ text: group.name, value: group.id })),
+    onFilter: (value: any, record: InfiniAccount) => {
+      if (!record.groups) return false;
+      return record.groups.some(group => group.id === value);
+    },
+    render: (_, record: InfiniAccount) => (
+      <Space size={[0, 4]} wrap>
+        {record.groups && record.groups.length > 0 ? (
+          record.groups.map(group => (
+            <Tag 
+              color={group.isDefault ? 'default' : 'blue'} 
+              key={group.id}
+              style={{ marginRight: 4, marginBottom: 4 }}
+            >
+              {group.name}
+            </Tag>
+          ))
+        ) : (
+          <Tag color="default">默认分组</Tag>
+        )}
+      </Space>
+    )
+  },
     {
       title: '最后同步时间',
       dataIndex: 'lastSyncAt',
