@@ -11,36 +11,46 @@ import {
   message,
   Typography,
   Tag,
-  Tooltip
+  Tooltip,
+  Tabs,
+  Spin
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserAddOutlined, TeamOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserAddOutlined, UserDeleteOutlined, TeamOutlined } from '@ant-design/icons';
 import { infiniAccountApi } from '../../services/api';
 
 const { Title, Paragraph } = Typography;
 const { TextArea } = Input;
+const { TabPane } = Tabs;
 
 // 账户分组类型定义
 interface AccountGroup {
   id: string;
   name: string;
   description: string | null;
-  is_default: boolean;
+  isDefault: boolean;
+  accountCount?: number;
 }
 
 // 表格中显示的账户信息
 interface Account {
   id: string;
   email: string;
-  created_at: string;
-  has_2fa: boolean;
-  verification_level: number;
+  status?: string;
+  availableBalance?: number;
+}
+
+// 分组详情信息（包含账户列表）
+interface GroupDetail extends AccountGroup {
+  accounts: Account[];
 }
 
 const AccountGroupManage: React.FC = () => {
   // 状态变量
   const [groups, setGroups] = useState<AccountGroup[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [allAccounts, setAllAccounts] = useState<Account[]>([]);
+  const [groupDetail, setGroupDetail] = useState<GroupDetail | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [form] = Form.useForm();
   
   // 模态框状态
@@ -53,7 +63,7 @@ const AccountGroupManage: React.FC = () => {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedGroupName, setSelectedGroupName] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [accountsInGroup, setAccountsInGroup] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<string>('1');
   
   // 获取所有分组
   const fetchGroups = async () => {
@@ -73,10 +83,43 @@ const AccountGroupManage: React.FC = () => {
     }
   };
   
+  // 获取所有Infini账户
+  const fetchAllAccounts = async () => {
+    try {
+      const response = await infiniAccountApi.getAllInfiniAccounts();
+      if (response.success) {
+        setAllAccounts(response.data);
+      } else {
+        message.error('获取账户列表失败: ' + response.message);
+      }
+    } catch (error) {
+      console.error('获取账户列表出错:', error);
+      message.error('获取账户列表失败');
+    }
+  };
+  
+  // 获取分组详情（包含账户列表）
+  const fetchGroupDetail = async (groupId: string) => {
+    setLoadingAccounts(true);
+    try {
+      const response = await infiniAccountApi.getAccountGroupById(groupId);
+      if (response.success) {
+        setGroupDetail(response.data);
+      } else {
+        message.error('获取分组详情失败: ' + response.message);
+      }
+    } catch (error) {
+      console.error('获取分组详情出错:', error);
+      message.error('获取分组详情失败');
+    } finally {
+      setLoadingAccounts(false);
+    }
+  };
+  
   // 初始加载
   useEffect(() => {
     fetchGroups();
-    // 暂时没有获取所有账户的API，后续可添加
+    fetchAllAccounts();
   }, []);
   
   // 处理创建/编辑分组
@@ -156,9 +199,68 @@ const AccountGroupManage: React.FC = () => {
   const showAccountModal = async (group: AccountGroup) => {
     setSelectedGroupId(group.id);
     setSelectedGroupName(group.name);
-    // 需要后续实现获取分组内账户的API
-    message.info('账户关联功能需要后端API支持，暂未实现');
-    // setAccountModalVisible(true);
+    setAccountModalVisible(true);
+    setActiveTab('1');
+    setSelectedRowKeys([]);
+    // 获取分组详情
+    await fetchGroupDetail(group.id);
+  };
+  
+  // 处理添加账户到分组
+  const handleAddAccountsToGroup = async () => {
+    if (!selectedGroupId || selectedRowKeys.length === 0) {
+      message.info('请选择要添加的账户');
+      return;
+    }
+    
+    try {
+      const response = await infiniAccountApi.addAccountsToGroup(selectedGroupId, selectedRowKeys as string[]);
+      if (response.success) {
+        message.success(`成功添加${response.data?.addedCount || 0}个账户到分组`);
+        // 刷新分组详情
+        await fetchGroupDetail(selectedGroupId);
+        // 刷新分组列表
+        fetchGroups();
+        // 清空选择
+        setSelectedRowKeys([]);
+      } else {
+        message.error('添加账户到分组失败: ' + response.message);
+      }
+    } catch (error) {
+      console.error('添加账户到分组出错:', error);
+      message.error('添加账户到分组失败');
+    }
+  };
+  
+  // 处理从分组中移除账户
+  const handleRemoveAccountsFromGroup = async () => {
+    if (!selectedGroupId || selectedRowKeys.length === 0) {
+      message.info('请选择要移除的账户');
+      return;
+    }
+    
+    try {
+      const response = await infiniAccountApi.removeAccountsFromGroup(selectedGroupId, selectedRowKeys as string[]);
+      if (response.success) {
+        message.success(`成功从分组中移除${response.data?.removedCount || 0}个账户`);
+        // 刷新分组详情
+        await fetchGroupDetail(selectedGroupId);
+        // 刷新分组列表
+        fetchGroups();
+        // 清空选择
+        setSelectedRowKeys([]);
+      } else {
+        message.error('从分组中移除账户失败: ' + response.message);
+      }
+    } catch (error) {
+      console.error('从分组中移除账户出错:', error);
+      message.error('从分组中移除账户失败');
+    }
+  };
+  
+  // 处理表格选择变化
+  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
+    setSelectedRowKeys(newSelectedRowKeys);
   };
   
   // 表格列定义
@@ -170,7 +272,7 @@ const AccountGroupManage: React.FC = () => {
       render: (text: string, record: AccountGroup) => (
         <Space>
           {text}
-          {record.is_default && <Tag color="green">默认</Tag>}
+          {record.isDefault && <Tag color="green">默认</Tag>}
         </Space>
       ),
     },
@@ -181,13 +283,19 @@ const AccountGroupManage: React.FC = () => {
       render: (text: string) => text || '无',
     },
     {
+      title: '账户数量',
+      dataIndex: 'accountCount',
+      key: 'accountCount',
+      render: (count: number) => count || 0,
+    },
+    {
       title: '操作',
       key: 'action',
       render: (_: any, record: AccountGroup) => (
         <Space size="middle">
           <Button 
             type="primary" 
-            icon={<UserAddOutlined />} 
+            icon={<TeamOutlined />} 
             size="small"
             onClick={() => showAccountModal(record)}
           >
@@ -197,10 +305,11 @@ const AccountGroupManage: React.FC = () => {
             icon={<EditOutlined />} 
             size="small" 
             onClick={() => showEditModal(record)}
+            disabled={record.isDefault}
           >
             编辑
           </Button>
-          {!record.is_default && (
+          {!record.isDefault && (
             <Popconfirm
               title="确定要删除此分组吗？"
               onConfirm={() => handleDeleteGroup(record.id)}
@@ -220,6 +329,33 @@ const AccountGroupManage: React.FC = () => {
       ),
     },
   ];
+  
+  // 账户表格列定义
+  const accountColumns = [
+    {
+      title: '邮箱',
+      dataIndex: 'email',
+      key: 'email',
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => status || '-',
+    },
+    {
+      title: '可用余额',
+      dataIndex: 'availableBalance',
+      key: 'availableBalance',
+      render: (balance: number) => (balance !== undefined ? `$${balance.toFixed(2)}` : '-'),
+    },
+  ];
+  
+  // 表格行选择配置
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+  };
   
   return (
     <div style={{ padding: '24px' }}>
@@ -254,41 +390,4 @@ const AccountGroupManage: React.FC = () => {
         onOk={handleSaveGroup}
         onCancel={resetModal}
         maskClosable={false}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-        >
-          <Form.Item
-            name="name"
-            label="分组名称"
-            rules={[{ required: true, message: '请输入分组名称' }]}
-          >
-            <Input placeholder="请输入分组名称" />
-          </Form.Item>
-          <Form.Item
-            name="description"
-            label="分组描述"
-          >
-            <TextArea rows={4} placeholder="请输入分组描述（可选）" />
-          </Form.Item>
-        </Form>
-      </Modal>
-      
-      {/* 管理分组内账户的模态框 - 暂不实现 */}
-      <Modal
-        title={`管理 "${selectedGroupName}" 分组内的账户`}
-        open={accountModalVisible}
-        onCancel={() => setAccountModalVisible(false)}
-        width={800}
-        maskClosable={false}
-      >
-        <Paragraph>
-          该功能需要后端API支持，暂未实现。
-        </Paragraph>
-      </Modal>
-    </div>
-  );
-};
-
-export default AccountGroupManage;
+      ></Modal>
