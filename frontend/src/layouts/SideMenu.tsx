@@ -16,11 +16,7 @@ import {
   TeamOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-    {
-      key: '/account-group-manage',
-      icon: <TeamOutlined />,
-      label: '账户分组管理',
-    },
+
 const { Sider } = Layout;
 
 interface SideMenuProps {
@@ -114,6 +110,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       key: '/account-register',
       icon: <UserAddOutlined />,
       label: '账户批量注册机',
+    },
+    {
+      key: '/account-group-manage',
+      icon: <TeamOutlined />,
+      label: '账户分组管理',
     },
     {
       key: '/notification-manage',
