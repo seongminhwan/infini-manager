@@ -827,3 +827,45 @@ export const getCardList = async (req: Request, res: Response): Promise<void> =>
     });
   }
 };
+
+/**
+ * 更新2FA信息
+ * @param req 请求对象
+ * @param res 响应对象
+ */
+export const update2faInfo = async (req: Request, res: Response) => {
+  try {
+    const { accountId } = req.params;
+    const { qr_code_url, secret_key, recovery_codes } = req.body;
+
+    console.log(`接收到更新2FA信息请求，账户ID: ${accountId}`);
+
+    // 验证参数
+    if (!accountId) {
+      return res.status(400).json({
+        success: false,
+        message: '账户ID不能为空'
+      });
+    }
+
+    // 调用服务方法更新2FA信息
+    const result = await infiniAccountService.update2faInfo(accountId, {
+      qr_code_url,
+      secret_key,
+      recovery_codes
+    });
+
+    // 返回结果
+    if (result.success) {
+      return res.json(result);
+    } else {
+      return res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error('更新2FA信息失败:', error);
+    return res.status(500).json({
+      success: false,
+      message: `更新2FA信息失败: ${(error as Error).message}`
+    });
+  }
+};
