@@ -1898,13 +1898,12 @@ const ResizableTitle: React.FC<{
 }> = ({ onResize, width, ...restProps }) => {
   const [resizing, setResizing] = useState(false);
 
-  if (!width) {
-    return <th {...restProps} />;
-  }
+  // 使用有效的宽度值，确保resize功能始终可用
+  const actualWidth = width || 100;
 
   return (
     <Resizable
-      width={width}
+      width={actualWidth}
       height={0}
       handle={
         <span
