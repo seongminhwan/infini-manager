@@ -2731,6 +2731,101 @@ export class InfiniAccountService {
   }
 
   /**
+   * 更新2FA信息
+   * @param accountId Infini账户ID
+   * @param twoFaData 2FA信息数据，包含qr_code_url、secret_key和recovery_codes
+   * @returns 更新结果
+   */
+  async update2faInfo(
+    accountId: string, 
+    twoFaData: {
+      qr_code_url?: string;
+      secret_key?: string;
+      recovery_codes?: string[];
+    }
+  ): Promise<ApiResponse> {
+    try {
+      console.log(`开始更新账户 ${accountId} 的2FA信息`);
+
+      // 查找账户
+      const account = await db('infini_accounts')
+        .where('id', accountId)
+        .first();
+
+      if (!account) {
+        console.error(`更新2FA信息失败: 找不到ID为${accountId}的Infini账户`);
+        return {
+          success: false,
+          message: '找不到指定的Infini账户'
+        };
+      }
+
+      // 检查是否存在2FA信息记录
+      const existing2faInfo = await db('infini_2fa_info')
+        .where('infini_account_id', accountId)
+        .first();
+
+      // 准备更新数据
+      const updateData: any = {
+        updated_at: new Date()
+      };
+
+      if (twoFaData.qr_code_url !== undefined) {
+        updateData.qr_code_url = twoFaData.qr_code_url;
+      }
+
+      if (twoFaData.secret_key !== undefined) {
+        updateData.secret_key = twoFaData.secret_key;
+      }
+
+      if (twoFaData.recovery_codes !== undefined) {
+        updateData.recovery_codes = JSON.stringify(twoFaData.recovery_codes);
+      }
+
+      if (existing2faInfo) {
+        // 更新现有记录
+        await db('infini_2fa_info')
+          .where('id', existing2faInfo.id)
+          .update(updateData);
+
+        console.log(`成功更新账户 ${accountId} 的2FA信息记录`);
+      } else {
+        // 创建新记录
+        updateData.infini_account_id = accountId;
+        updateData.created_at = new Date();
+        
+        await db('infini_2fa_info').insert(updateData);
+
+        console.log(`为账户 ${accountId} 创建了新的2FA信息记录`);
+      }
+
+      // 获取更新后的2FA信息
+      const updatedInfo = await db('infini_2fa_info')
+        .where('infini_account_id', accountId)
+        .first();
+
+      // 格式化返回数据
+      const formattedInfo = {
+        qrCodeUrl: updatedInfo.qr_code_url,
+        secretKey: updatedInfo.secret_key,
+        recoveryCodes: updatedInfo.recovery_codes ? JSON.parse(updatedInfo.recovery_codes) : []
+      };
+
+      return {
+        success: true,
+        data: formattedInfo,
+        message: '成功更新2FA信息'
+      };
+    } catch (error) {
+      console.error('更新2FA信息失败:', error);
+      return {
+        success: false,
+        message: `更新2FA信息失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
    * 批量同步所有Infini账户KYC信息
    * 针对每个账户，获取并更新KYC信息
    * 已完成KYC状态的账户会跳过再次同步
