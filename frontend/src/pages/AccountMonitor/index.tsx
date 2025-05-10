@@ -1951,11 +1951,65 @@ const AccountMonitor: React.FC = () => {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [accountGroupsMap, setAccountGroupsMap] = useState<Map<number, AccountGroup[]>>(new Map());
   
-  // 表格列控制状态
+  // 表格列控制状态和表格列宽、顺序状态
   const [columnsToShow, setColumnsToShow] = useState<string[]>([
     'index', 'email', 'userId', 'groups', 'verification_level', 'availableBalance', 
     'status', 'security', 'lastSyncAt', 'action'
   ]);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  
+  // 为保存配置创建防抖函数
+  const debouncedSaveColumnWidths = useRef<DebouncedFunc<(widths: Record<string, number>) => void>>(
+    debounce((widths: Record<string, number>) => {
+      // 将列宽配置保存到数据库
+      api.saveConfig('account_monitor_column_widths', JSON.stringify(widths))
+        .then(response => {
+          if (response.success) {
+            console.log('列宽配置已保存');
+          } else {
+            console.error('保存列宽配置失败:', response.message);
+          }
+        })
+        .catch(error => {
+          console.error('保存列宽配置失败:', error);
+        });
+    }, 500)
+  ).current;
+  
+  const debouncedSaveColumnOrder = useRef<DebouncedFunc<(order: string[]) => void>>(
+    debounce((order: string[]) => {
+      // 将列顺序配置保存到数据库
+      api.saveConfig('account_monitor_column_order', JSON.stringify(order))
+        .then(response => {
+          if (response.success) {
+            console.log('列顺序配置已保存');
+          } else {
+            console.error('保存列顺序配置失败:', response.message);
+          }
+        })
+        .catch(error => {
+          console.error('保存列顺序配置失败:', error);
+        });
+    }, 500)
+  ).current;
+  
+  const debouncedSaveColumnsToShow = useRef<DebouncedFunc<(columns: string[]) => void>>(
+    debounce((columns: string[]) => {
+      // 将显示列配置保存到数据库
+      api.saveConfig('account_monitor_columns_to_show', JSON.stringify(columns))
+        .then(response => {
+          if (response.success) {
+            console.log('显示列配置已保存');
+          } else {
+            console.error('保存显示列配置失败:', response.message);
+          }
+        })
+        .catch(error => {
+          console.error('保存显示列配置失败:', error);
+        });
+    }, 500)
+  ).current;
   // 查看账户详情
   const viewAccountDetail = (account: InfiniAccount) => {
     setSelectedAccount(account);
