@@ -2019,6 +2019,21 @@ const AccountMonitor: React.FC = () => {
   // 更新账户对象，添加分组信息
   const updateAccountsWithGroups = (accountsList: InfiniAccount[], groupsMap: Map<number, AccountGroup[]>) => {
     console.log(`更新账户分组信息，账户数量: ${accountsList.length}, 分组映射大小: ${groupsMap.size}`);
+    
+    // 安全检查，确保accountsList不为空
+    if (!accountsList || accountsList.length === 0) {
+      console.warn('更新账户分组信息时发现账户列表为空，使用当前accounts状态');
+      
+      // 如果传入的accountsList为空，使用当前accounts状态
+      if (accounts && accounts.length > 0) {
+        accountsList = [...accounts];
+        console.log(`使用当前accounts状态，长度: ${accountsList.length}`);
+      } else {
+        console.error('当前accounts状态也为空，无法更新分组信息');
+        return; // 如果当前accounts也为空，直接返回
+      }
+    }
+    
     const updatedAccounts = accountsList.map(account => {
       const accountGroups = groupsMap.get(account.id) || [];
       return {
@@ -2027,8 +2042,8 @@ const AccountMonitor: React.FC = () => {
       };
     });
     
+    console.log(`账户数据更新完成，更新后长度: ${updatedAccounts.length}`);
     setAccounts(updatedAccounts);
-    console.log(`账户数据更新完成，当前accounts状态长度: ${updatedAccounts.length}`);
   };
 
   // 获取所有账户
@@ -2043,6 +2058,12 @@ const AccountMonitor: React.FC = () => {
       if (response.data.success) {
         const accountsData = response.data.data || [];
         console.log('获取到的账户数据总数:', accountsData.length);
+        
+        if (accountsData.length === 0) {
+          console.warn('API返回的账户数据为空');
+          setAccounts([]);
+          return;
+        }
         
         // 详细输出每个账户的验证级别，同时打印verification_level和verificationLevel两个字段
         accountsData.forEach((account: InfiniAccount) => {
@@ -2070,12 +2091,17 @@ const AccountMonitor: React.FC = () => {
         // 更新账户列表前，先深度复制数据以避免引用问题
         const processedAccounts = JSON.parse(JSON.stringify(accountsData));
         
-        // 保存原始账户数据，无论是否已获取分组信息
+        // 先保存原始账户数据，这一步是关键，确保accounts状态不为空
+        console.log(`设置账户数据，长度: ${processedAccounts.length}`);
         setAccounts(processedAccounts);
         
-        // 如果已经获取了分组信息，更新账户的分组信息
+        // 如果已经获取了分组信息，添加分组信息
         if (accountGroupsMap.size > 0) {
-          updateAccountsWithGroups(processedAccounts, accountGroupsMap);
+          console.log('已有分组映射，更新账户分组信息');
+          // 使用setTimeout确保状态更新后再调用updateAccountsWithGroups
+          setTimeout(() => {
+            updateAccountsWithGroups(processedAccounts, accountGroupsMap);
+          }, 0);
         }
       } else {
         message.error(response.data.message || '获取账户列表失败');
@@ -2090,8 +2116,13 @@ const AccountMonitor: React.FC = () => {
 
   // 首次加载
   useEffect(() => {
-    fetchAccounts();
-    fetchGroups();
+    // 先加载账户数据，再加载分组信息
+    const loadData = async () => {
+      await fetchAccounts();
+      await fetchGroups();
+    };
+    
+    loadData();
   }, []);
 
   // 同步账户信息
@@ -2208,6 +2239,14 @@ const AccountMonitor: React.FC = () => {
     }
   };
   
+  // 添加调试函数，用于显示当前accounts状态
+  const showAccountsStatus = () => {
+    console.log(`当前accounts状态长度: ${accounts.length}`);
+    if (accounts.length > 0) {
+      console.log('第一个账户示例:', accounts[0]);
+    }
+  };
+
   // 表格列定义
   const allColumns: TableColumnsType<InfiniAccount> = [
     {
