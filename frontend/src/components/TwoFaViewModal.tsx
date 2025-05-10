@@ -157,20 +157,25 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = ({
     (twoFaInfo.recoveryCodes && twoFaInfo.recoveryCodes.length > 0)
   );
   
-  // 用于生成验证码的密钥（优先使用secretKey，其次使用qrCodeUrl）
-  const secretKeyToUse = twoFaInfo?.secretKey || twoFaInfo?.qrCodeUrl || '';
-  
-  // 从secretKey生成标准TOTP URI (如果没有qrCodeUrl)
-  const generateTotpUri = (secret: string): string => {
-    // 默认issuer为Infini，账户为Unknown如果没有更具体的信息
+  // 从secretKey生成标准TOTP URI
+  const generateTotpUri = (secret: string, email: string = 'Unknown'): string => {
+    // 默认issuer为Infini
     const issuer = 'Infini';
-    const account = 'Unknown';
-    return `otpauth://totp/${issuer}:${account}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
+    return `otpauth://totp/${issuer}:${email}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
   };
   
-  // 确保有一个可用的二维码URL
-  const qrCodeUrlToUse = twoFaInfo?.qrCodeUrl || 
-    (twoFaInfo?.secretKey ? generateTotpUri(twoFaInfo.secretKey) : '');
+  // 尝试从QR Code URL提取email
+  const emailFromQrCode = twoFaInfo?.qrCodeUrl?.match(/:[^?]+\?/)?.[0]?.replace(/[?:]/g, '') || 'Unknown';
+  
+  // 用于生成验证码的密钥（在编辑模式下使用编辑数据，否则使用原始数据）
+  const secretKeyToUse = isEditMode
+    ? (editData.secretKey || editData.qrCodeUrl || '')
+    : (twoFaInfo?.secretKey || twoFaInfo?.qrCodeUrl || '');
+  
+  // 确保有一个可用的二维码URL（在编辑模式下使用编辑数据，否则使用原始数据）
+  const qrCodeUrlToUse = isEditMode
+    ? (editData.qrCodeUrl || (editData.secretKey ? generateTotpUri(editData.secretKey, emailFromQrCode) : ''))
+    : (twoFaInfo?.qrCodeUrl || (twoFaInfo?.secretKey ? generateTotpUri(twoFaInfo.secretKey, emailFromQrCode) : ''));
   
   // 复制文本到剪贴板
   const copyToClipboard = (text: string, messageText: string = '已复制到剪贴板', setCopiedState: boolean = false) => {
@@ -244,7 +249,7 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = ({
       // 清除定时器
       return () => clearInterval(intervalId);
     }
-  }, [visible, secretKeyToUse, generateTotpCode]);
+  }, [visible, secretKeyToUse, generateTotpCode, isEditMode, editData]);
   
   // 点击验证码复制
   const handleCopyCode = () => {
@@ -275,10 +280,8 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = ({
       return;
     }
     
-    // 生成标准TOTP URI
-    const email = twoFaInfo?.qrCodeUrl?.match(/:[^?]+\?/)?.[0]?.replace(/[?:]/g, '') || 'Unknown';
-    const issuer = 'Infini';
-    const qrCodeUrl = `otpauth://totp/${issuer}:${email}?secret=${editData.secretKey}&issuer=${issuer}`;
+    // 使用通用方法生成TOTP URI
+    const qrCodeUrl = generateTotpUri(editData.secretKey, emailFromQrCode);
     
     setEditData(prev => ({ ...prev, qrCodeUrl }));
     message.success('已根据密钥生成二维码链接');
