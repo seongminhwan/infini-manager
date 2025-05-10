@@ -30,6 +30,7 @@ import {
   List,
   Radio,
   Empty,
+  TableColumnsType,
 } from 'antd';
 import {
   PlusOutlined,
@@ -112,6 +113,20 @@ const SyncButton = styled(Button)`
 `;
 
 // 接口和类型定义
+// 账户分组接口
+interface AccountGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+  accountCount?: number;
+}
+
+// 分组详情接口
+interface GroupDetail extends AccountGroup {
+  accounts: { id: string; email: string; }[];
+}
+
 // 2FA信息接口
 interface TwoFaInfo {
   qrCodeUrl?: string;
@@ -147,6 +162,7 @@ interface InfiniAccount {
   twoFaInfo?: TwoFaInfo; // 2FA信息
   verificationLevel?: number; // KYC认证级别：0-未认证 1-基础认证 2-KYC认证
   verification_level?: number; // 兼容旧版API
+  groups?: AccountGroup[]; // 所属分组
 }
 
 // 随机用户信息接口
@@ -1882,6 +1898,17 @@ const AccountMonitor: React.FC = () => {
   const [batchSyncing, setBatchSyncing] = useState(false);
   const [batchSyncResult, setBatchSyncResult] = useState<BatchSyncResult | null>(null);
   const [batchResultModalVisible, setBatchResultModalVisible] = useState(false);
+  
+  // 分组相关状态
+  const [groups, setGroups] = useState<AccountGroup[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [accountGroupsMap, setAccountGroupsMap] = useState<Map<number, AccountGroup[]>>(new Map());
+  
+  // 表格列控制状态
+  const [columnsToShow, setColumnsToShow] = useState<string[]>([
+    'index', 'email', 'userId', 'groups', 'verification_level', 'availableBalance', 
+    'status', 'security', 'lastSyncAt', 'action'
+  ]);
   // 查看账户详情
   const viewAccountDetail = (account: InfiniAccount) => {
     setSelectedAccount(account);
@@ -1940,6 +1967,67 @@ const AccountMonitor: React.FC = () => {
       setBatchSyncing(false);
     }
   };
+  // 获取所有账户分组并构建账户-分组的映射关系
+  const fetchGroups = async () => {
+    try {
+      setLoadingGroups(true);
+      const response = await infiniAccountApi.getAllAccountGroups();
+      
+      if (response.success && response.data) {
+        setGroups(response.data);
+        
+        // 构建分组详情并建立账户-分组映射
+        const groupAccountsMap = new Map<number, AccountGroup[]>();
+        for (const group of response.data) {
+          try {
+            const groupDetailResponse = await infiniAccountApi.getAccountGroupById(group.id);
+            
+            if (groupDetailResponse.success && groupDetailResponse.data && groupDetailResponse.data.accounts) {
+              const groupDetail = groupDetailResponse.data;
+              
+              // 为每个账户添加此分组
+              groupDetail.accounts.forEach(account => {
+                const accountId = parseInt(account.id);
+                if (!isNaN(accountId)) {
+                  const accountGroups = groupAccountsMap.get(accountId) || [];
+                  accountGroups.push(group);
+                  groupAccountsMap.set(accountId, accountGroups);
+                }
+              });
+            }
+          } catch (error) {
+            console.error(`获取分组 ${group.id} 详情失败:`, error);
+          }
+        }
+        
+        setAccountGroupsMap(groupAccountsMap);
+        
+        // 更新账户的分组信息
+        updateAccountsWithGroups(accounts, groupAccountsMap);
+      } else {
+        message.error(response.message || '获取分组列表失败');
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || error.message || '获取分组列表失败');
+      console.error('获取分组列表失败:', error);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+  
+  // 更新账户对象，添加分组信息
+  const updateAccountsWithGroups = (accountsList: InfiniAccount[], groupsMap: Map<number, AccountGroup[]>) => {
+    const updatedAccounts = accountsList.map(account => {
+      const accountGroups = groupsMap.get(account.id) || [];
+      return {
+        ...account,
+        groups: accountGroups
+      };
+    });
+    
+    setAccounts(updatedAccounts);
+  };
+
   // 获取所有账户
   const fetchAccounts = async () => {
     try {
@@ -1978,7 +2066,13 @@ const AccountMonitor: React.FC = () => {
         
         // 更新账户列表前，先深度复制数据以避免引用问题
         const processedAccounts = JSON.parse(JSON.stringify(accountsData));
-        setAccounts(processedAccounts);
+        
+        // 如果已经获取了分组信息，更新账户的分组信息
+        if (accountGroupsMap.size > 0) {
+          updateAccountsWithGroups(processedAccounts, accountGroupsMap);
+        } else {
+          setAccounts(processedAccounts);
+        }
       } else {
         message.error(response.data.message || '获取账户列表失败');
       }
@@ -1993,6 +2087,7 @@ const AccountMonitor: React.FC = () => {
   // 首次加载
   useEffect(() => {
     fetchAccounts();
+    fetchGroups();
   }, []);
 
   // 同步账户信息
@@ -2110,7 +2205,7 @@ const AccountMonitor: React.FC = () => {
   };
   
   // 表格列定义
-  const columns = [
+  const allColumns: TableColumnsType<InfiniAccount> = [
     {
       title: '编号',
       dataIndex: 'index',
@@ -2335,7 +2430,35 @@ const AccountMonitor: React.FC = () => {
               查看 <DownOutlined />
             </Button>
           </Dropdown>
-
+    {
+      title: '所属分组',
+      dataIndex: 'groups',
+      key: 'groups',
+      width: 180,
+      ellipsis: true,
+      filters: groups.map(group => ({ text: group.name, value: group.id })),
+      onFilter: (value: any, record: InfiniAccount) => {
+        if (!record.groups) return false;
+        return record.groups.some(group => group.id === value);
+      },
+      render: (_, record: InfiniAccount) => (
+        <Space size={[0, 4]} wrap>
+          {record.groups && record.groups.length > 0 ? (
+            record.groups.map(group => (
+              <Tag 
+                color={group.isDefault ? 'default' : 'blue'} 
+                key={group.id}
+                style={{ marginRight: 4, marginBottom: 4 }}
+              >
+                {group.name}
+              </Tag>
+            ))
+          ) : (
+            <Tag color="default">默认分组</Tag>
+          )}
+        </Space>
+      )
+    },
           {/* 同步下拉按钮 - 包含同步和同步KYC选项 */}
           <Dropdown
             overlay={
@@ -2378,6 +2501,35 @@ const AccountMonitor: React.FC = () => {
       ),
     },
   ];
+  
+  // 根据columnsToShow筛选要显示的列
+  const getVisibleColumns = () => {
+    return allColumns.filter(col => columnsToShow.includes(col.key as string));
+  };
+  
+  // 处理列显示切换
+  const handleColumnVisibilityChange = (checkedValues: string[]) => {
+    // 确保"操作"列始终显示
+    if (!checkedValues.includes('action')) {
+      checkedValues.push('action');
+    }
+    setColumnsToShow(checkedValues);
+  };
+  
+  // 列选择下拉菜单
+  const columnsMenu = (
+    <div style={{ padding: 12, minWidth: 200 }}>
+      <Checkbox.Group
+        options={allColumns.map(col => ({
+          label: col.title as string,
+          value: col.key as string,
+          disabled: col.key === 'action' // 操作列不可取消显示
+        }))}
+        value={columnsToShow}
+        onChange={handleColumnVisibilityChange}
+      />
+    </div>
+  );
   // 添加账户筛选和搜索状态
   const [searchText, setSearchText] = useState<string>('');
   const [filteredAccounts, setFilteredAccounts] = useState<InfiniAccount[]>([]);
@@ -2419,11 +2571,22 @@ const AccountMonitor: React.FC = () => {
               onChange={(e) => handleGlobalSearch(e.target.value)}
               style={{ width: 200 }}
             />
+            <Dropdown
+              overlay={columnsMenu}
+              trigger={['click']}
+            >
+              <Button type="text" icon={<SettingOutlined />}>
+                列设置
+              </Button>
+            </Dropdown>
             <Button
               type="default"
-              icon={<SyncOutlined spin={loading} />}
-              onClick={() => fetchAccounts()}
-              loading={loading}
+              icon={<SyncOutlined spin={loading || loadingGroups} />}
+              onClick={() => {
+                fetchAccounts();
+                fetchGroups();
+              }}
+              loading={loading || loadingGroups}
             >
               刷新列表
             </Button>
@@ -2495,10 +2658,10 @@ const AccountMonitor: React.FC = () => {
       >
         <TableContainer>
           <Table
-            columns={columns}
+            columns={getVisibleColumns()}
             dataSource={searchText ? filteredAccounts : accounts}
             rowKey="id"
-            loading={loading}
+            loading={loading || loadingGroups}
             pagination={{ pageSize: 10 }}
             scroll={{ x: 1400 }}
             onChange={(pagination, filters, sorter) => {
