@@ -65,6 +65,10 @@ const AccountGroupManage: React.FC = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [activeTab, setActiveTab] = useState<string>('1');
   
+  // 搜索相关状态
+  const [groupAccountSearchText, setGroupAccountSearchText] = useState('');
+  const [allAccountSearchText, setAllAccountSearchText] = useState('');
+  
   // 获取所有分组
   const fetchGroups = async () => {
     setLoading(true);
@@ -202,8 +206,32 @@ const AccountGroupManage: React.FC = () => {
     setAccountModalVisible(true);
     setActiveTab('1');
     setSelectedRowKeys([]);
+    setGroupAccountSearchText('');
+    setAllAccountSearchText('');
     // 获取分组详情
     await fetchGroupDetail(group.id);
+  };
+  
+  // 过滤分组内账户
+  const getFilteredGroupAccounts = () => {
+    if (!groupDetail?.accounts) return [];
+    
+    if (!groupAccountSearchText) return groupDetail.accounts;
+    
+    return groupDetail.accounts.filter(account => 
+      account.email.toLowerCase().includes(groupAccountSearchText.toLowerCase())
+    );
+  };
+  
+  // 过滤所有账户
+  const getFilteredAllAccounts = () => {
+    if (!allAccounts) return [];
+    
+    if (!allAccountSearchText) return allAccounts;
+    
+    return allAccounts.filter(account => 
+      account.email.toLowerCase().includes(allAccountSearchText.toLowerCase())
+    );
   };
   
   // 处理添加账户到分组
@@ -420,7 +448,10 @@ const AccountGroupManage: React.FC = () => {
         width={800}
         maskClosable={false}
       >
-        <Tabs activeKey={activeTab} onChange={key => setActiveTab(key)}>
+        <Tabs activeKey={activeTab} onChange={key => {
+          setActiveTab(key);
+          setSelectedRowKeys([]);
+        }}>
           <TabPane tab="分组内账户" key="1">
             {loadingAccounts ? (
               <div style={{ textAlign: 'center', padding: '20px' }}>
@@ -436,7 +467,7 @@ const AccountGroupManage: React.FC = () => {
                     </Tag>
                   )}
                 </Paragraph>
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
                   <Button
                     onClick={handleRemoveAccountsFromGroup}
                     disabled={selectedRowKeys.length === 0}
@@ -445,11 +476,18 @@ const AccountGroupManage: React.FC = () => {
                   >
                     移除所选账户
                   </Button>
+                  <Input.Search
+                    placeholder="搜索账户邮箱"
+                    value={groupAccountSearchText}
+                    onChange={e => setGroupAccountSearchText(e.target.value)}
+                    style={{ width: 300 }}
+                    allowClear
+                  />
                 </div>
                 <Table
                   rowSelection={rowSelection}
                   columns={accountColumns}
-                  dataSource={groupDetail?.accounts || []}
+                  dataSource={getFilteredGroupAccounts()}
                   rowKey="id"
                   pagination={{ pageSize: 5 }}
                 />
@@ -460,7 +498,7 @@ const AccountGroupManage: React.FC = () => {
             <Paragraph>
               从所有可用的Infini账户中选择要添加到当前分组的账户。
             </Paragraph>
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
               <Button
                 type="primary"
                 onClick={handleAddAccountsToGroup}
@@ -469,11 +507,18 @@ const AccountGroupManage: React.FC = () => {
               >
                 添加所选账户
               </Button>
+              <Input.Search
+                placeholder="搜索账户邮箱"
+                value={allAccountSearchText}
+                onChange={e => setAllAccountSearchText(e.target.value)}
+                style={{ width: 300 }}
+                allowClear
+              />
             </div>
             <Table
               rowSelection={rowSelection}
               columns={accountColumns}
-              dataSource={allAccounts}
+              dataSource={getFilteredAllAccounts()}
               rowKey="id"
               pagination={{ pageSize: 5 }}
             />
