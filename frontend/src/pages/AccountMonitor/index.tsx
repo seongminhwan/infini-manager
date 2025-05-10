@@ -2958,17 +2958,17 @@ const AccountMonitor: React.FC = () => {
             loading={loading || loadingGroups}
             pagination={{ pageSize: 10 }}
             scroll={{ x: 1400 }}
-            onChange={(pagination, filters, sorter) => {
-              console.log('Table changed:', { pagination, filters, sorter });
-            }}
-            components={{
-              header: {
-                cell: ResizableTitle,
-              },
-              body: {
-                row: (props) => <tr {...props} className="hover:bg-gray-50 dark:hover:bg-gray-800" />,
-              },
-            }}
+  onChange={(pagination, filters, sorter) => {
+    console.log('Table changed:', { pagination, filters, sorter });
+  }}
+  components={{
+    header: {
+      cell: ResizableTitle,
+    },
+    body: {
+      row: (props) => <tr {...props} className="hover:bg-gray-50 dark:hover:bg-gray-800" />,
+    }
+  }}
           />
         </TableContainer>
       </StyledCard>
