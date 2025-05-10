@@ -94,6 +94,7 @@ interface TwoFaViewModalProps {
   };
   accountId?: string; // 账户ID，用于保存数据
   twoFaEnabled?: boolean; // 账户2FA状态是否开启
+  onSuccess?: () => void; // 保存成功后的回调函数，用于刷新数据
 }
 
 /**
