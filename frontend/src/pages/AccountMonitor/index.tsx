@@ -2394,13 +2394,18 @@ const AccountMonitor: React.FC = () => {
     ellipsis: true,
   filters: groups.map(group => ({ text: group.name, value: group.id })),
   onFilter: (value: any, record: InfiniAccount) => {
-    // 如果账户没有groups属性，默认返回true（当选择默认分组时）
+    // 如果没有选择任何分组过滤条件，返回true显示所有数据
+    if (value === undefined || value === null) return true;
+    
+    // 如果账户没有groups属性或长度为0
     if (!record.groups || record.groups.length === 0) {
-      // 如果value是默认分组的ID，则返回true
+      // 如果选择的是默认分组，则显示没有明确分组的账户
       const defaultGroup = groups.find(g => g.isDefault);
-      return Boolean(defaultGroup && defaultGroup.id === value);
+      return Boolean(defaultGroup && String(defaultGroup.id) === String(value));
     }
-    return record.groups.some(group => group.id === value);
+    
+    // 使用字符串比较确保类型一致
+    return record.groups.some(group => String(group.id) === String(value));
   },
     render: (_, record: InfiniAccount) => (
       <Space size={[0, 4]} wrap>
