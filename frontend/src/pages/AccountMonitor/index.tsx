@@ -2,7 +2,7 @@
  * 账户监控页面
  * 用于添加和管理Infini账户
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Card,
   Table,
