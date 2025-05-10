@@ -13,9 +13,14 @@ import {
   MailOutlined,
   FileImageOutlined,
   IdcardOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-
+    {
+      key: '/account-group-manage',
+      icon: <TeamOutlined />,
+      label: '账户分组管理',
+    },
 const { Sider } = Layout;
 
 interface SideMenuProps {
