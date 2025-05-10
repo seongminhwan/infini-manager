@@ -31,6 +31,7 @@ import {
   Radio,
   Empty,
   TableColumnsType,
+  Tabs, // 添加Tabs组件导入
 } from 'antd';
 import {
   PlusOutlined,
