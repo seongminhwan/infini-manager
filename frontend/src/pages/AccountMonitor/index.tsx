@@ -2067,6 +2067,38 @@ const AccountMonitor: React.FC = () => {
     return dayjs(time).format('YYYY-MM-DD HH:mm:ss');
   };
 
+  // 用于卡片详情的状态
+  const [cardDetailModalVisible, setCardDetailModalVisible] = useState(false);
+  const [selectedAccountForCard, setSelectedAccountForCard] = useState<InfiniAccount | null>(null);
+  const [selectedCardInfo, setSelectedCardInfo] = useState<any>(null);
+
+  // 处理查看卡片详情
+  const viewCardDetail = async (account: InfiniAccount) => {
+    try {
+      setLoading(true);
+      setSelectedAccountForCard(account);
+      
+      // 获取卡片列表
+      const response = await axios.get(`${API_BASE_URL}/api/infini-cards/list`, {
+        params: { accountId: account.id }
+      });
+      
+      if (response.data.success && response.data.data && response.data.data.length > 0) {
+        // 选择第一张卡片作为默认展示
+        const firstCard = response.data.data[0];
+        setSelectedCardInfo(firstCard);
+        setCardDetailModalVisible(true);
+      } else {
+        message.info('该账户暂无卡片信息');
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || error.message || '获取卡片信息失败');
+      console.error('获取卡片信息失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // 表格列定义
   const columns = [
     {
