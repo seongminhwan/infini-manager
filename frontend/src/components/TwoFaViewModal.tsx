@@ -815,7 +815,7 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
                         style={{ width: 'calc(100% - 100px)' }}
                         value={recoveryCodeInput}
                         onChange={e => setRecoveryCodeInput(e.target.value)}
-                        placeholder="输入恢复码"
+                        placeholder="输入单个或多个空格分隔的恢复码"
                         onPressEnter={addRecoveryCode}
                       />
                       <Button type="primary" onClick={addRecoveryCode}>添加</Button>
