@@ -178,6 +178,8 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
   const [progressValue, setProgressValue] = useState<number>(100);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(30);
   const [isCopied, setIsCopied] = useState<boolean>(false);
+  // 是否已尝试加载2FA信息
+  const [twoFaFetchAttempted, setTwoFaFetchAttempted] = useState<boolean>(false);
   
   // 切换详细视图模式
   const toggleDetailMode = () => {
@@ -195,6 +197,8 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
     
     try {
       setLoadingTwoFa(true);
+      // 标记已尝试获取2FA信息，避免重复调用
+      setTwoFaFetchAttempted(true);
       
       // 从账户详情API获取2FA信息
       const response = await axios.get(`${apiBaseUrl}/api/infini-accounts/${accountId}`);
@@ -218,14 +222,19 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
         } else {
           // 账户没有2FA信息或未绑定2FA
           setHasTwoFa(accountData.google2faIsBound || false);
-          setTwoFaInfo(null);
+          // 创建一个空的2FA信息，而不是设置为null，避免触发无限循环
+          setTwoFaInfo({ qrCodeUrl: '', secretKey: '', recoveryCodes: [] });
         }
       } else {
         message.warning('获取账户信息失败: ' + (response.data.message || '未知错误'));
+        // 设置为空对象而不是null，避免触发useEffect的无限循环
+        setTwoFaInfo({ qrCodeUrl: '', secretKey: '', recoveryCodes: [] });
       }
     } catch (error: any) {
       console.error('获取账户信息失败:', error);
       message.error('获取账户信息失败: ' + error.message);
+      // 设置为空对象而不是null，避免触发useEffect的无限循环
+      setTwoFaInfo({ qrCodeUrl: '', secretKey: '', recoveryCodes: [] });
     } finally {
       setLoadingTwoFa(false);
     }
@@ -417,10 +426,18 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
   
   // 当模态框打开且详细视图模式时加载2FA信息
   useEffect(() => {
-    if (visible && detailMode && !twoFaInfo && !loadingTwoFa) {
+    // 仅当模态框可见、处于详细视图模式、未尝试获取2FA信息且当前不在加载过程中时，才尝试获取2FA信息
+    if (visible && detailMode && !twoFaFetchAttempted && !loadingTwoFa) {
       fetchTwoFaInfo();
     }
-  }, [visible, detailMode, twoFaInfo, loadingTwoFa]);
+  }, [visible, detailMode, twoFaFetchAttempted, loadingTwoFa, accountId]);
+  
+  // 当模态框关闭时重置2FA获取状态，以便下次打开时可以重新获取
+  useEffect(() => {
+    if (!visible) {
+      setTwoFaFetchAttempted(false);
+    }
+  }, [visible]);
   
   return (
     <Modal
