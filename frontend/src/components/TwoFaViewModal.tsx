@@ -349,7 +349,13 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
       if (response.success) {
         message.success('2FA信息更新成功');
         setIsEditMode(false);
-        // 回调通知父组件数据已更新，可能需要刷新
+        
+        // 调用onSuccess回调，通知父组件刷新数据
+        if (props.onSuccess) {
+          props.onSuccess();
+        }
+        
+        // 关闭模态框
         if (onClose) {
           onClose();
         }
