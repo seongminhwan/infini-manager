@@ -86,8 +86,7 @@ const AccountGroupManage: React.FC = () => {
   // 获取所有Infini账户
   const fetchAllAccounts = async () => {
     try {
-      // 临时使用getAllAccounts方法，稍后会在API中添加getAllInfiniAccounts方法
-      const response = await infiniAccountApi.getAllAccounts();
+      const response = await infiniAccountApi.getAllInfiniAccounts();
       if (response.success) {
         setAllAccounts(response.data);
       } else {
