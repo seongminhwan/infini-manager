@@ -94,19 +94,61 @@ interface TwoFaViewModalProps {
   };
 }
 
+// 扩展接口定义，添加账户ID参数
+interface TwoFaViewModalProps {
+  visible: boolean;
+  onClose: () => void;
+  twoFaInfo?: {
+    qrCodeUrl?: string;
+    secretKey?: string;
+    recoveryCodes?: string[];
+  };
+  accountId?: string; // 账户ID，用于保存数据
+}
+
 /**
  * 2FA信息查看模态框组件
  */
 const TwoFaViewModal: React.FC<TwoFaViewModalProps> = ({
   visible,
   onClose,
-  twoFaInfo
+  twoFaInfo,
+  accountId
 }) => {
   // 状态管理
   const [currentTotpCode, setCurrentTotpCode] = useState<string>('');
   const [progressValue, setProgressValue] = useState<number>(100);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(30);
   const [isCopied, setIsCopied] = useState<boolean>(false);
+  
+  // 编辑模式状态
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
+
+  // 编辑数据状态
+  const [editData, setEditData] = useState<{
+    qrCodeUrl: string;
+    secretKey: string;
+    recoveryCodes: string[];
+  }>({
+    qrCodeUrl: '',
+    secretKey: '',
+    recoveryCodes: []
+  });
+
+  // 恢复码输入状态
+  const [recoveryCodeInput, setRecoveryCodeInput] = useState<string>('');
+  
+  // 初始化编辑数据
+  useEffect(() => {
+    if (twoFaInfo) {
+      setEditData({
+        qrCodeUrl: twoFaInfo.qrCodeUrl || '',
+        secretKey: twoFaInfo.secretKey || '',
+        recoveryCodes: twoFaInfo.recoveryCodes || []
+      });
+    }
+  }, [twoFaInfo]);
   
   // 判断是否有任何2FA相关信息
   const has2FaData = twoFaInfo && (
