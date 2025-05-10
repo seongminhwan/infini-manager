@@ -1919,11 +1919,12 @@ const ResizableTitle: React.FC<{
             right: 0,
             top: 0,
             bottom: 0,
-            width: 8,
+            width: 10, // 增加宽度，使拖拽区域更容易点击
             zIndex: 1,
             cursor: 'col-resize',
-            background: (resizing || isHovering) ? 'rgba(0, 0, 0, 0.1)' : 'transparent',
-            transition: 'background 0.3s'
+            background: (resizing || isHovering) ? 'rgba(0, 120, 212, 0.3)' : 'transparent', // 更明显的颜色
+            transition: 'background 0.2s',
+            borderRight: (resizing || isHovering) ? '2px solid #1890ff' : 'none', // 添加边框增强视觉效果
           }}
         />
       }
