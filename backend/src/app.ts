@@ -36,6 +36,30 @@ app.use(express.urlencoded({ extended: true, limit: '20mb' })); // 解析URL编�
 app.use(cors()); // 启用CORS
 app.use(morgan('dev')); // 日志记录
 
+// 安全中间件：确保只接受来自localhost或127.0.0.1的请求
+app.use((req: Request, res: Response, next: NextFunction) => {
+  // 获取请求主机头
+  const host = req.headers.host || '';
+  // 获取请求IP
+  const ip = req.socket.remoteAddress || '';
+  
+  // 检查是否是本地请求
+  const isLocalHost = host.startsWith('localhost:') || host.startsWith('127.0.0.1:');
+  const isLocalIP = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+  
+  if (!isLocalHost && !isLocalIP) {
+    // 非本地请求，拒绝访问
+    const response: ApiResponse = {
+      success: false,
+      message: '安全警告：此服务仅允许本地访问，严禁部署在局域网或公网环境！'
+    };
+    return res.status(403).json(response);
+  }
+  
+  // 本地请求，允许继续处理
+  next();
+});
+
 // Swagger文档配置
 const swaggerOptions = {
   definition: {
