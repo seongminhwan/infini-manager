@@ -2966,7 +2966,7 @@ export class InfiniAccountService {
       // 添加账户数量和账户列表到响应中
       const groupWithDetails = {
         ...group,
-        accountCount: parseInt(countResult.accountCount as string, 10),
+        accountCount: countResult ? parseInt(countResult.accountCount as string, 10) : 0,
         accounts
       };
 
