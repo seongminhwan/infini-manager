@@ -2871,6 +2871,719 @@ export class InfiniAccountService {
   }
 
   /**
+   * 获取所有账户分组
+   * @returns 包含所有分组信息的响应对象
+   */
+  async getAllAccountGroups(): Promise<ApiResponse> {
+    try {
+      const groups = await db('infini_account_groups')
+        .select([
+          'id',
+          'name',
+          'description',
+          'is_default as isDefault',
+          'created_at as createdAt',
+          'updated_at as updatedAt'
+        ])
+        .orderBy('is_default', 'desc') // 默认分组排在前面
+        .orderBy('name', 'asc'); // 然后按名称排序
+
+      // 获取每个分组关联的账户数量
+      const groupCounts = await db('infini_account_group_relations')
+        .select('group_id')
+        .count('infini_account_id as accountCount')
+        .groupBy('group_id');
+
+      // 创建分组ID到账户数量的映射
+      const countMap = new Map();
+      groupCounts.forEach(item => {
+        countMap.set(item.group_id, parseInt(item.accountCount as string, 10));
+      });
+
+      // 添加账户数量到分组信息中
+      const groupsWithCount = groups.map(group => ({
+        ...group,
+        accountCount: countMap.get(group.id) || 0
+      }));
+
+      return {
+        success: true,
+        data: groupsWithCount,
+        message: '成功获取所有账户分组'
+      };
+    } catch (error) {
+      console.error('获取账户分组列表失败:', error);
+      return {
+        success: false,
+        message: `获取账户分组列表失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 获取单个账户分组
+   * @param id 分组ID
+   * @returns 包含分组信息的响应对象
+   */
+  async getAccountGroupById(id: string): Promise<ApiResponse> {
+    try {
+      const group = await db('infini_account_groups')
+        .select([
+          'id',
+          'name',
+          'description',
+          'is_default as isDefault',
+          'created_at as createdAt',
+          'updated_at as updatedAt'
+        ])
+        .where('id', id)
+        .first();
+
+      if (!group) {
+        return {
+          success: false,
+          message: '找不到指定的账户分组'
+        };
+      }
+
+      // 获取分组关联的账户数量
+      const countResult = await db('infini_account_group_relations')
+        .where('group_id', id)
+        .count('infini_account_id as accountCount')
+        .first();
+
+      // 获取分组关联的账户列表
+      const accounts = await db('infini_account_group_relations')
+        .join('infini_accounts', 'infini_account_group_relations.infini_account_id', 'infini_accounts.id')
+        .where('infini_account_group_relations.group_id', id)
+        .select([
+          'infini_accounts.id',
+          'infini_accounts.email',
+          'infini_accounts.status',
+          'infini_accounts.available_balance as availableBalance'
+        ]);
+
+      // 添加账户数量和账户列表到响应中
+      const groupWithDetails = {
+        ...group,
+        accountCount: parseInt(countResult.accountCount as string, 10),
+        accounts
+      };
+
+      return {
+        success: true,
+        data: groupWithDetails,
+        message: '成功获取账户分组信息'
+      };
+    } catch (error) {
+      console.error('获取账户分组信息失败:', error);
+      return {
+        success: false,
+        message: `获取账户分组信息失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 创建账户分组
+   * @param groupData 分组数据，包含name和description
+   * @returns 包含新创建的分组信息的响应对象
+   */
+  async createAccountGroup(groupData: { name: string; description?: string }): Promise<ApiResponse> {
+    try {
+      // 检查分组名称是否为空
+      if (!groupData.name || groupData.name.trim() === '') {
+        return {
+          success: false,
+          message: '分组名称不能为空'
+        };
+      }
+
+      // 检查分组名称是否已存在
+      const existingGroup = await db('infini_account_groups')
+        .where('name', groupData.name)
+        .first();
+
+      if (existingGroup) {
+        return {
+          success: false,
+          message: '分组名称已存在'
+        };
+      }
+
+      // 插入新分组
+      const [newGroupId] = await db('infini_account_groups').insert({
+        name: groupData.name,
+        description: groupData.description || '',
+        is_default: false, // 新创建的分组不是默认分组
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+
+      // 获取新创建的分组信息
+      const newGroup = await db('infini_account_groups')
+        .select([
+          'id',
+          'name',
+          'description',
+          'is_default as isDefault',
+          'created_at as createdAt',
+          'updated_at as updatedAt'
+        ])
+        .where('id', newGroupId)
+        .first();
+
+      return {
+        success: true,
+        data: newGroup,
+        message: '成功创建账户分组'
+      };
+    } catch (error) {
+      console.error('创建账户分组失败:', error);
+      return {
+        success: false,
+        message: `创建账户分组失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 更新账户分组
+   * @param id 分组ID
+   * @param groupData 分组数据，包含name和description
+   * @returns 包含更新后的分组信息的响应对象
+   */
+  async updateAccountGroup(id: string, groupData: { name?: string; description?: string }): Promise<ApiResponse> {
+    try {
+      // 查找分组
+      const group = await db('infini_account_groups')
+        .where('id', id)
+        .first();
+
+      if (!group) {
+        return {
+          success: false,
+          message: '找不到指定的账户分组'
+        };
+      }
+
+      // 不允许修改默认分组的名称
+      if (group.is_default && groupData.name && groupData.name !== group.name) {
+        return {
+          success: false,
+          message: '不允许修改默认分组的名称'
+        };
+      }
+
+      // 如果要修改名称，检查是否与其他分组重名
+      if (groupData.name && groupData.name !== group.name) {
+        const existingGroup = await db('infini_account_groups')
+          .where('name', groupData.name)
+          .whereNot('id', id)
+          .first();
+
+        if (existingGroup) {
+          return {
+            success: false,
+            message: '分组名称已存在'
+          };
+        }
+      }
+
+      // 准备更新字段
+      const updateData: Record<string, any> = {
+        updated_at: new Date()
+      };
+
+      if (groupData.name !== undefined && groupData.name.trim() !== '') {
+        updateData.name = groupData.name;
+      }
+
+      if (groupData.description !== undefined) {
+        updateData.description = groupData.description;
+      }
+
+      // 如果没有要更新的字段，直接返回成功
+      if (Object.keys(updateData).length === 1) { // 只有updated_at
+        return {
+          success: true,
+          message: '没有字段需要更新',
+          data: group
+        };
+      }
+
+      // 更新分组
+      await db('infini_account_groups')
+        .where('id', id)
+        .update(updateData);
+
+      // 获取更新后的分组信息
+      const updatedGroup = await db('infini_account_groups')
+        .select([
+          'id',
+          'name',
+          'description',
+          'is_default as isDefault',
+          'created_at as createdAt',
+          'updated_at as updatedAt'
+        ])
+        .where('id', id)
+        .first();
+
+      return {
+        success: true,
+        data: updatedGroup,
+        message: '成功更新账户分组'
+      };
+    } catch (error) {
+      console.error('更新账户分组失败:', error);
+      return {
+        success: false,
+        message: `更新账户分组失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 删除账户分组
+   * @param id 分组ID
+   * @returns 删除结果
+   */
+  async deleteAccountGroup(id: string): Promise<ApiResponse> {
+    try {
+      // 查找分组
+      const group = await db('infini_account_groups')
+        .where('id', id)
+        .first();
+
+      if (!group) {
+        return {
+          success: false,
+          message: '找不到指定的账户分组'
+        };
+      }
+
+      // 不允许删除默认分组
+      if (group.is_default) {
+        return {
+          success: false,
+          message: '不允许删除默认分组'
+        };
+      }
+
+      // 查找分组关联的账户数量
+      const accountCount = await db('infini_account_group_relations')
+        .where('group_id', id)
+        .count('* as count')
+        .first();
+
+      const count = parseInt(accountCount?.count as string || '0', 10);
+
+      // 获取默认分组
+      const defaultGroup = await db('infini_account_groups')
+        .where('is_default', true)
+        .first();
+
+      if (!defaultGroup) {
+        return {
+          success: false,
+          message: '找不到默认分组，无法删除当前分组'
+        };
+      }
+
+      // 使用事务保证操作的原子性
+      await db.transaction(async (trx) => {
+        // 如果分组有关联的账户，将这些账户移到默认分组（如果它们还不在默认分组中）
+        if (count > 0) {
+          // 获取当前分组中的所有账户ID
+          const accountIds = await trx('infini_account_group_relations')
+            .where('group_id', id)
+            .pluck('infini_account_id');
+
+          // 获取已经在默认分组中的账户ID
+          const accountsInDefaultGroup = await trx('infini_account_group_relations')
+            .where('group_id', defaultGroup.id)
+            .whereIn('infini_account_id', accountIds)
+            .pluck('infini_account_id');
+
+          // 找出不在默认分组中的账户ID
+          const accountsNotInDefaultGroup = accountIds.filter(
+            accountId => !accountsInDefaultGroup.includes(accountId)
+          );
+
+          // 为这些账户添加到默认分组的关联记录
+          if (accountsNotInDefaultGroup.length > 0) {
+            const relationRecords = accountsNotInDefaultGroup.map(accountId => ({
+              infini_account_id: accountId,
+              group_id: defaultGroup.id,
+              created_at: new Date(),
+              updated_at: new Date()
+            }));
+
+            await trx('infini_account_group_relations').insert(relationRecords);
+          }
+        }
+
+        // 删除与该分组相关的所有账户关联
+        await trx('infini_account_group_relations')
+          .where('group_id', id)
+          .delete();
+
+        // 删除分组
+        await trx('infini_account_groups')
+          .where('id', id)
+          .delete();
+      });
+
+      return {
+        success: true,
+        message: `成功删除账户分组"${group.name}"，其中的账户已移至默认分组`
+      };
+    } catch (error) {
+      console.error('删除账户分组失败:', error);
+      return {
+        success: false,
+        message: `删除账户分组失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 向分组添加账户
+   * @param groupId 分组ID
+   * @param accountId 账户ID
+   * @returns 添加结果
+   */
+  async addAccountToGroup(groupId: string, accountId: string): Promise<ApiResponse> {
+    try {
+      // 查找分组
+      const group = await db('infini_account_groups')
+        .where('id', groupId)
+        .first();
+
+      if (!group) {
+        return {
+          success: false,
+          message: '找不到指定的账户分组'
+        };
+      }
+
+      // 查找账户
+      const account = await db('infini_accounts')
+        .where('id', accountId)
+        .first();
+
+      if (!account) {
+        return {
+          success: false,
+          message: '找不到指定的Infini账户'
+        };
+      }
+
+      // 检查账户是否已在该分组中
+      const existingRelation = await db('infini_account_group_relations')
+        .where({
+          infini_account_id: accountId,
+          group_id: groupId
+        })
+        .first();
+
+      if (existingRelation) {
+        return {
+          success: true,
+          message: '账户已在该分组中，无需再次添加'
+        };
+      }
+
+      // 添加账户到分组
+      await db('infini_account_group_relations').insert({
+        infini_account_id: accountId,
+        group_id: groupId,
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+
+      return {
+        success: true,
+        message: '成功将账户添加到分组'
+      };
+    } catch (error) {
+      console.error('添加账户到分组失败:', error);
+      return {
+        success: false,
+        message: `添加账户到分组失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 批量向分组添加账户
+   * @param groupId 分组ID
+   * @param accountIds 账户ID数组
+   * @returns 添加结果
+   */
+  async addAccountsToGroup(groupId: string, accountIds: string[]): Promise<ApiResponse> {
+    try {
+      if (!accountIds || accountIds.length === 0) {
+        return {
+          success: false,
+          message: '账户ID列表不能为空'
+        };
+      }
+
+      // 查找分组
+      const group = await db('infini_account_groups')
+        .where('id', groupId)
+        .first();
+
+      if (!group) {
+        return {
+          success: false,
+          message: '找不到指定的账户分组'
+        };
+      }
+
+      // 验证所有账户ID是否有效
+      const validAccounts = await db('infini_accounts')
+        .whereIn('id', accountIds)
+        .pluck('id');
+
+      if (validAccounts.length === 0) {
+        return {
+          success: false,
+          message: '未找到有效的账户'
+        };
+      }
+
+      // 查找已经存在的关联关系
+      const existingRelations = await db('infini_account_group_relations')
+        .where('group_id', groupId)
+        .whereIn('infini_account_id', validAccounts)
+        .pluck('infini_account_id');
+
+      // 找出不存在关联关系的账户ID
+      const accountsToAdd = validAccounts.filter(id => !existingRelations.includes(id));
+
+      // 如果没有需要添加的账户，直接返回
+      if (accountsToAdd.length === 0) {
+        return {
+          success: true,
+          message: '所有有效账户已在分组中，无需再次添加',
+          data: { addedCount: 0, totalCount: validAccounts.length }
+        };
+      }
+
+      // 批量添加关联关系
+      const now = new Date();
+      const relationRecords = accountsToAdd.map(accountId => ({
+        infini_account_id: accountId,
+        group_id: groupId,
+        created_at: now,
+        updated_at: now
+      }));
+
+      await db('infini_account_group_relations').insert(relationRecords);
+
+      return {
+        success: true,
+        message: `成功将${accountsToAdd.length}个账户添加到分组`,
+        data: { 
+          addedCount: accountsToAdd.length, 
+          totalCount: validAccounts.length,
+          invalidCount: accountIds.length - validAccounts.length
+        }
+      };
+    } catch (error) {
+      console.error('批量添加账户到分组失败:', error);
+      return {
+        success: false,
+        message: `批量添加账户到分组失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 从分组中移除账户
+   * @param groupId 分组ID
+   * @param accountId 账户ID
+   * @returns 移除结果
+   */
+  async removeAccountFromGroup(groupId: string, accountId: string): Promise<ApiResponse> {
+    try {
+      // 查找分组
+      const group = await db('infini_account_groups')
+        .where('id', groupId)
+        .first();
+
+      if (!group) {
+        return {
+          success: false,
+          message: '找不到指定的账户分组'
+        };
+      }
+
+      // 不允许从默认分组中移除账户，除非该账户同时属于其他分组
+      if (group.is_default) {
+        // 检查账户是否同时属于其他分组
+        const otherGroupCount = await db('infini_account_group_relations')
+          .where('infini_account_id', accountId)
+          .whereNot('group_id', groupId)
+          .count('* as count')
+          .first();
+
+        const count = parseInt(otherGroupCount?.count as string || '0', 10);
+        if (count === 0) {
+          return {
+            success: false,
+            message: '不能从默认分组中移除账户，除非该账户同时属于其他分组'
+          };
+        }
+      }
+
+      // 查找账户
+      const account = await db('infini_accounts')
+        .where('id', accountId)
+        .first();
+
+      if (!account) {
+        return {
+          success: false,
+          message: '找不到指定的Infini账户'
+        };
+      }
+
+      // 检查账户是否在该分组中
+      const relation = await db('infini_account_group_relations')
+        .where({
+          infini_account_id: accountId,
+          group_id: groupId
+        })
+        .first();
+
+      if (!relation) {
+        return {
+          success: true,
+          message: '账户不在该分组中，无需移除'
+        };
+      }
+
+      // 从分组中移除账户
+      await db('infini_account_group_relations')
+        .where({
+          infini_account_id: accountId,
+          group_id: groupId
+        })
+        .delete();
+
+      return {
+        success: true,
+        message: '成功将账户从分组中移除'
+      };
+    } catch (error) {
+      console.error('从分组中移除账户失败:', error);
+      return {
+        success: false,
+        message: `从分组中移除账户失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 批量从分组中移除账户
+   * @param groupId 分组ID
+   * @param accountIds 账户ID数组
+   * @returns 移除结果
+   */
+  async removeAccountsFromGroup(groupId: string, accountIds: string[]): Promise<ApiResponse> {
+    try {
+      if (!accountIds || accountIds.length === 0) {
+        return {
+          success: false,
+          message: '账户ID列表不能为空'
+        };
+      }
+
+      // 查找分组
+      const group = await db('infini_account_groups')
+        .where('id', groupId)
+        .first();
+
+      if (!group) {
+        return {
+          success: false,
+          message: '找不到指定的账户分组'
+        };
+      }
+
+      // 如果是默认分组，需要检查每个账户是否同时属于其他分组
+      if (group.is_default) {
+        // 获取所有待移除账户的其他分组关联信息
+        const accountGroupCounts = await db('infini_account_group_relations')
+          .whereIn('infini_account_id', accountIds)
+          .whereNot('group_id', groupId)
+          .select('infini_account_id')
+          .count('* as count')
+          .groupBy('infini_account_id');
+
+        // 创建账户ID到其他分组数量的映射
+        const accountGroupCountMap = new Map();
+        accountGroupCounts.forEach(item => {
+          accountGroupCountMap.set(item.infini_account_id, parseInt(item.count as string, 10));
+        });
+
+        // 筛选出只属于默认分组的账户
+        const accountsOnlyInDefaultGroup = accountIds.filter(id => 
+          !accountGroupCountMap.has(id) || accountGroupCountMap.get(id) === 0
+        );
+
+        if (accountsOnlyInDefaultGroup.length > 0) {
+          return {
+            success: false,
+            message: `不能从默认分组中移除${accountsOnlyInDefaultGroup.length}个账户，因为它们不属于任何其他分组`,
+            data: { accountsOnlyInDefaultGroup }
+          };
+        }
+      }
+
+      // 查找实际存在于该分组中的账户
+      const existingRelations = await db('infini_account_group_relations')
+        .where('group_id', groupId)
+        .whereIn('infini_account_id', accountIds)
+        .pluck('infini_account_id');
+
+      // 如果没有账户在该分组中，直接返回
+      if (existingRelations.length === 0) {
+        return {
+          success: true,
+          message: '所有指定账户都不在该分组中，无需移除',
+          data: { removedCount: 0, totalCount: accountIds.length }
+        };
+      }
+
+      // 批量删除关联关系
+      await db('infini_account_group_relations')
+        .where('group_id', groupId)
+        .whereIn('infini_account_id', existingRelations)
+        .delete();
+
+      return {
+        success: true,
+        message: `成功将${existingRelations.length}个账户从分组中移除`,
+        data: { 
+          removedCount: existingRelations.length, 
+          totalCount: accountIds.length
+        }
+      };
+    } catch (error) {
+      console.error('批量从分组中移除账户失败:', error);
+      return {
+        success: false,
+        message: `批量从分组中移除账户失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
    * 批量同步所有Infini账户KYC信息
    * 针对每个账户，获取并更新KYC信息
    * 已完成KYC状态的账户会跳过再次同步
