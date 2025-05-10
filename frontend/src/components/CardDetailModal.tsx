@@ -189,39 +189,43 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
     }
   };
   
-  // 获取2FA信息
+  // 从账户详情获取2FA信息
   const fetchTwoFaInfo = async () => {
     if (!accountId) return;
     
     try {
       setLoadingTwoFa(true);
       
-      // 获取账户2FA信息
-      const response = await axios.get(`${apiBaseUrl}/api/infini-accounts/2fa/info/${accountId}`);
+      // 从账户详情API获取2FA信息
+      const response = await axios.get(`${apiBaseUrl}/api/infini-accounts/${accountId}`);
       
       if (response.data.success && response.data.data) {
-        const data = response.data.data;
-        setTwoFaInfo({
-          qrCodeUrl: data.qr_code_url,
-          secretKey: data.secret_key,
-          recoveryCodes: data.recovery_codes || []
-        });
-        setHasTwoFa(true);
+        const accountData = response.data.data;
         
-        // 如果有密钥，开始生成验证码
-        if (data.secret_key) {
-          generateTotpCode(data.secret_key);
+        if (accountData.twoFaInfo) {
+          // 账户包含2FA信息
+          setTwoFaInfo({
+            qrCodeUrl: accountData.twoFaInfo.qrCodeUrl,
+            secretKey: accountData.twoFaInfo.secretKey,
+            recoveryCodes: accountData.twoFaInfo.recoveryCodes || []
+          });
+          setHasTwoFa(accountData.google2faIsBound);
+          
+          // 如果有密钥，开始生成验证码
+          if (accountData.twoFaInfo.secretKey) {
+            generateTotpCode(accountData.twoFaInfo.secretKey);
+          }
+        } else {
+          // 账户没有2FA信息或未绑定2FA
+          setHasTwoFa(accountData.google2faIsBound || false);
+          setTwoFaInfo(null);
         }
       } else {
-        if (response.data.data === null) {
-          setHasTwoFa(false);
-        } else {
-          message.warning('获取2FA信息失败: ' + (response.data.message || '未知错误'));
-        }
+        message.warning('获取账户信息失败: ' + (response.data.message || '未知错误'));
       }
     } catch (error: any) {
-      console.error('获取2FA信息失败:', error);
-      message.error('获取2FA信息失败: ' + error.message);
+      console.error('获取账户信息失败:', error);
+      message.error('获取账户信息失败: ' + error.message);
     } finally {
       setLoadingTwoFa(false);
     }
