@@ -34,7 +34,7 @@ import {
   ExportOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
-import { totpToolApi } from '../services/api';
+import { totpToolApi, infiniAccountApi } from '../services/api';
 
 const { Text, Title } = Typography;
 
