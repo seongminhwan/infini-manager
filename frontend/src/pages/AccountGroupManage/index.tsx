@@ -86,7 +86,8 @@ const AccountGroupManage: React.FC = () => {
   // 获取所有Infini账户
   const fetchAllAccounts = async () => {
     try {
-      const response = await infiniAccountApi.getAllInfiniAccounts();
+      // 临时使用getAllAccounts方法，稍后会在API中添加getAllInfiniAccounts方法
+      const response = await infiniAccountApi.getAllAccounts();
       if (response.success) {
         setAllAccounts(response.data);
       } else {
@@ -390,4 +391,98 @@ const AccountGroupManage: React.FC = () => {
         onOk={handleSaveGroup}
         onCancel={resetModal}
         maskClosable={false}
-      ></Modal>
+      >
+        <Form
+          form={form}
+          layout="vertical"
+        >
+          <Form.Item
+            name="name"
+            label="分组名称"
+            rules={[{ required: true, message: '请输入分组名称' }]}
+          >
+            <Input placeholder="请输入分组名称" />
+          </Form.Item>
+          <Form.Item
+            name="description"
+            label="分组描述"
+          >
+            <TextArea rows={4} placeholder="请输入分组描述（可选）" />
+          </Form.Item>
+        </Form>
+      </Modal>
+      
+      {/* 管理分组内账户的模态框 */}
+      <Modal
+        title={`管理 "${selectedGroupName}" 分组内的账户`}
+        open={accountModalVisible}
+        onCancel={() => setAccountModalVisible(false)}
+        footer={null}
+        width={800}
+        maskClosable={false}
+      >
+        <Tabs activeKey={activeTab} onChange={key => setActiveTab(key)}>
+          <TabPane tab="分组内账户" key="1">
+            {loadingAccounts ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <Spin tip="加载中..." />
+              </div>
+            ) : (
+              <>
+                <Paragraph>
+                  这里显示当前分组内的所有账户，可以选择要移除的账户。
+                  {groupDetail?.isDefault && (
+                    <Tag color="orange" style={{ marginLeft: 8 }}>
+                      注意：从默认分组移除账户时，该账户必须同时属于其他分组
+                    </Tag>
+                  )}
+                </Paragraph>
+                <div style={{ marginBottom: 16 }}>
+                  <Button
+                    onClick={handleRemoveAccountsFromGroup}
+                    disabled={selectedRowKeys.length === 0}
+                    danger
+                    icon={<UserDeleteOutlined />}
+                  >
+                    移除所选账户
+                  </Button>
+                </div>
+                <Table
+                  rowSelection={rowSelection}
+                  columns={accountColumns}
+                  dataSource={groupDetail?.accounts || []}
+                  rowKey="id"
+                  pagination={{ pageSize: 5 }}
+                />
+              </>
+            )}
+          </TabPane>
+          <TabPane tab="添加账户" key="2">
+            <Paragraph>
+              从所有可用的Infini账户中选择要添加到当前分组的账户。
+            </Paragraph>
+            <div style={{ marginBottom: 16 }}>
+              <Button
+                type="primary"
+                onClick={handleAddAccountsToGroup}
+                disabled={selectedRowKeys.length === 0}
+                icon={<UserAddOutlined />}
+              >
+                添加所选账户
+              </Button>
+            </div>
+            <Table
+              rowSelection={rowSelection}
+              columns={accountColumns}
+              dataSource={allAccounts}
+              rowKey="id"
+              pagination={{ pageSize: 5 }}
+            />
+          </TabPane>
+        </Tabs>
+      </Modal>
+    </div>
+  );
+};
+
+export default AccountGroupManage;
