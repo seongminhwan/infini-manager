@@ -869,3 +869,291 @@ export const update2faInfo = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * 获取所有账户分组
+ */
+export const getAllAccountGroups = async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('接收到获取所有账户分组请求');
+    
+    const response = await infiniAccountService.getAllAccountGroups();
+    
+    if (response.success) {
+      res.json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('获取账户分组列表失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `获取账户分组列表失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 获取单个账户分组
+ */
+export const getAccountGroupById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`接收到获取单个账户分组请求，分组ID: ${id}`);
+    
+    const response = await infiniAccountService.getAccountGroupById(id);
+    
+    if (response.success) {
+      res.json(response);
+    } else if (response.message === '找不到指定的账户分组') {
+      res.status(404).json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('获取账户分组失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `获取账户分组失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 创建账户分组
+ */
+export const createAccountGroup = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, description } = req.body;
+    
+    if (!name || name.trim() === '') {
+      res.status(400).json({
+        success: false,
+        message: '分组名称不能为空'
+      });
+      return;
+    }
+    
+    console.log(`接收到创建账户分组请求，名称: ${name}`);
+    
+    const response = await infiniAccountService.createAccountGroup({ name, description });
+    
+    if (response.success) {
+      res.status(201).json(response);
+    } else if (response.message === '分组名称已存在') {
+      res.status(400).json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('创建账户分组失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `创建账户分组失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 更新账户分组
+ */
+export const updateAccountGroup = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    
+    console.log(`接收到更新账户分组请求，分组ID: ${id}`);
+    
+    const response = await infiniAccountService.updateAccountGroup(id, { name, description });
+    
+    if (response.success) {
+      res.json(response);
+    } else if (response.message === '找不到指定的账户分组') {
+      res.status(404).json(response);
+    } else if (response.message === '分组名称已存在' || response.message === '不允许修改默认分组的名称') {
+      res.status(400).json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('更新账户分组失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `更新账户分组失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 删除账户分组
+ */
+export const deleteAccountGroup = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`接收到删除账户分组请求，分组ID: ${id}`);
+    
+    const response = await infiniAccountService.deleteAccountGroup(id);
+    
+    if (response.success) {
+      res.json(response);
+    } else if (response.message === '找不到指定的账户分组') {
+      res.status(404).json(response);
+    } else if (response.message === '不允许删除默认分组' || response.message === '找不到默认分组，无法删除当前分组') {
+      res.status(400).json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('删除账户分组失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `删除账户分组失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 添加账户到分组
+ */
+export const addAccountToGroup = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { groupId, accountId } = req.body;
+    
+    if (!groupId || !accountId) {
+      res.status(400).json({
+        success: false,
+        message: '分组ID和账户ID均不能为空'
+      });
+      return;
+    }
+    
+    console.log(`接收到添加账户到分组请求，分组ID: ${groupId}, 账户ID: ${accountId}`);
+    
+    const response = await infiniAccountService.addAccountToGroup(groupId, accountId);
+    
+    if (response.success) {
+      res.json(response);
+    } else if (response.message === '找不到指定的账户分组' || response.message === '找不到指定的Infini账户') {
+      res.status(404).json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('添加账户到分组失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `添加账户到分组失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 批量添加账户到分组
+ */
+export const addAccountsToGroup = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { groupId, accountIds } = req.body;
+    
+    if (!groupId || !accountIds || !Array.isArray(accountIds) || accountIds.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: '分组ID和账户ID列表均不能为空'
+      });
+      return;
+    }
+    
+    console.log(`接收到批量添加账户到分组请求，分组ID: ${groupId}, 账户数量: ${accountIds.length}`);
+    
+    const response = await infiniAccountService.addAccountsToGroup(groupId, accountIds);
+    
+    if (response.success) {
+      res.json(response);
+    } else if (response.message === '找不到指定的账户分组') {
+      res.status(404).json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('批量添加账户到分组失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `批量添加账户到分组失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 从分组中移除账户
+ */
+export const removeAccountFromGroup = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { groupId, accountId } = req.body;
+    
+    if (!groupId || !accountId) {
+      res.status(400).json({
+        success: false,
+        message: '分组ID和账户ID均不能为空'
+      });
+      return;
+    }
+    
+    console.log(`接收到从分组中移除账户请求，分组ID: ${groupId}, 账户ID: ${accountId}`);
+    
+    const response = await infiniAccountService.removeAccountFromGroup(groupId, accountId);
+    
+    if (response.success) {
+      res.json(response);
+    } else if (response.message === '找不到指定的账户分组' || response.message === '找不到指定的Infini账户') {
+      res.status(404).json(response);
+    } else if (response.message === '不能从默认分组中移除账户，除非该账户同时属于其他分组') {
+      res.status(400).json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('从分组中移除账户失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `从分组中移除账户失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 批量从分组中移除账户
+ */
+export const removeAccountsFromGroup = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { groupId, accountIds } = req.body;
+    
+    if (!groupId || !accountIds || !Array.isArray(accountIds) || accountIds.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: '分组ID和账户ID列表均不能为空'
+      });
+      return;
+    }
+    
+    console.log(`接收到批量从分组中移除账户请求，分组ID: ${groupId}, 账户数量: ${accountIds.length}`);
+    
+    const response = await infiniAccountService.removeAccountsFromGroup(groupId, accountIds);
+    
+    if (response.success) {
+      res.json(response);
+    } else if (response.message === '找不到指定的账户分组') {
+      res.status(404).json(response);
+    } else if (response.message && response.message.includes('不能从默认分组中移除')) {
+      res.status(400).json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('批量从分组中移除账户失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `批量从分组中移除账户失败: ${(error as Error).message}`
+    });
+  }
+};
