@@ -546,6 +546,298 @@ router.post('/', createInfiniAccount);
 
 /**
  * @swagger
+ * /api/infini-accounts/groups:
+ *   get:
+ *     summary: 获取所有账户分组
+ *     description: 获取系统中的所有账户分组，包含每个分组关联的账户数量
+ *     tags: [InfiniAccounts]
+ *     responses:
+ *       200:
+ *         description: 成功获取所有账户分组
+ *       500:
+ *         description: 服务器错误
+ */
+router.get('/groups', getAllAccountGroups);
+
+/**
+ * @swagger
+ * /api/infini-accounts/groups/{id}:
+ *   get:
+ *     summary: 获取单个账户分组
+ *     description: 获取指定ID的账户分组详情，包含分组关联的账户列表
+ *     tags: [InfiniAccounts]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: 分组ID
+ *     responses:
+ *       200:
+ *         description: 成功获取账户分组详情
+ *       404:
+ *         description: 分组不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.get('/groups/:id', getAccountGroupById);
+
+/**
+ * @swagger
+ * /api/infini-accounts/groups:
+ *   post:
+ *     summary: 创建账户分组
+ *     description: 创建新的账户分组
+ *     tags: [InfiniAccounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: 分组名称
+ *                 example: "VIP账户"
+ *               description:
+ *                 type: string
+ *                 description: 分组描述
+ *                 example: "VIP客户的账户分组"
+ *             required:
+ *               - name
+ *     responses:
+ *       201:
+ *         description: 成功创建账户分组
+ *       400:
+ *         description: 请求参数错误或分组名称已存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/groups', createAccountGroup);
+
+/**
+ * @swagger
+ * /api/infini-accounts/groups/{id}:
+ *   put:
+ *     summary: 更新账户分组
+ *     description: 更新指定ID的账户分组信息
+ *     tags: [InfiniAccounts]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: 分组ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: 分组名称
+ *                 example: "新VIP账户"
+ *               description:
+ *                 type: string
+ *                 description: 分组描述
+ *                 example: "更新后的VIP客户账户分组描述"
+ *     responses:
+ *       200:
+ *         description: 成功更新账户分组
+ *       400:
+ *         description: 请求参数错误、分组名称已存在或尝试修改默认分组名称
+ *       404:
+ *         description: 分组不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.put('/groups/:id', updateAccountGroup);
+
+/**
+ * @swagger
+ * /api/infini-accounts/groups/{id}:
+ *   delete:
+ *     summary: 删除账户分组
+ *     description: 删除指定ID的账户分组（默认分组不可删除）
+ *     tags: [InfiniAccounts]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: 分组ID
+ *     responses:
+ *       200:
+ *         description: 成功删除账户分组
+ *       400:
+ *         description: 请求参数错误或尝试删除默认分组
+ *       404:
+ *         description: 分组不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.delete('/groups/:id', deleteAccountGroup);
+
+/**
+ * @swagger
+ * /api/infini-accounts/groups/account/add:
+ *   post:
+ *     summary: 添加账户到分组
+ *     description: 将指定账户添加到指定分组
+ *     tags: [InfiniAccounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               groupId:
+ *                 type: string
+ *                 description: 分组ID
+ *                 example: "1"
+ *               accountId:
+ *                 type: string
+ *                 description: 账户ID
+ *                 example: "2"
+ *             required:
+ *               - groupId
+ *               - accountId
+ *     responses:
+ *       200:
+ *         description: 成功添加账户到分组
+ *       400:
+ *         description: 请求参数错误
+ *       404:
+ *         description: 分组或账户不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/groups/account/add', addAccountToGroup);
+
+/**
+ * @swagger
+ * /api/infini-accounts/groups/accounts/add:
+ *   post:
+ *     summary: 批量添加账户到分组
+ *     description: 将多个账户批量添加到指定分组
+ *     tags: [InfiniAccounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               groupId:
+ *                 type: string
+ *                 description: 分组ID
+ *                 example: "1"
+ *               accountIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 账户ID数组
+ *                 example: ["2", "3", "4"]
+ *             required:
+ *               - groupId
+ *               - accountIds
+ *     responses:
+ *       200:
+ *         description: 成功批量添加账户到分组
+ *       400:
+ *         description: 请求参数错误
+ *       404:
+ *         description: 分组不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/groups/accounts/add', addAccountsToGroup);
+
+/**
+ * @swagger
+ * /api/infini-accounts/groups/account/remove:
+ *   post:
+ *     summary: 从分组中移除账户
+ *     description: 将指定账户从指定分组中移除（不能从默认分组中移除账户，除非账户同时属于其他分组）
+ *     tags: [InfiniAccounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               groupId:
+ *                 type: string
+ *                 description: 分组ID
+ *                 example: "1"
+ *               accountId:
+ *                 type: string
+ *                 description: 账户ID
+ *                 example: "2"
+ *             required:
+ *               - groupId
+ *               - accountId
+ *     responses:
+ *       200:
+ *         description: 成功从分组中移除账户
+ *       400:
+ *         description: 请求参数错误或尝试从默认分组中移除唯一分组的账户
+ *       404:
+ *         description: 分组或账户不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/groups/account/remove', removeAccountFromGroup);
+
+/**
+ * @swagger
+ * /api/infini-accounts/groups/accounts/remove:
+ *   post:
+ *     summary: 批量从分组中移除账户
+ *     description: 将多个账户批量从指定分组中移除（不能从默认分组中移除账户，除非账户同时属于其他分组）
+ *     tags: [InfiniAccounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               groupId:
+ *                 type: string
+ *                 description: 分组ID
+ *                 example: "1"
+ *               accountIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 账户ID数组
+ *                 example: ["2", "3", "4"]
+ *             required:
+ *               - groupId
+ *               - accountIds
+ *     responses:
+ *       200:
+ *         description: 成功从分组中批量移除账户
+ *       400:
+ *         description: 请求参数错误或尝试从默认分组中移除唯一分组的账户
+ *       404:
+ *         description: 分组不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/groups/accounts/remove', removeAccountsFromGroup);
+
+/**
+ * @swagger
  * /api/infini-accounts/{id}:
  *   get:
  *     summary: 获取单个Infini账户
