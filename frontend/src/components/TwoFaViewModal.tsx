@@ -842,10 +842,10 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
                     <Text type="secondary">请安全保存这些恢复码，一旦丢失2FA设备，可用于恢复账户访问权限</Text>
                   </div>
                   
-                  {twoFaInfo.recoveryCodes && twoFaInfo.recoveryCodes.length > 0 ? (
+                  {twoFaInfo?.recoveryCodes && twoFaInfo.recoveryCodes.length > 0 ? (
                     <List
                       grid={{ gutter: 16, column: 3 }}
-                      dataSource={twoFaInfo.recoveryCodes}
+                      dataSource={twoFaInfo?.recoveryCodes || []}
                       renderItem={code => (
                         <List.Item>
                           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
