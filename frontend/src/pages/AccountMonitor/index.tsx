@@ -2398,7 +2398,7 @@ const AccountMonitor: React.FC = () => {
     if (!record.groups || record.groups.length === 0) {
       // 如果value是默认分组的ID，则返回true
       const defaultGroup = groups.find(g => g.isDefault);
-      return defaultGroup && defaultGroup.id === value;
+      return Boolean(defaultGroup && defaultGroup.id === value);
     }
     return record.groups.some(group => group.id === value);
   },
