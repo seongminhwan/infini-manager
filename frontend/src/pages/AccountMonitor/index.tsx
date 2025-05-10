@@ -59,6 +59,7 @@ import {
   CreditCardOutlined,
   SearchOutlined,
   BankOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import axios from 'axios';
 import api, { apiBaseUrl, infiniAccountApi, randomUserApi, totpToolApi } from '../../services/api';
@@ -1986,7 +1987,7 @@ const AccountMonitor: React.FC = () => {
               const groupDetail = groupDetailResponse.data;
               
               // 为每个账户添加此分组
-              groupDetail.accounts.forEach(account => {
+              groupDetail.accounts.forEach((account: { id: string; email: string }) => {
                 const accountId = parseInt(account.id);
                 if (!isNaN(accountId)) {
                   const accountGroups = groupAccountsMap.get(accountId) || [];
@@ -2430,35 +2431,7 @@ const AccountMonitor: React.FC = () => {
               查看 <DownOutlined />
             </Button>
           </Dropdown>
-    {
-      title: '所属分组',
-      dataIndex: 'groups',
-      key: 'groups',
-      width: 180,
-      ellipsis: true,
-      filters: groups.map(group => ({ text: group.name, value: group.id })),
-      onFilter: (value: any, record: InfiniAccount) => {
-        if (!record.groups) return false;
-        return record.groups.some(group => group.id === value);
-      },
-      render: (_, record: InfiniAccount) => (
-        <Space size={[0, 4]} wrap>
-          {record.groups && record.groups.length > 0 ? (
-            record.groups.map(group => (
-              <Tag 
-                color={group.isDefault ? 'default' : 'blue'} 
-                key={group.id}
-                style={{ marginRight: 4, marginBottom: 4 }}
-              >
-                {group.name}
-              </Tag>
-            ))
-          ) : (
-            <Tag color="default">默认分组</Tag>
-          )}
-        </Space>
-      )
-    },
+          
           {/* 同步下拉按钮 - 包含同步和同步KYC选项 */}
           <Dropdown
             overlay={
@@ -2499,6 +2472,35 @@ const AccountMonitor: React.FC = () => {
           </Popconfirm>
         </Space>
       ),
+    },
+    {
+      title: '所属分组',
+      dataIndex: 'groups',
+      key: 'groups',
+      width: 180,
+      ellipsis: true,
+      filters: groups.map(group => ({ text: group.name, value: group.id })),
+      onFilter: (value: any, record: InfiniAccount) => {
+        if (!record.groups) return false;
+        return record.groups.some(group => group.id === value);
+      },
+      render: (_, record: InfiniAccount) => (
+        <Space size={[0, 4]} wrap>
+          {record.groups && record.groups.length > 0 ? (
+            record.groups.map(group => (
+              <Tag 
+                color={group.isDefault ? 'default' : 'blue'} 
+                key={group.id}
+                style={{ marginRight: 4, marginBottom: 4 }}
+              >
+                {group.name}
+              </Tag>
+            ))
+          ) : (
+            <Tag color="default">默认分组</Tag>
+          )}
+        </Space>
+      )
     },
   ];
   
