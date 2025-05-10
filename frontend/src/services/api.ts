@@ -196,6 +196,126 @@ export const infiniAccountApi = {
       console.error('更新2FA信息失败:', error);
       throw error;
     }
+  },
+  
+  // 获取所有账户分组
+  getAllAccountGroups: async () => {
+    try {
+      console.log('获取所有账户分组');
+      const response = await api.get(`${apiBaseUrl}/api/infini-accounts/groups`);
+      return response.data;
+    } catch (error) {
+      console.error('获取账户分组列表失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取单个账户分组详情
+  getAccountGroupById: async (id: string) => {
+    try {
+      console.log(`获取账户分组详情，分组ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/infini-accounts/groups/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取账户分组详情失败:', error);
+      throw error;
+    }
+  },
+  
+  // 创建账户分组
+  createAccountGroup: async (data: { name: string, description?: string }) => {
+    try {
+      console.log(`创建账户分组，名称: ${data.name}`);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/groups`, data);
+      return response.data;
+    } catch (error) {
+      console.error('创建账户分组失败:', error);
+      throw error;
+    }
+  },
+  
+  // 更新账户分组
+  updateAccountGroup: async (id: string, data: { name?: string, description?: string }) => {
+    try {
+      console.log(`更新账户分组，分组ID: ${id}`);
+      const response = await api.put(`${apiBaseUrl}/api/infini-accounts/groups/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('更新账户分组失败:', error);
+      throw error;
+    }
+  },
+  
+  // 删除账户分组
+  deleteAccountGroup: async (id: string) => {
+    try {
+      console.log(`删除账户分组，分组ID: ${id}`);
+      const response = await api.delete(`${apiBaseUrl}/api/infini-accounts/groups/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除账户分组失败:', error);
+      throw error;
+    }
+  },
+  
+  // 添加账户到分组
+  addAccountToGroup: async (groupId: string, accountId: string) => {
+    try {
+      console.log(`添加账户到分组，分组ID: ${groupId}, 账户ID: ${accountId}`);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/groups/account/add`, { 
+        groupId, 
+        accountId 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('添加账户到分组失败:', error);
+      throw error;
+    }
+  },
+  
+  // 批量添加账户到分组
+  addAccountsToGroup: async (groupId: string, accountIds: string[]) => {
+    try {
+      console.log(`批量添加账户到分组，分组ID: ${groupId}, 账户数量: ${accountIds.length}`);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/groups/accounts/add`, { 
+        groupId, 
+        accountIds 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('批量添加账户到分组失败:', error);
+      throw error;
+    }
+  },
+  
+  // 从分组中移除账户
+  removeAccountFromGroup: async (groupId: string, accountId: string) => {
+    try {
+      console.log(`从分组中移除账户，分组ID: ${groupId}, 账户ID: ${accountId}`);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/groups/account/remove`, { 
+        groupId, 
+        accountId 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('从分组中移除账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 批量从分组中移除账户
+  removeAccountsFromGroup: async (groupId: string, accountIds: string[]) => {
+    try {
+      console.log(`批量从分组中移除账户，分组ID: ${groupId}, 账户数量: ${accountIds.length}`);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/groups/accounts/remove`, { 
+        groupId, 
+        accountIds 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('批量从分组中移除账户失败:', error);
+      throw error;
+    }
   }
 };
 
