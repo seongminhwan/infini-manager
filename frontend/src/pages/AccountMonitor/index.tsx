@@ -2737,7 +2737,7 @@ const AccountMonitor: React.FC = () => {
       });
     }
     
-    // 应用列宽，只保留列宽调整功能，移除拖拽相关属性
+    // 应用列宽，只保留列宽调整功能，完全移除拖拽相关属性
     return visibleCols.map((col, index) => {
       const key = col.key as string;
       const width = columnWidths[key] || col.width;
@@ -2748,8 +2748,7 @@ const AccountMonitor: React.FC = () => {
         onHeaderCell: (column: any) => ({
           width: column.width,
           onResize: handleResize(index),
-          // 移除拖拽相关属性，避免与列宽调整功能冲突
-          // 列顺序调整功能仅在列设置弹框中使用
+          // 不再添加任何拖拽相关属性，确保不会与列宽调整功能冲突
         }),
       };
     });
