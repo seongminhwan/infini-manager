@@ -855,7 +855,7 @@ export class InfiniAccountService {
 
   /**
    * 创建Infini账户
-   * 登录后保存账户信息到数据库
+   * 登录后保存账户信息到数据库，并关联到默认分组
    * @param email 邮箱地址
    * @param password 密码
    * @param mock_user_id 关联的随机用户ID（可选）
