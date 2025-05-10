@@ -2502,35 +2502,6 @@ const AccountMonitor: React.FC = () => {
         </Space>
       ),
     },
-    {
-      title: '所属分组',
-      dataIndex: 'groups',
-      key: 'groups',
-      width: 180,
-      ellipsis: true,
-      filters: groups.map(group => ({ text: group.name, value: group.id })),
-      onFilter: (value: any, record: InfiniAccount) => {
-        if (!record.groups) return false;
-        return record.groups.some(group => group.id === value);
-      },
-      render: (_, record: InfiniAccount) => (
-        <Space size={[0, 4]} wrap>
-          {record.groups && record.groups.length > 0 ? (
-            record.groups.map(group => (
-              <Tag 
-                color={group.isDefault ? 'default' : 'blue'} 
-                key={group.id}
-                style={{ marginRight: 4, marginBottom: 4 }}
-              >
-                {group.name}
-              </Tag>
-            ))
-          ) : (
-            <Tag color="default">默认分组</Tag>
-          )}
-        </Space>
-      )
-    },
   ];
   
   // 根据columnsToShow筛选要显示的列
