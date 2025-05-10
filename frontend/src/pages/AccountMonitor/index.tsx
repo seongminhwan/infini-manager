@@ -1890,6 +1890,48 @@ const AccountRegisterModal: React.FC<{
   );
 };
 
+// 可调整列宽的表头组件
+const ResizableTitle: React.FC<{
+  onResize: (e: React.SyntheticEvent<Element>, data: ResizeCallbackData) => void;
+  width?: number;
+  [x: string]: any;
+}> = ({ onResize, width, ...restProps }) => {
+  const [resizing, setResizing] = useState(false);
+
+  if (!width) {
+    return <th {...restProps} />;
+  }
+
+  return (
+    <Resizable
+      width={width}
+      height={0}
+      handle={
+        <span
+          className="react-resizable-handle"
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: 8,
+            zIndex: 1,
+            cursor: 'col-resize',
+            background: resizing ? 'rgba(0, 0, 0, 0.1)' : 'transparent'
+          }}
+        />
+      }
+      onResize={onResize}
+      onResizeStart={() => setResizing(true)}
+      onResizeStop={() => setResizing(false)}
+      draggableOpts={{ enableUserSelectHack: false }}
+    >
+      <th {...restProps} style={{ ...restProps.style, position: 'relative' }} />
+    </Resizable>
+  );
+};
+
 // 主组件
 const AccountMonitor: React.FC = () => {
   const [accounts, setAccounts] = useState<InfiniAccount[]>([]);
