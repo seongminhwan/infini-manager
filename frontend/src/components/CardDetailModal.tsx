@@ -167,8 +167,8 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
   const [cardDetails, setCardDetails] = useState<CardDetails | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   
-  // 详细视图模式状态
-  const [detailMode, setDetailMode] = useState<boolean>(false);
+  // 详细视图模式状态（默认为详细模式）
+  const [detailMode, setDetailMode] = useState<boolean>(true);
   
   // 2FA相关状态
   const [twoFaInfo, setTwoFaInfo] = useState<TwoFaInfo | null>(null);
