@@ -973,38 +973,30 @@ export class InfiniAccountService {
         last_sync_at: new Date(),
       });
 
-      const newAccount = await db('infini_accounts')
-        .where('id', newAccountId)
-        .select([
-          'id',
-          'user_id as userId',
-          'email',
-          'uid',
-          'invitation_code as invitationCode',
-          'available_balance as availableBalance',
-          'withdrawing_amount as withdrawingAmount',
-          'red_packet_balance as redPacketBalance',
-          'total_consumption_amount as totalConsumptionAmount',
-          'total_earn_balance as totalEarnBalance',
-          'daily_consumption as dailyConsumption',
-          'status',
-          'user_type as userType',
-          'google_2fa_is_bound as google2faIsBound',
-          'google_password_is_set as googlePasswordIsSet',
-          'is_kol as isKol',
-          'is_protected as isProtected',
-          'cookie_expires_at as cookieExpiresAt',
-          'infini_created_at as infiniCreatedAt',
-          'last_sync_at as lastSyncAt',
-          'created_at as createdAt',
-          'updated_at as updatedAt',
-          'mock_user_id as mockUserId', // 添加关联的随机用户ID
-        ])
+      // 获取默认分组
+      const defaultGroup = await db('infini_account_groups')
+        .where('is_default', true)
         .first();
 
+      if (!defaultGroup) {
+        console.error('创建默认分组关联失败：未找到默认分组');
+      } else {
+        // 将账户关联到默认分组
+        await db('infini_account_group_relations').insert({
+          infini_account_id: newAccountId,
+          group_id: defaultGroup.id,
+          created_at: new Date(),
+          updated_at: new Date()
+        });
+        console.log(`已将账户 ${newAccountId} 关联到默认分组 ${defaultGroup.id}`);
+      }
+
+      // 获取包含分组信息的新账户
+      const newAccount = await this.getInfiniAccountById(newAccountId.toString());
+      
       return {
         success: true,
-        data: newAccount,
+        data: newAccount.data,
         message: '成功添加Infini账户',
       };
     } catch (error) {
