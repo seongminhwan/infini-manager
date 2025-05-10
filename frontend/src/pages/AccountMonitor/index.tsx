@@ -641,8 +641,8 @@ const AccountDetailModal: React.FC<{
               查看关联用户
             </Button>
           )}
-          {/* 所有2FA已启用的账户都显示2FA按钮 */}
-          {account.google2faIsBound && (
+          {/* 显示2FA相关按钮：已启用的显示查看/配置，未启用的显示启用2FA */}
+          {account.google2faIsBound ? (
             <Button
               type="primary"
               ghost
@@ -651,6 +651,16 @@ const AccountDetailModal: React.FC<{
               style={{ marginRight: 8 }}
             >
               {account.twoFaInfo ? '查看2FA' : '配置2FA'}
+            </Button>
+          ) : (
+            <Button
+              type="primary"
+              ghost
+              icon={<SafetyCertificateOutlined />}
+              onClick={prepare2faConfig}
+              style={{ marginRight: 8 }}
+            >
+              启用2FA
             </Button>
           )}
           {/* 已完成KYC认证(verification_level=2或3)时显示"查看KYC"按钮 */}
