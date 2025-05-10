@@ -2583,7 +2583,7 @@ const AccountMonitor: React.FC = () => {
   
   // 列选择下拉菜单
   const columnsMenu = (
-    <div style={{ padding: 12, minWidth: 200 }}>
+    <div style={{ padding: 12, minWidth: 200, backgroundColor: '#fff', border: '1px solid #f0f0f0', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
       <Checkbox.Group
         options={allColumns.map(col => ({
           label: col.title as string,
@@ -2636,14 +2636,6 @@ const AccountMonitor: React.FC = () => {
               onChange={(e) => handleGlobalSearch(e.target.value)}
               style={{ width: 200 }}
             />
-            <Dropdown
-              overlay={columnsMenu}
-              trigger={['click']}
-            >
-              <Button type="text" icon={<SettingOutlined />}>
-                列设置
-              </Button>
-            </Dropdown>
             <Button
               type="default"
               icon={<SyncOutlined spin={loading || loadingGroups} />}
@@ -2716,6 +2708,14 @@ const AccountMonitor: React.FC = () => {
                 icon={<PlusOutlined />}
               >
                 添加账户 <DownOutlined />
+              </Button>
+            </Dropdown>
+            <Dropdown
+              overlay={columnsMenu}
+              trigger={['click']}
+            >
+              <Button type="primary" ghost icon={<SettingOutlined />}>
+                列设置
               </Button>
             </Dropdown>
           </Space>
