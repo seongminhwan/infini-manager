@@ -2767,7 +2767,7 @@ const AccountMonitor: React.FC = () => {
     const loadConfigs = async () => {
       try {
         // 加载列宽配置
-        const widthsResponse = await configApi.getConfig('account_monitor_column_widths');
+        const widthsResponse = await configApi.getConfigByKey('account_monitor_column_widths');
         if (widthsResponse.success && widthsResponse.data && widthsResponse.data.value) {
           try {
             const widths = JSON.parse(widthsResponse.data.value);
@@ -2778,7 +2778,7 @@ const AccountMonitor: React.FC = () => {
         }
 
         // 加载列顺序配置
-        const orderResponse = await configApi.getConfig('account_monitor_column_order');
+        const orderResponse = await configApi.getConfigByKey('account_monitor_column_order');
         if (orderResponse.success && orderResponse.data && orderResponse.data.value) {
           try {
             const order = JSON.parse(orderResponse.data.value);
@@ -2789,7 +2789,7 @@ const AccountMonitor: React.FC = () => {
         }
 
         // 加载显示列配置
-        const columnsResponse = await configApi.getConfig('account_monitor_columns_to_show');
+        const columnsResponse = await configApi.getConfigByKey('account_monitor_columns_to_show');
         if (columnsResponse.success && columnsResponse.data && columnsResponse.data.value) {
           try {
             const columns = JSON.parse(columnsResponse.data.value);
