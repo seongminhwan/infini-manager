@@ -316,6 +316,18 @@ export const infiniAccountApi = {
       console.error('批量从分组中移除账户失败:', error);
       throw error;
     }
+  },
+  
+  // 获取所有Infini账户
+  getAllInfiniAccounts: async () => {
+    try {
+      console.log('获取所有Infini账户');
+      const response = await api.get(`${apiBaseUrl}/api/infini-accounts`);
+      return response.data;
+    } catch (error) {
+      console.error('获取所有Infini账户失败:', error);
+      throw error;
+    }
   }
 };
 
