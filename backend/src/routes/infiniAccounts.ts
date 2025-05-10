@@ -28,7 +28,17 @@ import {
   getAvailableCardTypes,
   createCard,
   getCardList,
-  update2faInfo
+  update2faInfo,
+  // 账户分组相关控制器
+  getAllAccountGroups,
+  getAccountGroupById,
+  createAccountGroup,
+  updateAccountGroup,
+  deleteAccountGroup,
+  addAccountToGroup,
+  addAccountsToGroup,
+  removeAccountFromGroup,
+  removeAccountsFromGroup
 } from '../controllers/infiniAccountController';
 const router = express.Router();
 /**
