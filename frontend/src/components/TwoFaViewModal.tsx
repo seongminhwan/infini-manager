@@ -253,8 +253,133 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = ({
     }
   };
   
+  // 切换编辑模式
+  const toggleEditMode = () => {
+    if (isEditMode) {
+      // 退出编辑模式，恢复原始数据
+      if (twoFaInfo) {
+        setEditData({
+          qrCodeUrl: twoFaInfo.qrCodeUrl || '',
+          secretKey: twoFaInfo.secretKey || '',
+          recoveryCodes: twoFaInfo.recoveryCodes || []
+        });
+      }
+    }
+    setIsEditMode(!isEditMode);
+  };
+  
+  // 从secretKey生成qr_code_url
+  const generateQrCodeFromSecret = () => {
+    if (!editData.secretKey) {
+      message.error('请先输入密钥');
+      return;
+    }
+    
+    // 生成标准TOTP URI
+    const email = twoFaInfo?.qrCodeUrl?.match(/:[^?]+\?/)?.[0]?.replace(/[?:]/g, '') || 'Unknown';
+    const issuer = 'Infini';
+    const qrCodeUrl = `otpauth://totp/${issuer}:${email}?secret=${editData.secretKey}&issuer=${issuer}`;
+    
+    setEditData(prev => ({ ...prev, qrCodeUrl }));
+    message.success('已根据密钥生成二维码链接');
+  };
+  
+  // 从qr_code_url提取secretKey
+  const extractSecretFromQrCode = () => {
+    if (!editData.qrCodeUrl) {
+      message.error('请先输入二维码链接');
+      return;
+    }
+    
+    // 从URL中提取secret参数
+    const secretMatch = editData.qrCodeUrl.match(/[?&]secret=([^&]+)/i);
+    if (secretMatch && secretMatch[1]) {
+      setEditData(prev => ({ ...prev, secretKey: secretMatch[1] }));
+      message.success('已从二维码链接提取密钥');
+    } else {
+      message.error('无法从二维码链接中提取密钥，请检查链接格式');
+    }
+  };
+  
+  // 添加恢复码
+  const addRecoveryCode = () => {
+    if (!recoveryCodeInput.trim()) {
+      message.error('请输入恢复码');
+      return;
+    }
+    
+    // 添加新的恢复码
+    setEditData(prev => ({
+      ...prev,
+      recoveryCodes: [...prev.recoveryCodes, recoveryCodeInput.trim()]
+    }));
+    
+    // 清空输入框
+    setRecoveryCodeInput('');
+    message.success('恢复码添加成功');
+  };
+  
+  // 删除恢复码
+  const removeRecoveryCode = (index: number) => {
+    setEditData(prev => ({
+      ...prev,
+      recoveryCodes: prev.recoveryCodes.filter((_, i) => i !== index)
+    }));
+    message.success('恢复码移除成功');
+  };
+  
+  // 保存2FA信息
+  const saveChanges = async () => {
+    if (!accountId) {
+      message.error('无法保存：缺少账户ID');
+      return;
+    }
+    
+    // 验证数据
+    if (!editData.qrCodeUrl && !editData.secretKey) {
+      message.error('请至少提供二维码链接或密钥');
+      return;
+    }
+    
+    // 开始保存
+    setSaving(true);
+    
+    try {
+      // 准备请求数据
+      const updateData = {
+        qr_code_url: editData.qrCodeUrl,
+        secret_key: editData.secretKey,
+        recovery_codes: editData.recoveryCodes
+      };
+      
+      // 调用API更新2FA信息
+      const response = await infiniAccountApi.update2faInfo(accountId, updateData);
+      
+      if (response.success) {
+        message.success('2FA信息更新成功');
+        setIsEditMode(false);
+        // 回调通知父组件数据已更新，可能需要刷新
+        if (onClose) {
+          onClose();
+        }
+      } else {
+        message.error(`保存失败：${response.message || '未知错误'}`);
+      }
+    } catch (error) {
+      console.error('保存2FA信息失败:', error);
+      message.error('保存2FA信息失败，请重试');
+    } finally {
+      setSaving(false);
+    }
+  };
+  
   // 模态框关闭时的处理
   const handleClose = () => {
+    // 如果处于编辑模式，提示用户是否放弃更改
+    if (isEditMode) {
+      // 简单实现，直接放弃更改并关闭
+      setIsEditMode(false);
+    }
     onClose();
   };
   
