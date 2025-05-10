@@ -2541,6 +2541,18 @@ const AccountMonitor: React.FC = () => {
         onClose={() => setBatchAddModalVisible(false)}
         onSuccess={fetchAccounts}
       />
+      
+      {/* 卡片详情模态框 */}
+      {selectedAccountForCard && selectedCardInfo && (
+        <CardDetailModal
+          visible={cardDetailModalVisible}
+          onClose={() => setCardDetailModalVisible(false)}
+          cardId={selectedCardInfo.card_id}
+          cardInfo={selectedCardInfo}
+          accountId={selectedAccountForCard.id}
+          onRefresh={() => fetchAccounts()}
+        />
+      )}
     </div>
   );
 };
