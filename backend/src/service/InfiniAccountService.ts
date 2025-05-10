@@ -656,7 +656,7 @@ export class InfiniAccountService {
   }
 
   /**
-   * 获取单个Infini账户，包含2FA信息
+   * 获取单个Infini账户，包含2FA信息和分组信息
    */
   async getInfiniAccountById(id: string): Promise<ApiResponse> {
     try {
@@ -712,6 +712,20 @@ export class InfiniAccountService {
           recoveryCodes: twoFaInfo.recovery_codes ? JSON.parse(twoFaInfo.recovery_codes) : []
         };
       }
+
+      // 获取账户的分组信息
+      const groups = await db('infini_account_group_relations')
+        .join('infini_account_groups', 'infini_account_group_relations.group_id', 'infini_account_groups.id')
+        .where('infini_account_group_relations.infini_account_id', id)
+        .select([
+          'infini_account_groups.id',
+          'infini_account_groups.name',
+          'infini_account_groups.description',
+          'infini_account_groups.is_default as isDefault'
+        ]);
+
+      // 添加分组信息到账户数据
+      account.groups = groups;
 
       return {
         success: true,
