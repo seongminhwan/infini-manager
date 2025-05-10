@@ -2966,6 +2966,11 @@ const AccountMonitor: React.FC = () => {
                 cell: ResizableTitle,
               },
             }}
+            components={{
+              header: {
+                cell: ResizableTitle,
+              },
+            }}
           />
         </TableContainer>
       </StyledCard>
