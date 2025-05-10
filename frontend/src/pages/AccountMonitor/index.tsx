@@ -2299,34 +2299,59 @@ const AccountMonitor: React.FC = () => {
       width: 420,
       render: (record: InfiniAccount) => (
         <Space>
-          <Button 
-            type="primary"
-            size="small"
-            onClick={() => viewAccountDetail(record)}
+          {/* 查看下拉按钮 - 包含详情和卡片详情选项 */}
+          <Dropdown
+            overlay={
+              <Menu>
+                <Menu.Item 
+                  key="detail" 
+                  icon={<InfoCircleOutlined />}
+                  onClick={() => viewAccountDetail(record)}
+                >
+                  账户详情
+                </Menu.Item>
+                <Menu.Item 
+                  key="cardDetail" 
+                  icon={<CreditCardOutlined />}
+                  onClick={() => viewCardDetail(record)}
+                >
+                  卡片详情
+                </Menu.Item>
+              </Menu>
+            }
+            trigger={['click']}
           >
-            详情
-          </Button>
-          <SyncButton
-            type="primary"
-            ghost
-            icon={<SyncOutlined spin={syncingAccount === record.id} />}
-            onClick={() => syncAccount(record.id)}
-            loading={syncingAccount === record.id}
+            <Button type="primary" size="small">
+              查看 <DownOutlined />
+            </Button>
+          </Dropdown>
+
+          {/* 同步下拉按钮 - 包含同步和同步KYC选项 */}
+          <Dropdown
+            overlay={
+              <Menu>
+                <Menu.Item 
+                  key="sync" 
+                  icon={<SyncOutlined spin={syncingAccount === record.id} />}
+                  onClick={() => syncAccount(record.id)}
+                >
+                  同步账户
+                </Menu.Item>
+                <Menu.Item 
+                  key="syncKyc" 
+                  icon={<IdcardOutlined spin={syncingKycAccount === record.id} />}
+                  onClick={() => syncKycStatus(record.id)}
+                >
+                  同步KYC
+                </Menu.Item>
+              </Menu>
+            }
+            trigger={['click']}
           >
-            同步
-          </SyncButton>
-          
-          {/* 添加同步KYC状态按钮 */}
-          <Button
-            type="primary"
-            ghost
-            icon={<IdcardOutlined spin={syncingKycAccount === record.id} />}
-            onClick={() => syncKycStatus(record.id)}
-            loading={syncingKycAccount === record.id}
-            style={{ backgroundColor: '#faad14', borderColor: '#faad14', color: 'white' }}
-          >
-            同步KYC
-          </Button>
+            <Button type="primary" ghost>
+              同步 <DownOutlined />
+            </Button>
+          </Dropdown>
           
           <Popconfirm
             title="确定要删除此账户吗?"
