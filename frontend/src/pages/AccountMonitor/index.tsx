@@ -66,7 +66,7 @@ import { Resizable } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 import { debounce, DebouncedFunc } from 'lodash';
 import { ResizeCallbackData } from 'react-resizable';
-import api, { apiBaseUrl, infiniAccountApi, randomUserApi, totpToolApi } from '../../services/api';
+import api, { apiBaseUrl, configApi, infiniAccountApi, randomUserApi, totpToolApi } from '../../services/api';
 import RandomUserRegisterModal from '../../components/RandomUserRegisterModal';
 import TwoFactorAuthModal from '../../components/TwoFactorAuthModal';
 import TwoFaViewModal from '../../components/TwoFaViewModal';
@@ -1963,15 +1963,15 @@ const AccountMonitor: React.FC = () => {
   const debouncedSaveColumnWidths = useRef<DebouncedFunc<(widths: Record<string, number>) => void>>(
     debounce((widths: Record<string, number>) => {
       // 将列宽配置保存到数据库
-      api.saveConfig('account_monitor_column_widths', JSON.stringify(widths))
-        .then(response => {
+      configApi.upsertConfig('account_monitor_column_widths', JSON.stringify(widths))
+        .then((response: { success: boolean; message?: string }) => {
           if (response.success) {
             console.log('列宽配置已保存');
           } else {
             console.error('保存列宽配置失败:', response.message);
           }
         })
-        .catch(error => {
+        .catch((error: Error) => {
           console.error('保存列宽配置失败:', error);
         });
     }, 500)
@@ -1980,15 +1980,15 @@ const AccountMonitor: React.FC = () => {
   const debouncedSaveColumnOrder = useRef<DebouncedFunc<(order: string[]) => void>>(
     debounce((order: string[]) => {
       // 将列顺序配置保存到数据库
-      api.saveConfig('account_monitor_column_order', JSON.stringify(order))
-        .then(response => {
+      configApi.upsertConfig('account_monitor_column_order', JSON.stringify(order))
+        .then((response: { success: boolean; message?: string }) => {
           if (response.success) {
             console.log('列顺序配置已保存');
           } else {
             console.error('保存列顺序配置失败:', response.message);
           }
         })
-        .catch(error => {
+        .catch((error: Error) => {
           console.error('保存列顺序配置失败:', error);
         });
     }, 500)
@@ -1997,15 +1997,15 @@ const AccountMonitor: React.FC = () => {
   const debouncedSaveColumnsToShow = useRef<DebouncedFunc<(columns: string[]) => void>>(
     debounce((columns: string[]) => {
       // 将显示列配置保存到数据库
-      api.saveConfig('account_monitor_columns_to_show', JSON.stringify(columns))
-        .then(response => {
+      configApi.upsertConfig('account_monitor_columns_to_show', JSON.stringify(columns))
+        .then((response: { success: boolean; message?: string }) => {
           if (response.success) {
             console.log('显示列配置已保存');
           } else {
             console.error('保存显示列配置失败:', response.message);
           }
         })
-        .catch(error => {
+        .catch((error: Error) => {
           console.error('保存显示列配置失败:', error);
         });
     }, 500)
