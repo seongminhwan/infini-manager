@@ -2,6 +2,7 @@
  * API服务配置
  * 配置axios拦截器，处理API请求和响应，统一错误处理
  */
+// 关于API客户端
 import axios, { AxiosResponse, AxiosError } from 'axios';
 import { message } from 'antd';
 
@@ -16,6 +17,56 @@ const api = axios.create({
 // API基础URL
 const apiBaseUrl = 'http://localhost:33201';
 
+// 配置API
+export const configApi = {
+  // 获取所有配置
+  getAllConfigs: async () => {
+    try {
+      const response = await api.get(`${apiBaseUrl}/api/configs`);
+      return response.data;
+    } catch (error) {
+      console.error('获取所有配置失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取单个配置
+  getConfigByKey: async (key: string) => {
+    try {
+      const response = await api.get(`${apiBaseUrl}/api/configs/${key}`);
+      return response.data;
+    } catch (error) {
+      console.error(`获取配置[${key}]失败:`, error);
+      throw error;
+    }
+  },
+  
+  // 创建或更新配置
+  upsertConfig: async (key: string, value: any, description?: string) => {
+    try {
+      const response = await api.post(`${apiBaseUrl}/api/configs`, {
+        key,
+        value,
+        description
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`保存配置[${key}]失败:`, error);
+      throw error;
+    }
+  },
+  
+  // 删除配置
+  deleteConfig: async (key: string) => {
+    try {
+      const response = await api.delete(`${apiBaseUrl}/api/configs/${key}`);
+      return response.data;
+    } catch (error) {
+      console.error(`删除配置[${key}]失败:`, error);
+      throw error;
+    }
+  }
+};
 // Infini账户API
 export const infiniAccountApi = {
   // 发送验证码
