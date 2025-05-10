@@ -18,7 +18,8 @@ import {
   Tooltip,
   Divider,
   Space,
-  Card
+  Card,
+  Switch
 } from 'antd';
 import {
   CopyOutlined,
@@ -26,7 +27,11 @@ import {
   QrcodeOutlined,
   KeyOutlined,
   FieldTimeOutlined,
-  SyncOutlined
+  SyncOutlined,
+  EditOutlined,
+  SaveOutlined,
+  ImportOutlined,
+  ExportOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import { totpToolApi } from '../services/api';
