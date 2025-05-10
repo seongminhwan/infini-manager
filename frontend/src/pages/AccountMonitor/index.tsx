@@ -62,6 +62,9 @@ import {
   SettingOutlined,
 } from '@ant-design/icons';
 import axios from 'axios';
+import { Resizable } from 'react-resizable';
+import 'react-resizable/css/styles.css';
+import { debounce } from 'lodash';
 import api, { apiBaseUrl, infiniAccountApi, randomUserApi, totpToolApi } from '../../services/api';
 import RandomUserRegisterModal from '../../components/RandomUserRegisterModal';
 import TwoFactorAuthModal from '../../components/TwoFactorAuthModal';
