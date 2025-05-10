@@ -184,6 +184,18 @@ export const infiniAccountApi = {
       console.error('获取基本信息失败:', error);
       throw error;
     }
+  },
+  
+  // 更新2FA信息
+  update2faInfo: async (accountId: string, data: { qr_code_url?: string, secret_key?: string, recovery_codes?: string[] }) => {
+    try {
+      console.log(`更新2FA信息，账户ID: ${accountId}`);
+      const response = await api.put(`${apiBaseUrl}/api/infini-accounts/2fa/info/${accountId}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('更新2FA信息失败:', error);
+      throw error;
+    }
   }
 };
 
