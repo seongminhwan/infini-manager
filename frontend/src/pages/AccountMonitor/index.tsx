@@ -641,6 +641,7 @@ const AccountDetailModal: React.FC<{
               查看关联用户
             </Button>
           )}
+          {/* 所有2FA已启用的账户都显示2FA按钮 */}
           {account.google2faIsBound && (
             <Button
               type="primary"
