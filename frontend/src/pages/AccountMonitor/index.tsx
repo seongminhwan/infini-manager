@@ -1972,6 +1972,7 @@ const AccountMonitor: React.FC = () => {
   const fetchGroups = async () => {
     try {
       setLoadingGroups(true);
+      console.log('获取所有账户分组');
       const response = await infiniAccountApi.getAllAccountGroups();
       
       if (response.success && response.data) {
@@ -1981,6 +1982,7 @@ const AccountMonitor: React.FC = () => {
         const groupAccountsMap = new Map<number, AccountGroup[]>();
         for (const group of response.data) {
           try {
+            console.log(`获取账户分组详情，分组ID: ${group.id}`);
             const groupDetailResponse = await infiniAccountApi.getAccountGroupById(group.id);
             
             if (groupDetailResponse.success && groupDetailResponse.data && groupDetailResponse.data.accounts) {
@@ -2003,8 +2005,17 @@ const AccountMonitor: React.FC = () => {
         
         setAccountGroupsMap(groupAccountsMap);
         
-        // 更新账户的分组信息
-        updateAccountsWithGroups(accounts, groupAccountsMap);
+        // 当前accounts状态检查
+        console.log(`当前accounts状态长度: ${accounts.length}`);
+        
+        // 只有当accounts不为空时才更新分组信息
+        if (accounts && accounts.length > 0) {
+          // 深拷贝当前账户数组，避免直接修改状态
+          const currentAccounts = [...accounts];
+          updateAccountsWithGroups(currentAccounts, groupAccountsMap);
+        } else {
+          console.log('当前accounts为空，稍后将在fetchAccounts完成后更新分组信息');
+        }
       } else {
         message.error(response.message || '获取分组列表失败');
       }
@@ -2022,16 +2033,8 @@ const AccountMonitor: React.FC = () => {
     
     // 安全检查，确保accountsList不为空
     if (!accountsList || accountsList.length === 0) {
-      console.warn('更新账户分组信息时发现账户列表为空，使用当前accounts状态');
-      
-      // 如果传入的accountsList为空，使用当前accounts状态
-      if (accounts && accounts.length > 0) {
-        accountsList = [...accounts];
-        console.log(`使用当前accounts状态，长度: ${accountsList.length}`);
-      } else {
-        console.error('当前accounts状态也为空，无法更新分组信息');
-        return; // 如果当前accounts也为空，直接返回
-      }
+      console.warn('更新账户分组信息时发现账户列表为空');
+      return; // 如果accountsList为空，直接返回，避免更新空数据
     }
     
     const updatedAccounts = accountsList.map(account => {
@@ -2042,8 +2045,19 @@ const AccountMonitor: React.FC = () => {
       };
     });
     
-    console.log(`账户数据更新完成，更新后长度: ${updatedAccounts.length}`);
-    setAccounts(updatedAccounts);
+    console.log(`账户数据更新完成，新accounts长度: ${updatedAccounts.length}`);
+    setAccounts(updatedAccounts); // 更新账户状态
+    
+    // 如果存在搜索文本，同时更新过滤后的账户列表
+    if (searchText) {
+      const lowerCaseValue = searchText.toLowerCase();
+      const filtered = updatedAccounts.filter(account => 
+        account.email.toLowerCase().includes(lowerCaseValue) || 
+        account.userId.toLowerCase().includes(lowerCaseValue) ||
+        (account.status && account.status.toLowerCase().includes(lowerCaseValue))
+      );
+      setFilteredAccounts(filtered);
+    }
   };
 
   // 获取所有账户
@@ -2091,17 +2105,14 @@ const AccountMonitor: React.FC = () => {
         // 更新账户列表前，先深度复制数据以避免引用问题
         const processedAccounts = JSON.parse(JSON.stringify(accountsData));
         
-        // 先保存原始账户数据，这一步是关键，确保accounts状态不为空
-        console.log(`设置账户数据，长度: ${processedAccounts.length}`);
+        // 直接更新账户状态，不使用setTimeout
         setAccounts(processedAccounts);
+        console.log(`设置账户数据，长度: ${processedAccounts.length}`);
         
-        // 如果已经获取了分组信息，添加分组信息
+        // 如果已经获取了分组信息，直接添加分组信息
         if (accountGroupsMap.size > 0) {
-          console.log('已有分组映射，更新账户分组信息');
-          // 使用setTimeout确保状态更新后再调用updateAccountsWithGroups
-          setTimeout(() => {
-            updateAccountsWithGroups(processedAccounts, accountGroupsMap);
-          }, 0);
+          console.log('已有分组映射，直接更新账户分组信息');
+          updateAccountsWithGroups(processedAccounts, accountGroupsMap);
         }
       } else {
         message.error(response.data.message || '获取账户列表失败');
