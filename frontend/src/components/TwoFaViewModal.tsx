@@ -299,8 +299,16 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
       return;
     }
     
-    // 拆分输入内容，按空格分隔可能包含多个恢复码
-    const codes = recoveryCodeInput.split(/\s+/).filter(code => code.trim() !== '');
+    // 拆分输入内容，按空格或换行符分隔可能包含多个恢复码
+    // 先按换行符分割，再按空格分割每一行，确保所有可能的分隔方式都被处理
+    const lines = recoveryCodeInput.split(/[\n\r]+/);
+    let codes: string[] = [];
+    
+    lines.forEach(line => {
+      // 处理每一行，按空格分割
+      const lineCodes = line.split(/\s+/).filter(code => code.trim() !== '');
+      codes = [...codes, ...lineCodes];
+    });
     
     if (codes.length === 0) {
       message.error('请输入有效的恢复码');
