@@ -2667,9 +2667,88 @@ const AccountMonitor: React.FC = () => {
     },
   ];
   
-  // 根据columnsToShow筛选要显示的列
+  // 处理列宽调整
+  const handleResize = useCallback(
+    (index: number) => (e: React.SyntheticEvent<Element>, { size }: ResizeCallbackData) => {
+      e.preventDefault();
+      const newColumnWidths = { ...columnWidths };
+      const key = getVisibleColumns()[index].key as string;
+      newColumnWidths[key] = size.width;
+      setColumnWidths(newColumnWidths);
+      debouncedSaveColumnWidths(newColumnWidths);
+    },
+    [columnWidths, debouncedSaveColumnWidths]
+  );
+
+  // 拖拽开始事件
+  const onDragStart = (e: React.DragEvent<HTMLElement>, index: number) => {
+    e.dataTransfer.setData('colIndex', index.toString());
+  };
+
+  // 拖拽经过事件
+  const onDragOver = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+  };
+
+  // 拖拽放置事件
+  const onDrop = (e: React.DragEvent<HTMLElement>, dropIndex: number) => {
+    const dragIndex = parseInt(e.dataTransfer.getData('colIndex'));
+    if (dragIndex === dropIndex) return;
+    
+    const newOrder = [...columnOrder];
+    const keys = getVisibleColumns().map(col => col.key as string);
+    
+    if (newOrder.length === 0) {
+      // 如果是第一次拖拽，初始化列顺序
+      newOrder.push(...keys);
+    }
+    
+    // 移动列顺序
+    const dragKey = newOrder[dragIndex];
+    newOrder.splice(dragIndex, 1);
+    newOrder.splice(dropIndex, 0, dragKey);
+    
+    setColumnOrder(newOrder);
+    debouncedSaveColumnOrder(newOrder);
+  };
+
+  // 根据columnsToShow筛选要显示的列，并应用列顺序和列宽
   const getVisibleColumns = () => {
-    return allColumns.filter(col => columnsToShow.includes(col.key as string));
+    // 筛选显示的列
+    let visibleCols = allColumns.filter(col => columnsToShow.includes(col.key as string));
+    
+    // 如果有列顺序配置，按照列顺序排序
+    if (columnOrder.length > 0) {
+      const orderMap = new Map<string, number>();
+      columnOrder.forEach((key, index) => {
+        orderMap.set(key, index);
+      });
+      
+      visibleCols = [...visibleCols].sort((a, b) => {
+        const aIndex = orderMap.get(a.key as string) ?? 999;
+        const bIndex = orderMap.get(b.key as string) ?? 999;
+        return aIndex - bIndex;
+      });
+    }
+    
+    // 应用列宽
+    return visibleCols.map((col, index) => {
+      const key = col.key as string;
+      const width = columnWidths[key] || col.width;
+      
+      return {
+        ...col,
+        width,
+        onHeaderCell: (column: any) => ({
+          width: column.width,
+          onResize: handleResize(index),
+          draggable: true,
+          onDragStart: (e: React.DragEvent<HTMLElement>) => onDragStart(e, index),
+          onDragOver: onDragOver,
+          onDrop: (e: React.DragEvent<HTMLElement>) => onDrop(e, index),
+        }),
+      };
+    });
   };
   
   // 处理列显示切换
@@ -2679,7 +2758,57 @@ const AccountMonitor: React.FC = () => {
       checkedValues.push('action');
     }
     setColumnsToShow(checkedValues);
+    // 保存显示列配置
+    debouncedSaveColumnsToShow(checkedValues);
   };
+
+  // 在组件挂载时加载配置
+  useEffect(() => {
+    const loadConfigs = async () => {
+      try {
+        // 加载列宽配置
+        const widthsResponse = await configApi.getConfig('account_monitor_column_widths');
+        if (widthsResponse.success && widthsResponse.data && widthsResponse.data.value) {
+          try {
+            const widths = JSON.parse(widthsResponse.data.value);
+            setColumnWidths(widths);
+          } catch (e) {
+            console.error('解析列宽配置失败:', e);
+          }
+        }
+
+        // 加载列顺序配置
+        const orderResponse = await configApi.getConfig('account_monitor_column_order');
+        if (orderResponse.success && orderResponse.data && orderResponse.data.value) {
+          try {
+            const order = JSON.parse(orderResponse.data.value);
+            setColumnOrder(order);
+          } catch (e) {
+            console.error('解析列顺序配置失败:', e);
+          }
+        }
+
+        // 加载显示列配置
+        const columnsResponse = await configApi.getConfig('account_monitor_columns_to_show');
+        if (columnsResponse.success && columnsResponse.data && columnsResponse.data.value) {
+          try {
+            const columns = JSON.parse(columnsResponse.data.value);
+            // 确保操作列始终显示
+            if (!columns.includes('action')) {
+              columns.push('action');
+            }
+            setColumnsToShow(columns);
+          } catch (e) {
+            console.error('解析显示列配置失败:', e);
+          }
+        }
+      } catch (error) {
+        console.error('加载配置失败:', error);
+      }
+    };
+
+    loadConfigs();
+  }, []);
   
   // 列选择下拉菜单
   const columnsMenu = (
