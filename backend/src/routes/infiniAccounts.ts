@@ -27,7 +27,8 @@ import {
   getCardPrice,
   getAvailableCardTypes,
   createCard,
-  getCardList
+  getCardList,
+  update2faInfo
 } from '../controllers/infiniAccountController';
 const router = express.Router();
 /**
