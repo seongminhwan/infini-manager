@@ -1039,7 +1039,7 @@ const AccountDetailModal: React.FC<{
         <CardDetailModal
           visible={cardDetailModalVisible}
           onClose={() => setCardDetailModalVisible(false)}
-          cardId={selectedCard.id}
+          cardId={selectedCard.card_id}
           cardInfo={selectedCard}
           accountId={account.id}
           onRefresh={getCardList}
