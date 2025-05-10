@@ -2741,10 +2741,6 @@ const AccountMonitor: React.FC = () => {
         onHeaderCell: (column: any) => ({
           width: column.width,
           onResize: handleResize(index),
-          draggable: true,
-          onDragStart: (e: React.DragEvent<HTMLElement>) => onDragStart(e, index),
-          onDragOver: onDragOver,
-          onDrop: (e: React.DragEvent<HTMLElement>) => onDrop(e, index),
         }),
       };
     });
