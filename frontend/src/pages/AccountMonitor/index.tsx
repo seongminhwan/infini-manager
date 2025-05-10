@@ -60,6 +60,7 @@ import {
   SearchOutlined,
   BankOutlined,
   SettingOutlined,
+  UpOutlined, // 添加上箭头图标
 } from '@ant-design/icons';
 import axios from 'axios';
 import { Resizable } from 'react-resizable';
