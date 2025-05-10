@@ -641,7 +641,7 @@ const AccountDetailModal: React.FC<{
               查看关联用户
             </Button>
           )}
-          {account.google2faIsBound && account.twoFaInfo && (
+          {account.google2faIsBound && (
             <Button
               type="primary"
               ghost
@@ -649,7 +649,7 @@ const AccountDetailModal: React.FC<{
               onClick={handleView2fa}
               style={{ marginRight: 8 }}
             >
-              查看2FA
+              {account.twoFaInfo ? '查看2FA' : '配置2FA'}
             </Button>
           )}
           {/* 已完成KYC认证(verification_level=2或3)时显示"查看KYC"按钮 */}
@@ -981,6 +981,7 @@ const AccountDetailModal: React.FC<{
             visible={twoFaModalVisible}
             onClose={handleClose2faModal}
             twoFaInfo={account.twoFaInfo}
+            twoFaEnabled={account.google2faIsBound}
           />
           
           {/* KYC认证模态框 */}
