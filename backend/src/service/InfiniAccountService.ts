@@ -550,38 +550,48 @@ export class InfiniAccountService {
 
   /**
    * 获取所有Infini账户，包含2FA信息
+   * @param groupId 可选的分组ID，用于筛选特定分组的账户
    */
-  async getAllInfiniAccounts(): Promise<ApiResponse> {
+  async getAllInfiniAccounts(groupId?: string): Promise<ApiResponse> {
     try {
-      const accounts = await db('infini_accounts')
+      let query = db('infini_accounts')
         .select([
-          'id',
-          'user_id as userId',
-          'email',
-          'password', // 返回密码，用于账户管理
-          'uid',
-          'invitation_code as invitationCode',
-          'available_balance as availableBalance',
-          'withdrawing_amount as withdrawingAmount',
-          'red_packet_balance as redPacketBalance',
-          'total_consumption_amount as totalConsumptionAmount',
-          'total_earn_balance as totalEarnBalance',
-          'daily_consumption as dailyConsumption',
-          'status',
-          'user_type as userType',
-          'google_2fa_is_bound as google2faIsBound',
-          'google_password_is_set as googlePasswordIsSet',
-          'is_kol as isKol',
-          'is_protected as isProtected',
-          'verification_level as verificationLevel', // 添加验证级别字段
+          'infini_accounts.id',
+          'infini_accounts.user_id as userId',
+          'infini_accounts.email',
+          'infini_accounts.password', // 返回密码，用于账户管理
+          'infini_accounts.uid',
+          'infini_accounts.invitation_code as invitationCode',
+          'infini_accounts.available_balance as availableBalance',
+          'infini_accounts.withdrawing_amount as withdrawingAmount',
+          'infini_accounts.red_packet_balance as redPacketBalance',
+          'infini_accounts.total_consumption_amount as totalConsumptionAmount',
+          'infini_accounts.total_earn_balance as totalEarnBalance',
+          'infini_accounts.daily_consumption as dailyConsumption',
+          'infini_accounts.status',
+          'infini_accounts.user_type as userType',
+          'infini_accounts.google_2fa_is_bound as google2faIsBound',
+          'infini_accounts.google_password_is_set as googlePasswordIsSet',
+          'infini_accounts.is_kol as isKol',
+          'infini_accounts.is_protected as isProtected',
+          'infini_accounts.verification_level as verificationLevel', // 添加验证级别字段
           // 不返回cookie，敏感信息
-          'cookie_expires_at as cookieExpiresAt',
-          'infini_created_at as infiniCreatedAt',
-          'last_sync_at as lastSyncAt',
-          'created_at as createdAt',
-          'updated_at as updatedAt',
-          'mock_user_id as mockUserId', // 添加关联的随机用户ID
+          'infini_accounts.cookie_expires_at as cookieExpiresAt',
+          'infini_accounts.infini_created_at as infiniCreatedAt',
+          'infini_accounts.last_sync_at as lastSyncAt',
+          'infini_accounts.created_at as createdAt',
+          'infini_accounts.updated_at as updatedAt',
+          'infini_accounts.mock_user_id as mockUserId', // 添加关联的随机用户ID
         ]);
+
+      // 如果提供了分组ID，则筛选该分组下的账户
+      if (groupId) {
+        query = query
+          .join('infini_account_group_relations', 'infini_accounts.id', 'infini_account_group_relations.infini_account_id')
+          .where('infini_account_group_relations.group_id', groupId);
+      }
+
+      const accounts = await query;
 
       // 获取所有账户的2FA信息
       const twoFaInfos = await db('infini_2fa_info').select('*');
@@ -596,11 +606,40 @@ export class InfiniAccountService {
         });
       });
 
-      // 为每个账户添加2FA信息
+      // 获取所有账户的分组信息
+      const accountGroups = await db('infini_account_group_relations')
+        .join('infini_account_groups', 'infini_account_group_relations.group_id', 'infini_account_groups.id')
+        .select([
+          'infini_account_group_relations.infini_account_id',
+          'infini_account_groups.id as groupId',
+          'infini_account_groups.name as groupName',
+          'infini_account_groups.description',
+          'infini_account_groups.is_default as isDefault'
+        ]);
+
+      // 创建账户ID到分组列表的映射
+      const accountGroupsMap = new Map();
+      accountGroups.forEach(relation => {
+        if (!accountGroupsMap.has(relation.infini_account_id)) {
+          accountGroupsMap.set(relation.infini_account_id, []);
+        }
+        accountGroupsMap.get(relation.infini_account_id).push({
+          id: relation.groupId,
+          name: relation.groupName,
+          description: relation.description,
+          isDefault: relation.isDefault
+        });
+      });
+
+      // 为每个账户添加2FA信息和分组信息
       accounts.forEach(account => {
+        // 添加2FA信息
         if (twoFaInfoMap.has(account.id)) {
           account.twoFaInfo = twoFaInfoMap.get(account.id);
         }
+        
+        // 添加分组信息
+        account.groups = accountGroupsMap.get(account.id) || [];
       });
 
       return {
