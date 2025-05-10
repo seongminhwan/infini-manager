@@ -299,15 +299,23 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
       return;
     }
     
-    // 添加新的恢复码
+    // 拆分输入内容，按空格分隔可能包含多个恢复码
+    const codes = recoveryCodeInput.split(/\s+/).filter(code => code.trim() !== '');
+    
+    if (codes.length === 0) {
+      message.error('请输入有效的恢复码');
+      return;
+    }
+    
+    // 添加所有恢复码
     setEditData(prev => ({
       ...prev,
-      recoveryCodes: [...prev.recoveryCodes, recoveryCodeInput.trim()]
+      recoveryCodes: [...prev.recoveryCodes, ...codes]
     }));
     
     // 清空输入框
     setRecoveryCodeInput('');
-    message.success('恢复码添加成功');
+    message.success(`已添加${codes.length}个恢复码`);
   };
   
   // 删除恢复码
@@ -522,7 +530,7 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
                         style={{ width: 'calc(100% - 100px)' }}
                         value={recoveryCodeInput}
                         onChange={e => setRecoveryCodeInput(e.target.value)}
-                        placeholder="输入恢复码"
+                      placeholder="输入单个或多个空格分隔的恢复码"
                         onPressEnter={addRecoveryCode}
                       />
                       <Button type="primary" onClick={addRecoveryCode}>添加</Button>
