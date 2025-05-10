@@ -993,6 +993,8 @@ const AccountDetailModal: React.FC<{
             onClose={handleClose2faModal}
             twoFaInfo={account.twoFaInfo}
             twoFaEnabled={account.google2faIsBound}
+            accountId={account.id.toString()}
+            onSuccess={onSuccess}
           />
           
           {/* KYC认证模态框 */}
