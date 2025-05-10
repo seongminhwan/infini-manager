@@ -2018,6 +2018,7 @@ const AccountMonitor: React.FC = () => {
   
   // 更新账户对象，添加分组信息
   const updateAccountsWithGroups = (accountsList: InfiniAccount[], groupsMap: Map<number, AccountGroup[]>) => {
+    console.log(`更新账户分组信息，账户数量: ${accountsList.length}, 分组映射大小: ${groupsMap.size}`);
     const updatedAccounts = accountsList.map(account => {
       const accountGroups = groupsMap.get(account.id) || [];
       return {
@@ -2027,6 +2028,7 @@ const AccountMonitor: React.FC = () => {
     });
     
     setAccounts(updatedAccounts);
+    console.log(`账户数据更新完成，当前accounts状态长度: ${updatedAccounts.length}`);
   };
 
   // 获取所有账户
@@ -2068,11 +2070,12 @@ const AccountMonitor: React.FC = () => {
         // 更新账户列表前，先深度复制数据以避免引用问题
         const processedAccounts = JSON.parse(JSON.stringify(accountsData));
         
+        // 保存原始账户数据，无论是否已获取分组信息
+        setAccounts(processedAccounts);
+        
         // 如果已经获取了分组信息，更新账户的分组信息
         if (accountGroupsMap.size > 0) {
           updateAccountsWithGroups(processedAccounts, accountGroupsMap);
-        } else {
-          setAccounts(processedAccounts);
         }
       } else {
         message.error(response.data.message || '获取账户列表失败');
