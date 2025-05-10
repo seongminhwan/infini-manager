@@ -1897,6 +1897,7 @@ const ResizableTitle: React.FC<{
   [x: string]: any;
 }> = ({ onResize, width, ...restProps }) => {
   const [resizing, setResizing] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
   // 使用有效的宽度值，确保resize功能始终可用
   const actualWidth = width || 100;
@@ -1909,6 +1910,8 @@ const ResizableTitle: React.FC<{
         <span
           className="react-resizable-handle"
           onClick={e => e.stopPropagation()}
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
           style={{
             position: 'absolute',
             right: 0,
@@ -1917,7 +1920,8 @@ const ResizableTitle: React.FC<{
             width: 8,
             zIndex: 1,
             cursor: 'col-resize',
-            background: resizing ? 'rgba(0, 0, 0, 0.1)' : 'transparent'
+            background: (resizing || isHovering) ? 'rgba(0, 0, 0, 0.1)' : 'transparent',
+            transition: 'background 0.3s'
           }}
         />
       }
@@ -2805,18 +2809,87 @@ const AccountMonitor: React.FC = () => {
     loadConfigs();
   }, []);
   
-  // 列选择下拉菜单
+  // 列设置下拉菜单
   const columnsMenu = (
-    <div style={{ padding: 12, minWidth: 200, backgroundColor: '#fff', border: '1px solid #f0f0f0', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
-      <Checkbox.Group
-        options={allColumns.map(col => ({
-          label: col.title as string,
-          value: col.key as string,
-          disabled: col.key === 'action' // 操作列不可取消显示
-        }))}
-        value={columnsToShow}
-        onChange={handleColumnVisibilityChange}
-      />
+    <div style={{ padding: 12, minWidth: 300, backgroundColor: '#fff', border: '1px solid #f0f0f0', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
+      <Tabs defaultActiveKey="1">
+        <Tabs.TabPane tab="显示列" key="1">
+          <Checkbox.Group
+            options={allColumns.map(col => ({
+              label: col.title as string,
+              value: col.key as string,
+              disabled: col.key === 'action' // 操作列不可取消显示
+            }))}
+            value={columnsToShow}
+            onChange={handleColumnVisibilityChange}
+          />
+        </Tabs.TabPane>
+        <Tabs.TabPane tab="列顺序" key="2">
+          <List
+            size="small"
+            bordered
+            dataSource={getVisibleColumns().map(col => ({
+              key: col.key as string,
+              title: col.title as string
+            }))}
+            renderItem={(item, index) => (
+              <List.Item
+                actions={[
+                  <Button 
+                    type="text" 
+                    icon={<UpOutlined />} 
+                    disabled={index === 0}
+                    onClick={() => {
+                      const newOrder = [...columnOrder];
+                      // 如果columnOrder为空，先初始化
+                      if (newOrder.length === 0) {
+                        getVisibleColumns().forEach(col => {
+                          newOrder.push(col.key as string);
+                        });
+                      }
+                      // 交换位置
+                      if (index > 0) {
+                        const temp = newOrder[index];
+                        newOrder[index] = newOrder[index - 1];
+                        newOrder[index - 1] = temp;
+                        setColumnOrder(newOrder);
+                        debouncedSaveColumnOrder(newOrder);
+                      }
+                    }}
+                  />,
+                  <Button 
+                    type="text" 
+                    icon={<DownOutlined />} 
+                    disabled={index === getVisibleColumns().length - 1}
+                    onClick={() => {
+                      const newOrder = [...columnOrder];
+                      // 如果columnOrder为空，先初始化
+                      if (newOrder.length === 0) {
+                        getVisibleColumns().forEach(col => {
+                          newOrder.push(col.key as string);
+                        });
+                      }
+                      // 交换位置
+                      if (index < getVisibleColumns().length - 1) {
+                        const temp = newOrder[index];
+                        newOrder[index] = newOrder[index + 1];
+                        newOrder[index + 1] = temp;
+                        setColumnOrder(newOrder);
+                        debouncedSaveColumnOrder(newOrder);
+                      }
+                    }}
+                  />
+                ]}
+              >
+                <Space>
+                  <span style={{ color: '#999' }}>{index + 1}.</span>
+                  {item.title}
+                </Space>
+              </List.Item>
+            )}
+          />
+        </Tabs.TabPane>
+      </Tabs>
     </div>
   );
   // 添加账户筛选和搜索状态
