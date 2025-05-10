@@ -2876,6 +2876,9 @@ export class InfiniAccountService {
    */
   async getAllAccountGroups(): Promise<ApiResponse> {
     try {
+      console.log('执行获取所有账户分组方法...');
+      
+      // 查询所有账户分组
       const groups = await db('infini_account_groups')
         .select([
           'id',
@@ -2888,16 +2891,20 @@ export class InfiniAccountService {
         .orderBy('is_default', 'desc') // 默认分组排在前面
         .orderBy('name', 'asc'); // 然后按名称排序
 
+      console.log(`找到 ${groups.length} 个账户分组`);
+
       // 获取每个分组关联的账户数量
       const groupCounts = await db('infini_account_group_relations')
         .select('group_id')
         .count('infini_account_id as accountCount')
         .groupBy('group_id');
 
+      console.log(`获取到 ${groupCounts.length} 个分组的账户数量信息`);
+
       // 创建分组ID到账户数量的映射
       const countMap = new Map();
       groupCounts.forEach(item => {
-        countMap.set(item.group_id, parseInt(item.accountCount as string, 10));
+        countMap.set(item.group_id, parseInt(item.accountCount.toString(), 10));
       });
 
       // 添加账户数量到分组信息中
@@ -2905,6 +2912,8 @@ export class InfiniAccountService {
         ...group,
         accountCount: countMap.get(group.id) || 0
       }));
+
+      console.log('成功获取所有账户分组信息');
 
       return {
         success: true,
