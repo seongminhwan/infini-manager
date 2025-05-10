@@ -1,0 +1,173 @@
+/**
+ * 账户转账模块路由
+ */
+import express, { Router } from 'express';
+import * as transferController from '../controllers/transferController';
+
+const router: Router = express.Router();
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Transfer:
+ *       type: object
+ *       required:
+ *         - sourceAccount
+ *         - targetAccount
+ *         - amount
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: 转账记录唯一ID
+ *         sourceAccount:
+ *           type: string
+ *           description: 源账户ID
+ *         targetAccount:
+ *           type: string
+ *           description: 目标账户ID
+ *         amount:
+ *           type: number
+ *           description: 转账金额
+ *         memo:
+ *           type: string
+ *           description: 转账备注
+ *         status:
+ *           type: string
+ *           description: 转账状态（pending, completed, failed）
+ *         timestamp:
+ *           type: string
+ *           format: date-time
+ *           description: 转账时间
+ *       example:
+ *         id: TRANSFER_001
+ *         sourceAccount: ACC_001
+ *         targetAccount: ACC_002
+ *         amount: 5000.00
+ *         memo: 资金转移
+ *         status: completed
+ *         timestamp: 2025-05-06 15:30:22
+ */
+
+/**
+ * @swagger
+ * tags:
+ *   name: Transfers
+ *   description: 账户转账API
+ */
+
+/**
+ * @swagger
+ * /api/transfers:
+ *   post:
+ *     summary: 创建新的转账请求
+ *     tags: [Transfers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - sourceAccount
+ *               - targetAccount
+ *               - amount
+ *             properties:
+ *               sourceAccount:
+ *                 type: string
+ *               targetAccount:
+ *                 type: string
+ *               amount:
+ *                 type: number
+ *               memo:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: 转账请求已创建
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Transfer'
+ *       400:
+ *         description: 请求参数无效
+ *       404:
+ *         description: 账户不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/', transferController.createTransfer);
+
+/**
+ * @swagger
+ * /api/transfers:
+ *   get:
+ *     summary: 获取转账记录列表
+ *     tags: [Transfers]
+ *     parameters:
+ *       - in: query
+ *         name: accountId
+ *         schema:
+ *           type: string
+ *         description: 筛选特定账户的转账记录（来源或目标）
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: 按状态筛选转账记录
+ *     responses:
+ *       200:
+ *         description: 成功获取转账记录
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Transfer'
+ *       500:
+ *         description: 服务器错误
+ */
+router.get('/', transferController.getTransfers);
+
+/**
+ * @swagger
+ * /api/transfers/{id}:
+ *   get:
+ *     summary: 获取指定转账记录详情
+ *     tags: [Transfers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: 转账记录ID
+ *     responses:
+ *       200:
+ *         description: 成功获取转账记录详情
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Transfer'
+ *       404:
+ *         description: 转账记录不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.get('/:id', transferController.getTransferById);
+
+export default router;

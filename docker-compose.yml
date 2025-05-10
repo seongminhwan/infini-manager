@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: infini-backend
+    restart: unless-stopped
+    ports:
+      - "33201:3000"
+    environment:
+      - NODE_ENV=production
+      # 数据库和其他环境变量可从.env文件加载
+    volumes:
+      - ./backend/.env:/app/.env
+      - ./backend/db:/app/db
+    networks:
+      - infini-network
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: infini-frontend
+    restart: unless-stopped
+    ports:
+      - "33202:80"
+    depends_on:
+      - backend
+    networks:
+      - infini-network
+
+# 定义网络，使服务之间可以通信
+networks:
+  infini-network:
+    driver: bridge

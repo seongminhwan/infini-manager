@@ -1,0 +1,39 @@
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import MainLayout from '../layouts/MainLayout';
+import Overview from '../pages/Overview';
+import AccountMonitor from '../pages/AccountMonitor';
+import AccountTransfer from '../pages/AccountTransfer';
+import AccountRegister from '../pages/AccountRegister';
+import NotificationManage from '../pages/NotificationManage';
+import TriggerManage from '../pages/TriggerManage';
+import EmailManage from '../pages/EmailManage';
+import KycImageManage from '../pages/KycImageManage';
+import RandomUserManage from '../pages/RandomUserManage';
+
+/**
+ * 应用路由配置
+ * 定义了所有页面的路由结构
+ */
+const AppRoutes: React.FC = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<MainLayout />}>
+        {/* 默认重定向到概览页 */}
+        <Route index element={<Navigate to="/overview" replace />} />
+        {/* 各功能页面路由 */}
+        <Route path="/overview" element={<Overview />} />
+        <Route path="/account-monitor" element={<AccountMonitor />} />
+        <Route path="/account-transfer" element={<AccountTransfer />} />
+        <Route path="/account-register" element={<AccountRegister />} />
+        <Route path="/notification-manage" element={<NotificationManage />} />
+        <Route path="/trigger-manage" element={<TriggerManage />} />
+        <Route path="/email-manage" element={<EmailManage />} />
+        <Route path="/kyc-image-manage" element={<KycImageManage />} />
+        <Route path="/random-user-manage" element={<RandomUserManage />} />
+      </Route>
+    </Routes>
+  );
+};
+
+export default AppRoutes;
