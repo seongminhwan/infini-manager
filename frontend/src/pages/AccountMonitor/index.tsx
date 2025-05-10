@@ -2961,6 +2961,11 @@ const AccountMonitor: React.FC = () => {
             onChange={(pagination, filters, sorter) => {
               console.log('Table changed:', { pagination, filters, sorter });
             }}
+            components={{
+              header: {
+                cell: ResizableTitle,
+              },
+            }}
           />
         </TableContainer>
       </StyledCard>
