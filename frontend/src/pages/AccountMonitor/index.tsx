@@ -2965,6 +2965,9 @@ const AccountMonitor: React.FC = () => {
               header: {
                 cell: ResizableTitle,
               },
+              body: {
+                row: (props) => <tr {...props} className="hover:bg-gray-50 dark:hover:bg-gray-800" />,
+              },
             }}
           />
         </TableContainer>
