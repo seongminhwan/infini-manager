@@ -10,6 +10,7 @@ import TriggerManage from '../pages/TriggerManage';
 import EmailManage from '../pages/EmailManage';
 import KycImageManage from '../pages/KycImageManage';
 import RandomUserManage from '../pages/RandomUserManage';
+import AccountGroupManage from '../pages/AccountGroupManage';
 
 /**
  * 应用路由配置
@@ -26,6 +27,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/account-monitor" element={<AccountMonitor />} />
         <Route path="/account-transfer" element={<AccountTransfer />} />
         <Route path="/account-register" element={<AccountRegister />} />
+        <Route path="/account-group-manage" element={<AccountGroupManage />} />
         <Route path="/notification-manage" element={<NotificationManage />} />
         <Route path="/trigger-manage" element={<TriggerManage />} />
         <Route path="/email-manage" element={<EmailManage />} />
