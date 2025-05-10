@@ -2079,6 +2079,9 @@ const AccountMonitor: React.FC = () => {
       setSelectedAccountForCard(account);
       console.log('查看卡片详情，账户ID:', account.id);
       
+      // 先设置模态框为可见，这样即使在加载数据过程中也能向用户提供反馈
+      setCardDetailModalVisible(true);
+      
       // 获取卡片列表
       const response = await axios.get(`${API_BASE_URL}/api/infini-cards/list`, {
         params: { accountId: account.id }
@@ -2091,14 +2094,16 @@ const AccountMonitor: React.FC = () => {
         const firstCard = response.data.data[0];
         console.log('选择展示的卡片信息:', firstCard);
         setSelectedCardInfo(firstCard);
-        setCardDetailModalVisible(true);
-        console.log('已设置卡片详情模态框为可见');
       } else {
+        // 即使没有卡片信息，也保持模态框可见，但显示提示信息
+        setSelectedCardInfo(null);
         message.info('该账户暂无卡片信息');
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || error.message || '获取卡片信息失败');
       console.error('获取卡片信息失败:', error);
+      // 出错时关闭模态框
+      setCardDetailModalVisible(false);
     } finally {
       setLoading(false);
     }
@@ -2548,17 +2553,19 @@ const AccountMonitor: React.FC = () => {
       />
       
       {/* 卡片详情模态框 */}
-      <CardDetailModal
-        visible={cardDetailModalVisible}
-        onClose={() => {
-          setCardDetailModalVisible(false);
-          setSelectedCardInfo(null);
-        }}
-        cardId={selectedCardInfo?.card_id}
-        cardInfo={selectedCardInfo}
-        accountId={selectedAccountForCard?.id}
-        onRefresh={() => fetchAccounts()}
-      />
+      {cardDetailModalVisible && selectedAccountForCard && (
+        <CardDetailModal
+          visible={cardDetailModalVisible}
+          onClose={() => {
+            setCardDetailModalVisible(false);
+            setSelectedCardInfo(null);
+          }}
+          cardId={selectedCardInfo?.card_id}
+          cardInfo={selectedCardInfo || {}}
+          accountId={selectedAccountForCard.id} 
+          onRefresh={() => fetchAccounts()}
+        />
+      )}
     </div>
   );
 };
