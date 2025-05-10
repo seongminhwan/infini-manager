@@ -410,15 +410,29 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = ({
       title={
         <Space>
           <SafetyCertificateOutlined />
-          <span>2FA信息查看</span>
+          <span>2FA信息{isEditMode ? '维护' : '查看'}</span>
+          {accountId && (
+            <Switch
+              checkedChildren="编辑模式"
+              unCheckedChildren="查看模式"
+              checked={isEditMode}
+              onChange={toggleEditMode}
+              style={{ marginLeft: 8 }}
+            />
+          )}
         </Space>
       }
       open={visible}
       onCancel={handleClose}
       width={800}
       footer={[
+        isEditMode && (
+          <Button key="save" type="primary" onClick={saveChanges} loading={saving} icon={<SaveOutlined />}>
+            保存更改
+          </Button>
+        ),
         <Button key="close" onClick={handleClose}>
-          关闭
+          {isEditMode ? '取消' : '关闭'}
         </Button>
       ]}
     >
@@ -428,60 +442,156 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = ({
           <Col span={12}>
             <Title level={5}>2FA详细信息</Title>
             
-            {/* 2FA密钥 - 始终显示如果存在 */}
-            {twoFaInfo.secretKey && (
-              <Descriptions column={1} size="small" bordered style={{ marginBottom: 16 }}>
-                <Descriptions.Item 
-                  label={
+            {/* 2FA密钥 */}
+            <div style={{ marginBottom: 16 }}>
+              <Title level={5} style={{ display: 'flex', alignItems: 'center' }}>
+                <KeyOutlined style={{ marginRight: 8 }} />
+                2FA密钥
+                {isEditMode && (
+                  <Tooltip title="从二维码链接提取密钥">
+                    <Button 
+                      type="text" 
+                      size="small" 
+                      icon={<ImportOutlined />} 
+                      onClick={extractSecretFromQrCode}
+                      style={{ marginLeft: 8 }}
+                    />
+                  </Tooltip>
+                )}
+              </Title>
+              
+              {isEditMode ? (
+                <Input 
+                  value={editData.secretKey} 
+                  onChange={e => setEditData(prev => ({ ...prev, secretKey: e.target.value }))}
+                  placeholder="输入2FA密钥"
+                  style={{ marginBottom: 8 }}
+                />
+              ) : (
+                <Descriptions column={1} size="small" bordered style={{ marginBottom: 8 }}>
+                  <Descriptions.Item>
                     <Space>
-                      <KeyOutlined />
-                      <span>2FA密钥</span>
+                      <Text>{twoFaInfo?.secretKey || '未设置'}</Text>
+                      {twoFaInfo?.secretKey && (
+                        <Tooltip title="复制密钥">
+                          <Button 
+                            type="text" 
+                            size="small" 
+                            icon={<CopyOutlined />} 
+                            onClick={() => copyToClipboard(twoFaInfo.secretKey || '')}
+                          />
+                        </Tooltip>
+                      )}
                     </Space>
-                  }
-                >
-                  <Space>
-                    <Text>{twoFaInfo.secretKey}</Text>
-                    <Tooltip title="复制密钥">
-                      <Button 
-                        type="text" 
-                        size="small" 
-                        icon={<CopyOutlined />} 
-                        onClick={() => copyToClipboard(twoFaInfo.secretKey || '')}
-                      />
-                    </Tooltip>
-                  </Space>
-                </Descriptions.Item>
-              </Descriptions>
-            )}
+                  </Descriptions.Item>
+                </Descriptions>
+              )}
+            </div>
             
-            {/* 二维码链接 - 使用实际链接或生成的链接 */}
+            {/* 二维码链接 */}
             <div style={{ marginBottom: 16 }}>
               <Title level={5} style={{ display: 'flex', alignItems: 'center' }}>
                 <QrcodeOutlined style={{ marginRight: 8 }} />
                 二维码链接
+                {isEditMode && (
+                  <Tooltip title="根据密钥生成二维码链接">
+                    <Button 
+                      type="text" 
+                      size="small" 
+                      icon={<ExportOutlined />} 
+                      onClick={generateQrCodeFromSecret}
+                      style={{ marginLeft: 8 }}
+                    />
+                  </Tooltip>
+                )}
               </Title>
-              <Input.TextArea 
-                value={qrCodeUrlToUse} 
-                autoSize={{ minRows: 2, maxRows: 4 }}
-                readOnly
-              />
-              <Button 
-                type="text" 
-                icon={<CopyOutlined />}
-                onClick={() => copyToClipboard(qrCodeUrlToUse)}
-                style={{ marginTop: 8 }}
-              >
-                复制链接
-              </Button>
+              
+              {isEditMode ? (
+                <Input.TextArea 
+                  value={editData.qrCodeUrl} 
+                  onChange={e => setEditData(prev => ({ ...prev, qrCodeUrl: e.target.value }))}
+                  placeholder="输入或通过密钥生成二维码链接"
+                  autoSize={{ minRows: 2, maxRows: 4 }}
+                  style={{ marginBottom: 8 }}
+                />
+              ) : (
+                <>
+                  <Input.TextArea 
+                    value={qrCodeUrlToUse} 
+                    autoSize={{ minRows: 2, maxRows: 4 }}
+                    readOnly
+                  />
+                  <Button 
+                    type="text" 
+                    icon={<CopyOutlined />}
+                    onClick={() => copyToClipboard(qrCodeUrlToUse)}
+                    style={{ marginTop: 8 }}
+                  >
+                    复制链接
+                  </Button>
+                </>
+              )}
             </div>
             
-                {/* 恢复码列表 */}
-                {twoFaInfo.recoveryCodes && twoFaInfo.recoveryCodes.length > 0 && (
-                  <div>
-                    <Title level={5}>恢复码</Title>
-                    <div style={{ marginBottom: 8 }}>
-                      <Text type="secondary">请安全保存这些恢复码，一旦丢失2FA设备，可用于恢复账户访问权限</Text>
+            {/* 恢复码列表 */}
+            <div>
+              <Title level={5}>
+                恢复码
+                {isEditMode && <Text type="secondary" style={{ fontSize: 14, marginLeft: 8 }}>(可选)</Text>}
+              </Title>
+              
+              {/* 编辑模式下的恢复码管理 */}
+              {isEditMode ? (
+                <>
+                  <div style={{ marginBottom: 16 }}>
+                    <Input.Group compact>
+                      <Input
+                        style={{ width: 'calc(100% - 100px)' }}
+                        value={recoveryCodeInput}
+                        onChange={e => setRecoveryCodeInput(e.target.value)}
+                        placeholder="输入恢复码"
+                        onPressEnter={addRecoveryCode}
+                      />
+                      <Button type="primary" onClick={addRecoveryCode}>添加</Button>
+                    </Input.Group>
+                  </div>
+                  
+                  {editData.recoveryCodes.length > 0 ? (
+                    <List
+                      grid={{ gutter: 16, column: 3 }}
+                      dataSource={editData.recoveryCodes}
+                      renderItem={(code, index) => (
+                        <List.Item>
+                          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                            <Tag style={{ padding: '4px 8px', fontFamily: 'monospace' }}>
+                              {code}
+                            </Tag>
+                            <Button 
+                              type="text" 
+                              size="small"
+                              danger 
+                              onClick={() => removeRecoveryCode(index)}
+                            >
+                              删除
+                            </Button>
+                          </Space>
+                        </List.Item>
+                      )}
+                    />
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '16px 0', color: '#999' }}>
+                      暂无恢复码，可以添加用于账户恢复
                     </div>
+                  )}
+                </>
+              ) : (
+                // 查看模式下的恢复码显示
+                <>
+                  <div style={{ marginBottom: 8 }}>
+                    <Text type="secondary">请安全保存这些恢复码，一旦丢失2FA设备，可用于恢复账户访问权限</Text>
+                  </div>
+                  
+                  {twoFaInfo.recoveryCodes && twoFaInfo.recoveryCodes.length > 0 ? (
                     <List
                       grid={{ gutter: 16, column: 3 }}
                       dataSource={twoFaInfo.recoveryCodes}
@@ -501,8 +611,14 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = ({
                         </List.Item>
                       )}
                     />
-                  </div>
-                )}
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '16px 0', color: '#999' }}>
+                      无恢复码
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </Col>
           
           {/* 右侧：二维码图片、实时更新的验证码预览 */}
