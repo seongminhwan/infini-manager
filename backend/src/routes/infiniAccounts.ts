@@ -869,4 +869,49 @@ router.post('/card/create/:accountId', createCard);
  */
 router.get('/card/list/:accountId', getCardList);
 
+/**
+ * @swagger
+ * /api/infini-accounts/2fa/info/{accountId}:
+ *   put:
+ *     summary: 更新账户2FA信息
+ *     description: 更新指定账户的2FA信息，包括二维码URL、密钥和恢复码
+ *     tags: [InfiniAccounts]
+ *     parameters:
+ *       - in: path
+ *         name: accountId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Infini账户ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               qr_code_url:
+ *                 type: string
+ *                 description: 2FA二维码URL
+ *                 example: "otpauth://totp/Infini:user@example.com?secret=ABCDEFGHIJKLMNOP&issuer=Infini"
+ *               secret_key:
+ *                 type: string
+ *                 description: 2FA密钥
+ *                 example: "ABCDEFGHIJKLMNOP"
+ *               recovery_codes:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 恢复码数组
+ *                 example: ["12345678", "87654321"]
+ *     responses:
+ *       200:
+ *         description: 2FA信息更新成功
+ *       400:
+ *         description: 请求参数错误或账户不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.put('/2fa/info/:accountId', update2faInfo);
+
 export default router;
