@@ -80,7 +80,8 @@ export const executeInternalTransfer: ControllerMethod = async (req: Request, re
       source,           // 来源（必填）
       isForced,         // 是否强制执行（可选，默认false）
       remarks,          // 备注信息（可选）
-      auto2FA           // 是否自动处理2FA验证（可选，默认false）
+      auto2FA,          // 是否自动处理2FA验证（可选，默认false）
+      verificationCode  // 2FA验证码（可选）
     } = req.body;
 
     // 验证必填参数
@@ -108,7 +109,8 @@ export const executeInternalTransfer: ControllerMethod = async (req: Request, re
       source,
       !!isForced,        // 转换为布尔值
       remarks,
-      !!auto2FA          // 转换为布尔值，添加auto2FA参数
+      !!auto2FA,          // 转换为布尔值，添加auto2FA参数
+      verificationCode
     );
 
     res.json(response);
@@ -117,53 +119,8 @@ export const executeInternalTransfer: ControllerMethod = async (req: Request, re
   }
 };
 
-/**
- * 自动获取2FA验证码并完成转账流程
- */
-export const autoGet2FAAndCompleteTransfer: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { transferId } = req.body;
-
-    // 验证必填参数
-    if (!transferId) {
-      return res.status(400).json({
-        success: false,
-        message: 'transferId是必要参数'
-      });
-    }
-
-    // 调用服务自动获取2FA验证码并完成转账
-    const response = await infiniAccountService.autoGet2FAAndCompleteTransfer(transferId);
-
-    res.json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * 提供2FA验证码继续转账流程
- */
-export const continueTransferWith2FA: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { transferId, verificationCode } = req.body;
-
-    // 验证必填参数
-    if (!transferId || !verificationCode) {
-      return res.status(400).json({
-        success: false,
-        message: '缺少必要参数'
-      });
-    }
-
-    // 调用服务继续转账流程
-    const response = await infiniAccountService.continueTransferWith2FA(transferId, verificationCode);
-
-    res.json(response);
-  } catch (error) {
-    next(error);
-  }
-};
+// 移除了autoGet2FAAndCompleteTransfer和continueTransferWith2FA方法
+// 现在只使用executeInternalTransfer方法处理所有转账场景，包括2FA验证
 
 /**
  * 获取转账记录列表
