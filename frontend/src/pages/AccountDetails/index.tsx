@@ -621,13 +621,14 @@ const AccountDetails: React.FC = () => {
             
             {/* 右侧：转账时间轴 */}
             <Col span={12}>
-              <div style={{ height: 500, overflowY: 'auto', border: '1px solid #f0f0f0', padding: '8px 16px', borderRadius: '8px' }}>
+              <div style={{ height: 600, overflowY: 'auto', border: '1px solid #f0f0f0', padding: '8px 16px', borderRadius: '8px' }}>
                 <Typography.Title level={5}>转账进度时间轴</Typography.Title>
                 <TransferTimeline 
                   visible={true}
                   sourceAccountId={selectedRecord.account_id}
                   isInternal={true}
                   onClose={() => {}}
+                  key={`transfer-${selectedRecord.id}`} // 添加key确保组件刷新
                 />
               </div>
             </Col>
