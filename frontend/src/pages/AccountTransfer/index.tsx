@@ -279,27 +279,36 @@ const AccountTransfer: React.FC = () => {
   };
   // 处理转账提交
   const handleSubmit = async (values: any) => {
+    // 准备转账参数
+    const sourceAccountId = values.sourceAccount;
+    
+    // 不同转账目标的处理
+    let targetIdentifier = '';
+    
+    if (targetType === 'internal') {
+      // 内部账户转账
+      targetIdentifier = values.internalTarget;
+    } else {
+      // 外部账户转账
+      targetIdentifier = values.externalTarget;
+    }
+    
+    // 确保金额作为字符串处理
+    const amount = values.amount.toString();
+    const source = values.source || 'manual';
+    const isForced = values.isForced || false;
+    const remarks = values.memo || '';
+    
+    // 先显示转账记录时间轴
+    showTransferTimeline(
+      sourceAccountId, 
+      targetType === 'internal' ? targetIdentifier : undefined, 
+      targetType === 'internal'
+    );
+    
+    // 然后发送转账请求
     setLoading(true);
     try {
-      // 准备转账参数
-      const sourceAccountId = values.sourceAccount;
-      
-      // 不同转账目标的处理
-      let targetIdentifier = '';
-      
-      if (targetType === 'internal') {
-        // 内部账户转账
-        targetIdentifier = values.internalTarget;
-      } else {
-        // 外部账户转账
-        targetIdentifier = values.externalTarget;
-      }
-      
-      // 确保金额作为字符串处理
-      const amount = values.amount.toString();
-      const source = values.source || 'manual';
-      const isForced = values.isForced || false;
-      const remarks = values.memo || '';
       
       // 调用内部转账API
       const response = await transferApi.executeInternalTransfer(
