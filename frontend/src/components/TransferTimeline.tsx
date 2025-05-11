@@ -382,7 +382,11 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
             color={getStatusColor(record.status)}
             label={new Date(record.createdAt).toLocaleString('zh-CN')}
           >
-            <TimelineCard size="small">
+            <TimelineCard 
+              size="small"
+              hoverable
+              onClick={() => handleShowHistory(record.id)}
+            >
               <Space direction="vertical" style={{ width: '100%' }}>
                 <div>
                   <Tag color="blue">{getSourceLabel(record.source)}</Tag>
@@ -497,5 +501,16 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
     </TimelineContainer>
   );
 };
-
+                  <Tooltip title="点击查看历史记录">
+                    <Button 
+                      type="link" 
+                      size="small" 
+                      icon={<HistoryOutlined />} 
+                      style={{ float: 'right', padding: 0 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShowHistory(record.id);
+                      }}
+                    />
+                  </Tooltip>
 export default TransferTimeline;
