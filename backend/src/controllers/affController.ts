@@ -92,7 +92,8 @@ export const createAffCashback: ControllerMethod = async (req: Request, res: Res
  */
 export const parseAffData: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { batchId, dataType, data } = req.body;
+    const { batchId } = req.params; // 从URL路径获取batchId
+    const { dataType, data } = req.body;
     
     // 验证请求参数
     if (!batchId || !dataType || !data) {
