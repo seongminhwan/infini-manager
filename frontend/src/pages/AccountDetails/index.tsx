@@ -563,6 +563,7 @@ const AccountDetails: React.FC = () => {
             关闭
           </Button>
         ]}
+        className="transfer-detail-modal"
       >
         {selectedRecord && (
           <Row gutter={24}>
