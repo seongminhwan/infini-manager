@@ -35,6 +35,19 @@ const ButtonGroup = styled.div`
   gap: 16px;
 `;
 
+// 排序控件样式
+const SortCard = styled(Card)`
+  margin-bottom: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: #f8f9fa;
+`;
+
+const SortButton = styled(Button)`
+  margin: 0 5px;
+  min-width: 90px;
+`;
+
 // 转账来源选项
 const transferSources = [
   { value: 'manual', label: '手动转账' },
@@ -146,30 +159,65 @@ const AccountTransfer: React.FC = () => {
   // 渲染排序控件
   const renderSortControls = () => {
     return (
-      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center' }}>
-        <Text strong style={{ marginRight: 16 }}>账户排序:</Text>
-        <Radio.Group 
-          value={sortField} 
-          onChange={(e) => handleSortFieldChange(e.target.value)}
-          style={{ marginRight: 16 }}
-        >
-          <Radio.Button value="balance">余额</Radio.Button>
-          <Radio.Button value="email">邮箱</Radio.Button>
-          <Radio.Button value="uid">UID</Radio.Button>
-        </Radio.Group>
-        
-        <Radio.Group 
-          value={sortOrder} 
-          onChange={(e) => handleSortOrderChange(e.target.value)}
-        >
-          <Radio.Button value="asc">
-            升序 <SwapOutlined style={{ transform: 'rotate(90deg)' }} />
-          </Radio.Button>
-          <Radio.Button value="desc">
-            降序 <SwapOutlined style={{ transform: 'rotate(-90deg)' }} />
-          </Radio.Button>
-        </Radio.Group>
-      </div>
+      <SortCard title={<Title level={5}><SwapOutlined /> 账户排序设置</Title>}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col span={24} md={8}>
+            <div style={{ textAlign: 'center' }}>
+              <Text strong>排序字段</Text>
+              <div style={{ marginTop: 10 }}>
+                <SortButton 
+                  type={sortField === 'balance' ? 'primary' : 'default'}
+                  onClick={() => handleSortFieldChange('balance')}
+                >
+                  余额
+                </SortButton>
+                <SortButton 
+                  type={sortField === 'email' ? 'primary' : 'default'}
+                  onClick={() => handleSortFieldChange('email')}
+                >
+                  邮箱
+                </SortButton>
+                <SortButton 
+                  type={sortField === 'uid' ? 'primary' : 'default'}
+                  onClick={() => handleSortFieldChange('uid')}
+                >
+                  UID
+                </SortButton>
+              </div>
+            </div>
+          </Col>
+          <Col span={24} md={8}>
+            <div style={{ textAlign: 'center' }}>
+              <Text strong>排序方式</Text>
+              <div style={{ marginTop: 10 }}>
+                <SortButton 
+                  type={sortOrder === 'asc' ? 'primary' : 'default'}
+                  onClick={() => handleSortOrderChange('asc')}
+                  icon={<SwapOutlined style={{ transform: 'rotate(90deg)' }} />}
+                >
+                  升序
+                </SortButton>
+                <SortButton 
+                  type={sortOrder === 'desc' ? 'primary' : 'default'}
+                  onClick={() => handleSortOrderChange('desc')}
+                  icon={<SwapOutlined style={{ transform: 'rotate(-90deg)' }} />}
+                >
+                  降序
+                </SortButton>
+              </div>
+            </div>
+          </Col>
+          <Col span={24} md={8}>
+            <div style={{ textAlign: 'center' }}>
+              <Text type="secondary">当前排序: </Text>
+              <Text strong style={{ color: '#1890ff' }}>
+                按{sortField === 'balance' ? '余额' : (sortField === 'email' ? '邮箱' : 'UID')}
+                {sortOrder === 'asc' ? '升序' : '降序'}排列
+              </Text>
+            </div>
+          </Col>
+        </Row>
+      </SortCard>
     );
   };
   // 处理转账提交
@@ -327,10 +375,11 @@ const AccountTransfer: React.FC = () => {
     <div>
       <Title level={3}>账户转账</Title>
       
+      {/* 账户排序控件 - 更醒目的位置 */}
+      {!loadingAccounts && accounts.length > 0 && renderSortControls()}
+      
       <GlassCard>
         <FormSection>
-          {/* 账户排序控件 */}
-          {!loadingAccounts && accounts.length > 0 && renderSortControls()}
           
           {loadingAccounts ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
