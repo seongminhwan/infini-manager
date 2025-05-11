@@ -443,6 +443,19 @@ const AccountTransfer: React.FC = () => {
       
       if (response.success) {
         message.success('转账成功');
+        
+        // 获取当前表单值
+        const values = form.getFieldsValue();
+        const sourceAccountId = values.sourceAccount;
+        let targetId = targetType === 'internal' ? values.internalTarget : undefined;
+        
+        // 显示转账记录时间轴
+        showTransferTimeline(
+          sourceAccountId, 
+          targetId, 
+          targetType === 'internal'
+        );
+        
         form.resetFields();
         verifyForm.resetFields();
         setShowVerifyModal(false);
@@ -503,7 +516,9 @@ const AccountTransfer: React.FC = () => {
       <Title level={3}>账户转账</Title>
       
       <GlassCard>
-        <FormSection>
+        <SplitLayout showTimeline={showTimeline}>
+          <FormContainer showTimeline={showTimeline}>
+            <FormSection>
           
           {loadingAccounts ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
@@ -749,14 +764,33 @@ const AccountTransfer: React.FC = () => {
                 <Button
                   icon={<HistoryOutlined />}
                   size="large"
-                  onClick={() => message.info('转账记录功能待实现')}
+                  onClick={() => {
+                    const sourceId = form.getFieldValue('sourceAccount');
+                    if (sourceId) {
+                      showTransferTimeline(sourceId, undefined, false);
+                    } else {
+                      message.warning('请先选择源账户');
+                    }
+                  }}
                 >
                   转账记录
                 </Button>
               </ButtonGroup>
             </Form>
           )}
-        </FormSection>
+            </FormSection>
+          </FormContainer>
+          
+          {/* 转账记录时间轴面板 */}
+          <TimelineContainer visible={showTimeline}>
+            <TransferTimeline 
+              sourceAccountId={timelineSourceId}
+              targetAccountId={timelineIsInternal ? timelineTargetId : undefined}
+              isInternal={timelineIsInternal}
+              onClose={handleTimelineClose}
+            />
+          </TimelineContainer>
+        </SplitLayout>
       </GlassCard>
       
       {/* 2FA验证码输入弹窗 */}
