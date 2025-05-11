@@ -614,12 +614,44 @@ const AccountTransfer: React.FC = () => {
       
       {/* 2FA验证码输入弹窗 */}
       <Modal
-        title="输入2FA验证码"
+        title="2FA安全验证"
         open={showVerifyModal}
         onOk={() => verifyForm.submit()}
         onCancel={handleVerifyCancel}
         confirmLoading={loading}
+        footer={[
+          <Button key="back" onClick={handleVerifyCancel}>
+            取消
+          </Button>,
+          <Button 
+            key="auto" 
+            type="primary" 
+            ghost
+            loading={loading}
+            onClick={handleAutoVerify}
+            style={{ marginRight: 8 }}
+          >
+            自动验证
+          </Button>,
+          <Button 
+            key="submit" 
+            type="primary" 
+            loading={loading} 
+            onClick={() => verifyForm.submit()}
+          >
+            手动提交
+          </Button>,
+        ]}
       >
+        <div style={{ marginBottom: 16 }}>
+          <Text strong>您可以选择以下验证方式：</Text>
+          <p style={{ margin: '8px 0' }}>
+            <Text mark>自动验证</Text>: 系统自动获取并应用2FA验证码，无需手动输入
+          </p>
+          <p style={{ margin: '8px 0' }}>
+            <Text>手动提交</Text>: 手动输入验证码并提交
+          </p>
+        </div>
         <Form
           form={verifyForm}
           layout="vertical"
