@@ -22,7 +22,8 @@ import {
   Tag,
   Checkbox,
   InputNumber,
-  Empty
+  Empty,
+  Steps
 } from 'antd';
 import { InboxOutlined, UploadOutlined, WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -523,7 +524,7 @@ const AffCashback: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      fixed: 'right',
+      fixed: 'right' as const,
       width: 200,
       render: (text: string, record: RelationData) => {
         // 仅显示适用于当前状态的操作
