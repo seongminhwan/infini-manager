@@ -362,6 +362,13 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
     try {
       setLoading(true);
       
+      // 只有当cardId存在时才调用API
+      if (!cardId) {
+        message.info('没有可用的卡片信息');
+        setLoading(false);
+        return;
+      }
+      
       const response = await api.get(`${apiBaseUrl}/api/infini-cards/detail`, {
         params: {
           accountId,
