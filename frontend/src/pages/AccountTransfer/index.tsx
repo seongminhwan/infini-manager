@@ -463,6 +463,19 @@ const AccountTransfer: React.FC = () => {
     const balance = getAccountBalance(value);
     form.setFieldsValue({ sourceBalance: balance });
   };
+  
+  // 关闭转账记录面板
+  const handleTimelineClose = () => {
+    setShowTimeline(false);
+  };
+  
+  // 显示转账记录面板
+  const showTransferTimeline = (sourceId: string, targetId?: string, isInternal: boolean = true) => {
+    setTimelineSourceId(sourceId);
+    setTimelineTargetId(targetId || '');
+    setTimelineIsInternal(isInternal);
+    setShowTimeline(true);
+  };
 
   return (
     <div>
