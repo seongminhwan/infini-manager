@@ -1,9 +1,11 @@
 /**
  * TOTP工具服务
  * 用于处理2FA验证码的生成，支持otpauth://totp/格式URL和纯密钥
+ * 包含二维码生成功能，避免使用第三方API导致TOTP密钥泄露
  */
 import { authenticator } from 'otplib';
 import { ApiResponse } from '../types';
+import * as qrcode from 'qrcode';
 
 interface TotpDetails {
   code: string;
@@ -222,6 +224,64 @@ export class TotpToolService {
       return true;
     } catch (error) {
       return false;
+    }
+  }
+
+  /**
+   * 生成TOTP二维码图像
+   * @param data TOTP URL或密钥
+   * @param options 二维码生成选项，可选
+   * @returns 包含Base64编码的二维码图像或错误信息的响应
+   */
+  async generateQrCode(data: string, options: { size?: number } = {}): Promise<ApiResponse> {
+    try {
+      if (!data) {
+        return {
+          success: false,
+          message: '输入不能为空，请提供有效的TOTP URL或密钥'
+        };
+      }
+
+      // 默认二维码大小为200x200
+      const size = options.size || 200;
+
+      // 如果输入是密钥而非URL，则生成标准TOTP URL
+      if (!data.startsWith('otpauth://totp/')) {
+        // 清理密钥（移除空格和特殊字符）
+        const cleanSecret = data.replace(/\s+/g, '').toUpperCase();
+        
+        // 验证密钥是否有效
+        if (!this.isValidSecret(cleanSecret)) {
+          return {
+            success: false,
+            message: '无效的TOTP密钥，请提供有效的Base32编码字符串'
+          };
+        }
+
+        // 使用密钥生成标准TOTP URL
+        data = `otpauth://totp/Infini:Unknown?secret=${cleanSecret}&issuer=Infini&algorithm=SHA1&digits=6&period=30`;
+      }
+
+      // 使用qrcode库生成二维码（Base64格式）
+      const qrCodeDataUrl = await qrcode.toDataURL(data, {
+        width: size,
+        margin: 1,
+        errorCorrectionLevel: 'M'
+      });
+
+      return {
+        success: true,
+        data: {
+          qrCode: qrCodeDataUrl,
+          url: data
+        }
+      };
+    } catch (error) {
+      console.error('生成二维码失败:', error);
+      return {
+        success: false,
+        message: `生成二维码失败: ${(error as Error).message}`
+      };
     }
   }
 }
