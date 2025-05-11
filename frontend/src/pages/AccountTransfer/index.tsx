@@ -317,6 +317,32 @@ const AccountTransfer: React.FC = () => {
       setLoading(false);
     }
   };
+  // 处理自动2FA验证
+  const handleAutoVerify = async () => {
+    if (!currentTransferId) return;
+    
+    setLoading(true);
+    try {
+      const response = await transferApi.autoGet2FAAndCompleteTransfer(currentTransferId);
+      
+      if (response.success) {
+        message.success('转账成功（自动验证）');
+        form.resetFields();
+        verifyForm.resetFields();
+        setShowVerifyModal(false);
+      } else {
+        message.error(`自动验证失败: ${response.message || '未知错误'}`);
+        // 自动验证失败，提示用户尝试手动输入
+        message.info('请尝试手动输入验证码');
+      }
+    } catch (error) {
+      console.error('自动2FA验证失败:', error);
+      message.error('自动验证失败，请尝试手动输入验证码');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // 处理2FA验证码提交
   const handleVerifySubmit = async (values: any) => {
     if (!currentTransferId) return;
