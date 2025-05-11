@@ -52,7 +52,7 @@ interface TableParams {
   pagination: TablePaginationConfig;
   sortField?: string;
   sortOrder?: string;
-  filters?: Record<string, FilterValue>;
+  filters?: Record<string, FilterValue | null>;
 }
 
 /**
@@ -171,11 +171,27 @@ const AccountDetails: React.FC = () => {
     sorter: SorterResult<TransferRecord> | SorterResult<TransferRecord>[],
     extra: any
   ) => {
+    // 处理单个排序或多个排序的情况
+    let sortField: string | undefined;
+    let sortOrder: string | undefined;
+    
+    if (Array.isArray(sorter)) {
+      // 多列排序，取第一个
+      if (sorter.length > 0) {
+        sortField = sorter[0].field as string;
+        sortOrder = sorter[0].order as string;
+      }
+    } else {
+      // 单列排序
+      sortField = sorter.field as string;
+      sortOrder = sorter.order as string;
+    }
+    
     setTableParams({
       pagination,
       filters,
-      sortField: sorter.field as string,
-      sortOrder: sorter.order as string,
+      sortField,
+      sortOrder,
     });
   };
 
