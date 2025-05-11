@@ -396,6 +396,18 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                      record.status === 'processing' ? '处理中' : 
                      record.status === 'failed' ? '失败' : record.status}
                   </Tag>
+                  <Tooltip title="点击查看历史记录">
+                    <Button 
+                      type="link" 
+                      size="small" 
+                      icon={<HistoryOutlined />} 
+                      style={{ float: 'right', padding: 0 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShowHistory(record.id);
+                      }}
+                    />
+                  </Tooltip>
                 </div>
                 <div style={{ marginTop: 8 }}>
                   <Text ellipsis style={{ maxWidth: '100%' }}>
@@ -498,19 +510,80 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
       <ScrollContainer>
         {renderTimeline()}
       </ScrollContainer>
+
+      {/* 转账历史记录Modal */}
+      <Modal
+        title="转账历史记录"
+        open={historyModalVisible}
+        onCancel={handleCloseHistoryModal}
+        footer={[
+          <Button key="close" onClick={handleCloseHistoryModal}>
+            关闭
+          </Button>
+        ]}
+        width={700}
+      >
+        {historyLoading ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <Spin size="large" />
+            <p>加载历史记录...</p>
+          </div>
+        ) : historyData ? (
+          <HistoryModalContent>
+            <div style={{ marginBottom: 16 }}>
+              <Card size="small">
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <div>
+                    <Tag color="blue">{getSourceLabel(historyData.transfer.source)}</Tag>
+                    <Tag color={getStatusColor(historyData.transfer.status)}>
+                      {historyData.transfer.status === 'completed' ? '完成' : 
+                       historyData.transfer.status === 'pending' ? '待处理' : 
+                       historyData.transfer.status === 'processing' ? '处理中' : 
+                       historyData.transfer.status === 'failed' ? '失败' : historyData.transfer.status}
+                    </Tag>
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <Text>
+                      <Text strong>源账户:</Text> {historyData.transfer.sourceAccount.email} ({historyData.transfer.sourceAccount.uid})
+                    </Text>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <Text style={{ marginRight: 8 }} type="secondary">转账金额:</Text>
+                    <Text style={{ color: '#52c41a', fontWeight: 'bold' }}>${historyData.transfer.amount}</Text>
+                  </div>
+                  <div>
+                    <Text>
+                      <Text strong>目标:</Text> 
+                      {historyData.transfer.targetAccount ? 
+                        `${historyData.transfer.targetAccount.email} (${historyData.transfer.targetAccount.uid})` : 
+                        `${historyData.transfer.contactType === 'email' ? '邮箱' : 'UID'}: ${historyData.transfer.targetIdentifier}`
+                      }
+                    </Text>
+                  </div>
+                  {historyData.transfer.remarks && (
+                    <div>
+                      <Text type="secondary">
+                        备注: {historyData.transfer.remarks}
+                      </Text>
+                    </div>
+                  )}
+                </Space>
+              </Card>
+            </div>
+            
+            <Title level={5}>状态变更历史</Title>
+            {historyData.histories.length > 0 ? (
+              renderHistoryTimeline()
+            ) : (
+              <Empty description="暂无历史记录" />
+            )}
+          </HistoryModalContent>
+        ) : (
+          <Empty description="无法加载历史记录" />
+        )}
+      </Modal>
     </TimelineContainer>
   );
 };
-                  <Tooltip title="点击查看历史记录">
-                    <Button 
-                      type="link" 
-                      size="small" 
-                      icon={<HistoryOutlined />} 
-                      style={{ float: 'right', padding: 0 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleShowHistory(record.id);
-                      }}
-                    />
-                  </Tooltip>
+
 export default TransferTimeline;
