@@ -981,6 +981,80 @@ export const getAffCashbacks: ControllerMethod = async (req: Request, res: Respo
 /**
  * 获取AFF返现批次详情
  */
+/**
+ * 关闭AFF返现批次
+ * 将批次状态从pending或processing改为closed，防止继续进行未完成的转账
+ */
+export const closeCashback: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { batchId } = req.params;
+    
+    // 验证请求参数
+    if (!batchId) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少批次ID'
+      });
+    }
+    
+    // 查询批次信息
+    const batch = await db('infini_aff_cashbacks')
+      .where('id', batchId)
+      .first();
+    
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        message: '找不到指定的AFF返现批次'
+      });
+    }
+    
+    // 检查批次状态
+    if (!['pending', 'processing'].includes(batch.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `当前批次状态为${batch.status}，无法关闭`
+      });
+    }
+    
+    // 统计当前批次未完成的关联记录数
+    const pendingCount = await db('infini_aff_cashback_relations')
+      .where('aff_cashback_id', batchId)
+      .whereIn('status', ['pending', 'processing'])
+      .count('* as count')
+      .first();
+    
+    // 更新批次状态为已关闭
+    await db('infini_aff_cashbacks')
+      .where('id', batchId)
+      .update({
+        status: 'closed',
+        completed_at: new Date(),
+        updated_at: new Date()
+      });
+    
+    // 更新所有待处理和处理中的关联记录状态为已关闭
+    await db('infini_aff_cashback_relations')
+      .where('aff_cashback_id', batchId)
+      .whereIn('status', ['pending', 'processing'])
+      .update({
+        status: 'closed',
+        updated_at: new Date()
+      });
+    
+    return res.json({
+      success: true,
+      message: 'AFF返现批次已关闭',
+      data: {
+        batchId,
+        pendingCount: (pendingCount as any).count
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getAffCashbackById: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
