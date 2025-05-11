@@ -3608,7 +3608,7 @@ export class InfiniAccountService {
    */
   async internalTransfer(
     accountId: string,
-    contactType: 'uid' | 'email',
+    contactType: 'uid' | 'email' | 'inner',
     targetIdentifier: string,
     amount: string,
     source: string,
@@ -3632,68 +3632,94 @@ export class InfiniAccountService {
           message: '找不到指定的Infini账户'
         };
       }
-
-         // 检查账户是否开启了2FA
-         if (account.google_2fa_is_bound) {
-          console.log(`账户已开启2FA，需要验证码`);
-          verificationCode = verificationCode || '';
-          if (!verificationCode) {
-            if (!auto2FA) {
-              return {
-                success: false,
-                message: '账户已开启2FA，请提供验证码',
-                data: {
-                  require2FA: true,
-                }
-              };
-            }
-  
-            // 检查账户是否有2FA信息记录
-            const twoFaInfo = await db('infini_2fa_info')
-              .where({ infini_account_id: account.id })
-              .first();
-  
-            if (!twoFaInfo || !twoFaInfo.secret_key) {
-              console.error(`自动2FA验证失败: 账户未配置2FA或缺少密钥`);
-              return {
-                success: false,
-                message: '账户未配置2FA或缺少密钥'
-              };
-            }
-  
-            // 使用账户的密钥生成当前的2FA验证码
-            const secret = twoFaInfo.secret_key;
-            console.log(`使用密钥生成2FA验证码: ${secret}`);
-  
-            // 使用TotpToolService生成TOTP验证码
-            const totpService = new TotpToolService();
-            const totpResult = await totpService.generateTotpCode(secret);
-  
-            if (!totpResult.success || !totpResult.data || !totpResult.data.code) {
-              console.error(`自动2FA验证失败: 无法生成2FA验证码 - ${totpResult.message}`);
-              return {
-                success: false,
-                message: `无法生成2FA验证码: ${totpResult.message || '未知错误'}`
-              };
-            }
-  
-            const twoFactorCode = totpResult.data.code;
-            console.log(`已为账户 ${account.email} 自动生成验证码: ${twoFactorCode}`);
-  
-            // 使用生成的验证码继续转账流程
-            console.log(`使用自动生成的验证码继续转账流程`);
-            verificationCode = twoFactorCode;
-          }
-  
+      
+      // 特殊处理inner类型的转账请求
+      let actualContactType = contactType;
+      let actualTargetIdentifier = targetIdentifier;
+      
+      if (contactType === 'inner') {
+        console.log(`检测到内部转账请求，目标账户ID: ${targetIdentifier}`);
+        
+        // 查询目标账户信息
+        const targetAccount = await db('infini_accounts')
+          .where('id', targetIdentifier)
+          .first();
+        
+        if (!targetAccount || !targetAccount.uid) {
+          console.error(`内部转账失败: 找不到ID为${targetIdentifier}的目标账户或账户缺少UID`);
+          return {
+            success: false,
+            message: '找不到目标账户或账户缺少UID'
+          };
         }
+        
+        // 将contactType转换为uid，targetIdentifier转换为目标账户的uid
+        actualContactType = 'uid';
+        actualTargetIdentifier = targetAccount.uid;
+        
+        console.log(`已转换内部转账请求，实际目标: ${actualContactType}:${actualTargetIdentifier}`);
+      }
+
+      // 检查账户是否开启了2FA
+      if (account.google_2fa_is_bound) {
+        console.log(`账户已开启2FA，需要验证码`);
+        verificationCode = verificationCode || '';
+        if (!verificationCode) {
+          if (!auto2FA) {
+            return {
+              success: false,
+              message: '账户已开启2FA，请提供验证码',
+              data: {
+                require2FA: true,
+              }
+            };
+          }
+
+          // 检查账户是否有2FA信息记录
+          const twoFaInfo = await db('infini_2fa_info')
+            .where({ infini_account_id: account.id })
+            .first();
+
+          if (!twoFaInfo || !twoFaInfo.secret_key) {
+            console.error(`自动2FA验证失败: 账户未配置2FA或缺少密钥`);
+            return {
+              success: false,
+              message: '账户未配置2FA或缺少密钥'
+            };
+          }
+
+          // 使用账户的密钥生成当前的2FA验证码
+          const secret = twoFaInfo.secret_key;
+          console.log(`使用密钥生成2FA验证码: ${secret}`);
+
+          // 使用TotpToolService生成TOTP验证码
+          const totpService = new TotpToolService();
+          const totpResult = await totpService.generateTotpCode(secret);
+
+          if (!totpResult.success || !totpResult.data || !totpResult.data.code) {
+            console.error(`自动2FA验证失败: 无法生成2FA验证码 - ${totpResult.message}`);
+            return {
+              success: false,
+              message: `无法生成2FA验证码: ${totpResult.message || '未知错误'}`
+            };
+          }
+
+          const twoFactorCode = totpResult.data.code;
+          console.log(`已为账户 ${account.email} 自动生成验证码: ${twoFactorCode}`);
+
+          // 使用生成的验证码继续转账流程
+          console.log(`使用自动生成的验证码继续转账流程`);
+          verificationCode = twoFactorCode;
+        }
+      }
 
       // 检查是否存在相同条件的准备状态转账记录
       if (!isForced) {
         const existingTransfer = await db('infini_transfers')
           .where({
             account_id: accountId,
-            contact_type: contactType,
-            target_identifier: targetIdentifier,
+            contact_type: actualContactType,
+            target_identifier: actualTargetIdentifier,
             amount,
             source,
             status: 'pending'
@@ -3716,8 +3742,10 @@ export class InfiniAccountService {
       // 创建预转账记录
       const [transferId] = await db('infini_transfers').insert({
         account_id: accountId,
-        contact_type: contactType,
-        target_identifier: targetIdentifier,
+        contact_type: actualContactType,
+        target_identifier: actualTargetIdentifier,
+        original_contact_type: contactType,  // 保存原始contactType
+        original_target_identifier: targetIdentifier,  // 保存原始targetIdentifier
         verification_code: verificationCode,
         amount,
         source,
@@ -3733,8 +3761,10 @@ export class InfiniAccountService {
       // 添加转账历史记录 - 初始状态
       await this.addTransferHistory(transferId, 'pending', '转账请求已创建', {
         accountId,
-        contactType,
-        targetIdentifier,
+        originalContactType: contactType,
+        originalTargetIdentifier: targetIdentifier,
+        actualContactType,
+        actualTargetIdentifier,
         amount,
         source,
         remarks
@@ -3751,12 +3781,10 @@ export class InfiniAccountService {
         };
       }
 
-   
-
       // 构建请求数据
       const requestData = {
-        contactType,
-        [contactType === 'uid' ? 'user_id' : 'email']: targetIdentifier,
+        contactType: actualContactType,
+        [actualContactType === 'uid' ? 'user_id' : 'email']: actualTargetIdentifier,
         email_verify_code: verificationCode,
         amount
       };
