@@ -107,6 +107,20 @@ export const transferApi = {
     }
   },
   
+  // 自动获取2FA验证码并完成转账流程
+  autoGet2FAAndCompleteTransfer: async (transferId: string | number) => {
+    try {
+      console.log(`自动获取2FA验证码并完成转账流程，转账ID: ${transferId}`);
+      const response = await api.post(`${apiBaseUrl}/api/transfers/auto-2fa`, {
+        transferId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('自动完成转账流程失败:', error);
+      throw error;
+    }
+  },
+  
   // 提供2FA验证码继续转账流程
   continueTransferWith2FA: async (transferId: string | number, verificationCode: string) => {
     try {
