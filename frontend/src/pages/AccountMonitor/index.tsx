@@ -2522,7 +2522,8 @@ const AccountMonitor: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <strong style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{text}</strong>
             <Button 
-              type="text" 
+              type="primary" 
+              ghost
               size="small" 
               icon={<CopyOutlined />} 
               onClick={(e) => {
@@ -2546,7 +2547,8 @@ const AccountMonitor: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <strong style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{text || '未设置'}</strong>
             <Button 
-              type="text" 
+              type="primary" 
+              ghost
               size="small" 
               icon={<CopyOutlined />} 
               onClick={(e) => {
@@ -2976,17 +2978,12 @@ const AccountMonitor: React.FC = () => {
             }))}
             renderItem={(item, index) => (
               <List.Item
-              actions={[
+                actions={[
                   <Button 
                     type="primary"
                     size="small"
                     shape="circle"
-                    icon={<UpOutlined />} 
-                  <Button 
-                    type="primary"
-                    size="small"
-                    shape="circle"
-                    icon={<UpOutlined />} 
+                    icon={<UpOutlined />}
                     style={{ marginRight: 8 }}
                     disabled={index === 0}
                     onClick={() => {
@@ -3012,6 +3009,10 @@ const AccountMonitor: React.FC = () => {
                     size="small"
                     shape="circle"
                     icon={<DownOutlined />}
+                    style={{ marginLeft: 8 }}
+                    disabled={index >= getVisibleColumns().length - 1}
+                    onClick={() => {
+                      const newOrder = [...columnOrder];
                       // 如果columnOrder为空，先初始化
                       if (newOrder.length === 0) {
                         getVisibleColumns().forEach(col => {
