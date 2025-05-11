@@ -7,15 +7,10 @@ import { ControllerMethod, ApiResponse } from '../types';
 import { InfiniAccountService } from '../service/InfiniAccountService';
 import db from '../db/db';
 import fs from 'fs';
-import csv from 'csv-parser';
+// 使用any类型导入csv-parser，避免类型冲突
+import * as csv from 'csv-parser';
 import { Readable } from 'stream';
 import path from 'path';
-
-// 为csv-parser模块添加简单的类型定义
-declare module 'csv-parser' {
-  function csvParser(options?: any): NodeJS.ReadWriteStream;
-  export = csvParser;
-}
 
 // 创建InfiniAccountService实例
 const infiniAccountService = new InfiniAccountService();
