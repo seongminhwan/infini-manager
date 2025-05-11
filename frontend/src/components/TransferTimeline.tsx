@@ -263,7 +263,19 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
           <Timeline.Item
             key={history.id}
             color={getStatusColor(history.status)}
-            label={formatDateTime(history.created_at)}
+            label={
+              <span style={{ 
+                fontWeight: 'bold', 
+                color: '#1890ff', 
+                fontSize: '14px',
+                backgroundColor: '#f0f8ff',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                display: 'inline-block'
+              }}>
+                {formatDateTime(history.created_at)}
+              </span>
+            }
           >
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
