@@ -173,6 +173,84 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
     }
   };
   
+  // 获取转账历史记录
+  const fetchTransferHistory = async (transferId: string) => {
+    try {
+      setHistoryLoading(true);
+      const response = await transferApi.getTransferHistory(transferId);
+      
+      if (response.success && response.data) {
+        setHistoryData(response.data);
+      } else {
+        setHistoryData(null);
+      }
+    } catch (error) {
+      console.error('获取转账历史记录失败:', error);
+      setHistoryData(null);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+  
+  // 显示历史记录Modal
+  const handleShowHistory = (transferId: string) => {
+    setSelectedTransfer(transferId);
+    setHistoryModalVisible(true);
+    fetchTransferHistory(transferId);
+  };
+  
+  // 关闭历史记录Modal
+  const handleCloseHistoryModal = () => {
+    setHistoryModalVisible(false);
+    setSelectedTransfer(null);
+    setHistoryData(null);
+  };
+  
+  // 渲染历史记录时间轴
+  const renderHistoryTimeline = () => {
+    if (!historyData) return null;
+    
+    return (
+      <Timeline mode="left">
+        {historyData.histories.map((history) => (
+          <Timeline.Item
+            key={history.id}
+            color={getStatusColor(history.status)}
+            label={new Date(history.created_at).toLocaleString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })}
+          >
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div>
+                <Tag color={getStatusColor(history.status)}>
+                  {history.status === 'completed' ? '完成' : 
+                   history.status === 'pending' ? '待处理' : 
+                   history.status === 'processing' ? '处理中' : 
+                   history.status === 'failed' ? '失败' : history.status}
+                </Tag>
+              </div>
+              {history.details && (
+                <div>
+                  <Text>{history.details}</Text>
+                </div>
+              )}
+              {history.memo && (
+                <div>
+                  <Text type="secondary">备注: {history.memo}</Text>
+                </div>
+              )}
+            </Space>
+          </Timeline.Item>
+        ))}
+      </Timeline>
+    );
+  };
+  
   // 启动/停止轮询
   useEffect(() => {
     if (visible && isPolling && sourceAccountId) {
