@@ -3,7 +3,7 @@ import { Form, Input, Button, Select, Card, Typography, Row, Col, message, Radio
 import { SwapOutlined, SendOutlined, HistoryOutlined, QuestionCircleOutlined, DownOutlined, CaretDownOutlined } from '@ant-design/icons';
 import styled, { keyframes } from 'styled-components';
 import { infiniAccountApi, transferApi } from '../../services/api';
-import TransferTimeline from '../../components/TransferTimeline';
+import TransferHistoryDetail from '../../components/TransferHistoryDetail';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -867,7 +867,7 @@ const AccountTransfer: React.FC = () => {
           
           {/* 转账记录时间轴面板 */}
           <TimelineContainer visible={showTimeline}>
-            <TransferTimeline 
+            <TransferHistoryDetail 
               visible={showTimeline}
               sourceAccountId={timelineSourceId}
               targetAccountId={timelineIsInternal ? timelineTargetId : undefined}
