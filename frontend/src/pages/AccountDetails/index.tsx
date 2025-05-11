@@ -561,7 +561,38 @@ const AccountDetails: React.FC = () => {
           <Row gutter={24}>
             {/* 左侧：转账详细信息 */}
             <Col span={12}>
-              <Descriptions title="转账信息" bordered column={1} size="small">
+              <Card 
+                style={{ 
+                  borderRadius: '8px', 
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+                }}
+                bodyStyle={{ padding: 0 }}
+              >
+                <Descriptions 
+                  title={
+                    <div style={{ 
+                      padding: '12px 16px', 
+                      borderBottom: '1px solid #f0f0f0',
+                      backgroundColor: '#fafafa',
+                      fontWeight: 'bold'
+                    }}>
+                      转账信息
+                    </div>
+                  } 
+                  bordered 
+                  column={1} 
+                  size="small"
+                  labelStyle={{ 
+                    fontWeight: 500, 
+                    backgroundColor: '#f5f5f5', 
+                    width: '120px',
+                    padding: '12px 16px'
+                  }}
+                  contentStyle={{ 
+                    padding: '12px 16px' 
+                  }}
+                >
                 <Descriptions.Item label="转账ID">{selectedRecord.id}</Descriptions.Item>
                 <Descriptions.Item label="转出账户">
                   {selectedRecord.account_email || selectedRecord.account_id}
