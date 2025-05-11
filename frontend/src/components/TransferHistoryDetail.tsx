@@ -79,57 +79,57 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
   const [transferHistory, setTransferHistory] = useState<any[]>([]);
   const [transferRecords, setTransferRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  
+  // 使用useRef跟踪是否应该继续轮询
+  const shouldContinuePolling = useRef<boolean>(true);
+  // 使用useRef存储超时ID
+  const timeoutId = useRef<NodeJS.Timeout | null>(null);
   
   const actualTransferId = useRef<string | number | undefined>(transferId);
   
-  // 停止轮询
+  // 停止链式轮询
   const stopPolling = () => {
-    console.log('停止轮询...');
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
+    console.log('停止链式轮询...');
+    // 设置标志位，阻止后续轮询
+    shouldContinuePolling.current = false;
+    
+    // 清除可能存在的超时调用
+    if (timeoutId.current) {
+      clearTimeout(timeoutId.current);
+      timeoutId.current = null;
     }
   };
   
-  // 开始轮询转账历史记录（每秒刷新一次）
+  // 开始链式轮询转账历史记录
   const startPolling = (id?: string | number) => {
-    // 先停止现有的轮询
-    stopPolling();
+    // 重置轮询状态
+    shouldContinuePolling.current = true;
     
     if (!id) return;
     
-    // 先检查转账历史记录中是否已有最终态，如果有则不启动轮询
-    const hasCompletedHistory = transferHistory.some(
-      history => history.status === 'completed' || history.status === 'failed'
-    );
+    console.log(`开始链式轮询转账ID ${id} 的历史记录`);
     
-    if (hasCompletedHistory) {
-      console.log(`转账ID ${id} 已有最终态记录，不启动轮询`);
-      return;
-    }
-    
-    console.log(`开始轮询转账ID ${id} 的历史记录`);
-    // 设置1秒的轮询间隔
-    const interval = setInterval(() => {
-      fetchTransferHistory(id);
-    }, 1000);
-    
-    setPollingInterval(interval);
+    // 立即执行第一次查询，链式轮询将在查询完成后决定是否继续
+    fetchTransferHistory(id);
   };
   
   // 组件卸载时停止轮询
   useEffect(() => {
-    return () => stopPolling();
+    return () => {
+      stopPolling();
+    };
   }, []);
   
-  // 获取单笔转账历史记录
+  // 获取单笔转账历史记录 - 使用链式轮询方式
   const fetchTransferHistory = async (id?: string | number) => {
-    if (!id) return;
+    // 如果ID无效或不应继续轮询，则退出
+    if (!id || !shouldContinuePolling.current) return;
     
     setLoading(true);
     try {
+      console.log(`正在获取转账ID ${id} 的历史记录...`);
       const response = await transferApi.getTransferHistory(id.toString());
+      
       if (response.success && response.data && response.data.histories) {
         setTransferHistory(response.data.histories);
         
@@ -138,25 +138,41 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
           (history: any) => history.status === 'completed' || history.status === 'failed'
         );
         
-        // 如果转账已达到最终状态，打印日志并立即停止轮询
+        // 如果转账已达到最终状态，停止轮询
         if (completedHistories.length > 0) {
           console.log(`检测到转账ID ${id} 的最终态: ${completedHistories.map((h: any) => h.status).join(', ')}`);
-          console.log('停止历史记录轮询');
+          console.log('已达到最终态，停止链式轮询');
           
-          // 确保轮询被停止
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
-            setPollingInterval(null);
-          }
-        } else {
-          console.log(`转账ID ${id} 尚未达到最终态，继续轮询`);
+          // 仅设置标志位为false，不再安排下一次请求
+          shouldContinuePolling.current = false;
+        } else if (shouldContinuePolling.current) {
+          // 如果没有达到最终状态且应该继续轮询，则安排下一次请求
+          console.log(`转账ID ${id} 尚未达到最终态，1秒后继续链式轮询`);
+          
+          timeoutId.current = setTimeout(() => {
+            fetchTransferHistory(id);
+          }, 1000);
         }
       } else {
         setTransferHistory([]);
+        
+        // 即使获取数据失败，如果仍应继续轮询，也安排下一次请求
+        if (shouldContinuePolling.current) {
+          timeoutId.current = setTimeout(() => {
+            fetchTransferHistory(id);
+          }, 1000);
+        }
       }
     } catch (error) {
       console.error('获取转账历史记录失败:', error);
       setTransferHistory([]);
+      
+      // 即使出错，如果仍应继续轮询，也安排下一次请求
+      if (shouldContinuePolling.current) {
+        timeoutId.current = setTimeout(() => {
+          fetchTransferHistory(id);
+        }, 1000);
+      }
     } finally {
       setLoading(false);
     }
@@ -194,6 +210,14 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
   
   // 刷新数据
   const refreshData = () => {
+    // 手动刷新时重置轮询状态
+    shouldContinuePolling.current = true;
+    
+    if (timeoutId.current) {
+      clearTimeout(timeoutId.current);
+      timeoutId.current = null;
+    }
+    
     if (transferId) {
       fetchTransferHistory(transferId);
     } else if (sourceAccountId) {
@@ -203,11 +227,19 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
   
   // 加载转账历史记录
   useEffect(() => {
+    // 重置轮询状态
+    shouldContinuePolling.current = true;
+    
+    // 清除可能的超时调用
+    if (timeoutId.current) {
+      clearTimeout(timeoutId.current);
+      timeoutId.current = null;
+    }
+    
     // 单笔转账记录详情
     if (transferId) {
       actualTransferId.current = transferId;
-      fetchTransferHistory(transferId);
-      // 开始轮询该transferId的历史记录
+      // 开始链式轮询该transferId的历史记录
       startPolling(transferId);
     } 
     // 账户转账记录列表
