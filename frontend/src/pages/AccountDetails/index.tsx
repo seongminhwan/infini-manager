@@ -656,20 +656,50 @@ const AccountDetails: React.FC = () => {
                   {selectedRecord.completed_at ? dayjs(selectedRecord.completed_at).format('YYYY-MM-DD HH:mm:ss') : '-'}
                 </Descriptions.Item>
               </Descriptions>
+              </Card>
             </Col>
             
             {/* 右侧：转账时间轴 */}
             <Col span={12}>
-              <div style={{ height: 600, overflowY: 'auto', border: '1px solid #f0f0f0', padding: '8px 16px', borderRadius: '8px' }}>
-                <Typography.Title level={5}>转账进度时间轴</Typography.Title>
-                <TransferTimeline 
-                  visible={true}
-                  sourceAccountId={selectedRecord.account_id}
-                  isInternal={true}
-                  onClose={() => {}}
-                  key={`transfer-${selectedRecord.id}`} // 添加key确保组件刷新
-                />
-              </div>
+              <Card 
+                style={{ 
+                  borderRadius: '8px', 
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                  height: '100%'
+                }}
+                bodyStyle={{ 
+                  padding: 0,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                <div style={{ 
+                  padding: '12px 16px', 
+                  borderBottom: '1px solid #f0f0f0',
+                  backgroundColor: '#fafafa',
+                  fontWeight: 'bold'
+                }}>
+                  转账进度时间轴
+                </div>
+                <div style={{ 
+                  flexGrow: 1, 
+                  height: 580, 
+                  overflowY: 'auto', 
+                  padding: '16px', 
+                  backgroundColor: '#fff',
+                  backgroundImage: 'linear-gradient(to bottom, rgba(240, 249, 255, 0.2), transparent)'
+                }}>
+                  <TransferTimeline 
+                    visible={true}
+                    sourceAccountId={selectedRecord.account_id}
+                    isInternal={true}
+                    onClose={() => {}}
+                    key={`transfer-${selectedRecord.id}`} // 添加key确保组件刷新
+                  />
+                </div>
+              </Card>
             </Col>
           </Row>
         )}
