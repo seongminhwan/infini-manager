@@ -30,8 +30,7 @@ import {
   LoadingOutlined
 } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
-import { infiniAccountApi, kycImageApi, randomUserApi, apiBaseUrl } from '../services/api';
-import axios from 'axios';
+import api, { infiniAccountApi, kycImageApi, randomUserApi, apiBaseUrl } from '../services/api';
 
 const { Title, Text } = Typography;
 const { Step } = Steps;
@@ -222,7 +221,7 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
     
     try {
       // 先获取账户信息
-      const accountResponse = await axios.get(`${apiBaseUrl}/api/infini-accounts/${accountId}`);
+      const accountResponse = await api.get(`${apiBaseUrl}/api/infini-accounts/${accountId}`);
       
       if (accountResponse.data.success && accountResponse.data.data) {
         const account = accountResponse.data.data;
@@ -343,8 +342,8 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
       };
       
       try {
-        // 使用axios直接发送请求，以便捕获HTTP错误状态码
-        const response = await axios.post(
+        // 使用api实例发送请求，以便捕获HTTP错误状态码
+        const response = await api.post(
           `${apiBaseUrl}/api/infini-accounts/kyc/passport`,
           {
             accountId,
@@ -736,7 +735,7 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
       formData.append('randomKycId', randomKycImage.id); // 传递随机图片ID
       
       // 发送请求并解析响应
-      const response = await axios.post(
+      const response = await api.post(
         `${apiBaseUrl}/api/infini-accounts/kyc/upload`, 
         formData,
         {
