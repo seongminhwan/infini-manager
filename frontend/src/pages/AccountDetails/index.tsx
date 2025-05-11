@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Form, Select, DatePicker, Button, Input, Space, Typography, Tag, message } from 'antd';
-import { SearchOutlined, ReloadOutlined, ExportOutlined } from '@ant-design/icons';
+import { Card, Table, Form, Select, DatePicker, Button, Input, Space, Typography, Tag, message, Modal, Row, Col, Descriptions } from 'antd';
+import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
+import TransferTimeline from '../../components/TransferTimeline';
 import styled from 'styled-components';
 import { infiniAccountApi, transferApi } from '../../services/api';
 import type { TablePaginationConfig } from 'antd/es/table';
@@ -46,6 +47,7 @@ interface TransferRecord {
   completed_at?: string;
   matched_account_email?: string;
   matched_account_uid?: string;
+  original_contact_type?: string;
 }
 
 interface TableParams {
@@ -64,6 +66,8 @@ const AccountDetails: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<TransferRecord[]>([]);
   const [accounts, setAccounts] = useState<{ id: string, email: string }[]>([]);
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<TransferRecord | null>(null);
   const [tableParams, setTableParams] = useState<TableParams>({
     pagination: {
       current: 1,
@@ -283,6 +287,18 @@ const AccountDetails: React.FC = () => {
       default:
         return source;
     }
+  };
+
+  // 打开转账详情弹窗
+  const handleRowClick = (record: TransferRecord) => {
+    setSelectedRecord(record);
+    setDetailVisible(true);
+  };
+
+  // 关闭转账详情弹窗
+  const handleCloseDetail = () => {
+    setDetailVisible(false);
+    setSelectedRecord(null);
   };
 
   // 表格列定义
@@ -513,8 +529,105 @@ const AccountDetails: React.FC = () => {
           pagination={tableParams.pagination}
           onChange={handleTableChange}
           scroll={{ x: 1500 }}
+          onRow={(record) => ({
+            onClick: () => handleRowClick(record),
+            style: { cursor: 'pointer' }
+          })}
         />
       </TableCard>
+      
+      {/* 转账详情弹窗 */}
+      <Modal
+        title="转账详情"
+        open={detailVisible}
+        onCancel={handleCloseDetail}
+        width={1000}
+        footer={[
+          <Button key="close" onClick={handleCloseDetail}>
+            关闭
+          </Button>
+        ]}
+      >
+        {selectedRecord && (
+          <Row gutter={24}>
+            {/* 左侧：转账详细信息 */}
+            <Col span={12}>
+              <Descriptions title="转账信息" bordered column={1} size="small">
+                <Descriptions.Item label="转账ID">{selectedRecord.id}</Descriptions.Item>
+                <Descriptions.Item label="转出账户">
+                  {selectedRecord.account_email || selectedRecord.account_id}
+                </Descriptions.Item>
+                <Descriptions.Item label="目标类型">
+                  <Tag color="blue">
+                    {selectedRecord.contact_type === 'email' ? '邮箱' : 
+                     selectedRecord.contact_type === 'uid' ? 'UID' : 
+                     selectedRecord.contact_type}
+                  </Tag>
+                  {selectedRecord.original_contact_type && selectedRecord.original_contact_type !== selectedRecord.contact_type && (
+                    <Tag color="orange" style={{ marginLeft: 8 }}>
+                      原始类型: {selectedRecord.original_contact_type}
+                    </Tag>
+                  )}
+                </Descriptions.Item>
+                <Descriptions.Item label="目标标识">{selectedRecord.target_identifier}</Descriptions.Item>
+                
+                {selectedRecord.matched_account_email && (
+                  <Descriptions.Item label="匹配账户">
+                    {selectedRecord.matched_account_email}
+                  </Descriptions.Item>
+                )}
+                
+                <Descriptions.Item label="金额">
+                  <span style={{ color: '#52c41a', fontWeight: 'bold' }}>${selectedRecord.amount}</span>
+                </Descriptions.Item>
+                
+                <Descriptions.Item label="来源">
+                  <Tag color="purple">
+                    {selectedRecord.source === 'manual' ? '手动转账' : 
+                     selectedRecord.source === 'affiliate' ? 'Affiliate返利' : 
+                     selectedRecord.source === 'batch' ? '批量转账' : 
+                     selectedRecord.source === 'scheduled' ? '定时任务' : 
+                     selectedRecord.source}
+                  </Tag>
+                </Descriptions.Item>
+                
+                <Descriptions.Item label="状态">
+                  <Tag color={
+                    selectedRecord.status === 'completed' ? 'success' : 
+                    selectedRecord.status === 'pending' ? 'warning' : 
+                    selectedRecord.status === 'processing' ? 'processing' : 
+                    selectedRecord.status === 'failed' ? 'error' : 'default'
+                  }>
+                    {selectedRecord.status === 'completed' ? '完成' : 
+                     selectedRecord.status === 'pending' ? '待处理' : 
+                     selectedRecord.status === 'processing' ? '处理中' : 
+                     selectedRecord.status === 'failed' ? '失败' : 
+                     selectedRecord.status}
+                  </Tag>
+                </Descriptions.Item>
+                
+                <Descriptions.Item label="备注">{selectedRecord.remarks || '-'}</Descriptions.Item>
+                
+                <Descriptions.Item label="创建时间">
+                  {selectedRecord.created_at ? dayjs(selectedRecord.created_at).format('YYYY-MM-DD HH:mm:ss') : '-'}
+                </Descriptions.Item>
+                
+                <Descriptions.Item label="完成时间">
+                  {selectedRecord.completed_at ? dayjs(selectedRecord.completed_at).format('YYYY-MM-DD HH:mm:ss') : '-'}
+                </Descriptions.Item>
+              </Descriptions>
+            </Col>
+            
+            {/* 右侧：转账时间轴 */}
+            <Col span={12}>
+              <div style={{ height: 500, overflowY: 'auto', border: '1px solid #f0f0f0', padding: '8px 16px', borderRadius: '8px' }}>
+                <Typography.Title level={5}>转账进度时间轴</Typography.Title>
+                <TransferTimeline transferId={selectedRecord.id} />
+              </div>
+            </Col>
+          </Row>
+        )}
+      </Modal>
     </PageContainer>
   );
 };
