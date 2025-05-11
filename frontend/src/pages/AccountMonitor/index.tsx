@@ -2980,8 +2980,9 @@ const AccountMonitor: React.FC = () => {
                   <Button 
                     type="primary"
                     size="small"
+                    shape="circle"
                     icon={<UpOutlined />} 
-                    style={{ marginRight: 4 }}
+                    style={{ marginRight: 8 }}
                     disabled={index === 0}
                     onClick={() => {
                       const newOrder = [...columnOrder];
@@ -3004,6 +3005,7 @@ const AccountMonitor: React.FC = () => {
                   <Button 
                     type="primary"
                     size="small"
+                    shape="circle"
                     icon={<DownOutlined />} 
                     disabled={index === getVisibleColumns().length - 1}
                     onClick={() => {
