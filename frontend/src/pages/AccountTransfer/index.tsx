@@ -140,6 +140,7 @@ const AccountTransfer: React.FC = () => {
   const [timelineSourceId, setTimelineSourceId] = useState<string>('');
   const [timelineTargetId, setTimelineTargetId] = useState<string>('');
   const [timelineIsInternal, setTimelineIsInternal] = useState(true);
+  const [timelineTransferId, setTimelineTransferId] = useState<string | number | undefined>(undefined);
 
   // 按指定字段和顺序排序账户
   const sortAccounts = (accounts: any[], field: string, order: 'asc' | 'desc') => {
@@ -301,14 +302,6 @@ const AccountTransfer: React.FC = () => {
     const source = values.source || 'manual';
     const isForced = values.isForced || false;
     const remarks = values.memo || '';
-    
-    // 先显示转账记录时间轴
-    showTransferTimeline(
-      sourceAccountId, 
-      targetType === 'internal' ? targetIdentifier : undefined, 
-      targetType === 'internal'
-    );
-    
     // 然后发送转账请求
     setLoading(true);
     try {
@@ -339,17 +332,23 @@ const AccountTransfer: React.FC = () => {
           },
         });
         
-        // 立即刷新转账记录列表
-        setTimeout(() => {
-          // 延迟200ms刷新转账记录，确保后端数据已更新
-          if (showTimeline) {
-            // 通过强制重新设置sourceAccountId来触发TransferTimeline组件重新获取数据
-            setTimelineSourceId('');
-            setTimeout(() => {
-              setTimelineSourceId(sourceAccountId);
-            }, 50);
-          }
-        }, 200);
+        // 获取转账ID并显示该笔转账的历史记录
+        if (response.data && response.data.transferId) {
+          // 显示该笔转账的历史记录
+          showTransferTimeline(
+            sourceAccountId, 
+            targetType === 'internal' ? targetIdentifier : undefined, 
+            targetType === 'internal',
+            response.data.transferId
+          );
+        } else {
+          // 如果没有返回transferId，回退到显示账户的所有转账记录
+          showTransferTimeline(
+            sourceAccountId, 
+            targetType === 'internal' ? targetIdentifier : undefined, 
+            targetType === 'internal'
+          );
+        }
         
         form.resetFields();
       } else {
@@ -357,6 +356,16 @@ const AccountTransfer: React.FC = () => {
         if (response.data && response.data.require2FA) {
           // 保存转账ID
           setCurrentTransferId(response.data.transferId);
+          
+          // 如果需要2FA验证，也同时显示转账历史记录
+          if (response.data.transferId) {
+            showTransferTimeline(
+              sourceAccountId, 
+              targetType === 'internal' ? targetIdentifier : undefined, 
+              targetType === 'internal',
+              response.data.transferId
+            );
+          }
           
           // 检查是否启用了自动2FA验证
           const useAuto2FA = values.auto2FA || false;
@@ -379,13 +388,6 @@ const AccountTransfer: React.FC = () => {
             okText: '继续转账',
             cancelText: '取消',
             onOk: async () => {
-              // 先显示转账记录时间轴
-              showTransferTimeline(
-                sourceAccountId, 
-                targetType === 'internal' ? targetIdentifier : undefined, 
-                targetType === 'internal'
-              );
-              
               // 使用相同参数，但设置isForced为true
               setLoading(true);
               try {
@@ -405,6 +407,17 @@ const AccountTransfer: React.FC = () => {
                 
                 if (forceResponse.success) {
                   message.success('转账成功');
+                  
+                  // 获取转账ID并显示该笔转账的历史记录
+                  if (forceResponse.data && forceResponse.data.transferId) {
+                    showTransferTimeline(
+                      sourceAccountId, 
+                      targetType === 'internal' ? targetIdentifier : undefined, 
+                      targetType === 'internal',
+                      forceResponse.data.transferId
+                    );
+                  }
+                  
                   form.resetFields();
                 } else {
                   message.error(`转账失败: ${forceResponse.message || '未知错误'}`);
@@ -585,13 +598,20 @@ const AccountTransfer: React.FC = () => {
   // 关闭转账记录面板
   const handleTimelineClose = () => {
     setShowTimeline(false);
+    setTimelineTransferId(undefined);
   };
   
   // 显示转账记录面板
-  const showTransferTimeline = (sourceId: string, targetId?: string, isInternal: boolean = true) => {
+  const showTransferTimeline = (
+    sourceId: string, 
+    targetId?: string, 
+    isInternal: boolean = true,
+    transferId?: string | number
+  ) => {
     setTimelineSourceId(sourceId);
     setTimelineTargetId(targetId || '');
     setTimelineIsInternal(isInternal);
+    setTimelineTransferId(transferId);
     setShowTimeline(true);
   };
 
@@ -865,16 +885,17 @@ const AccountTransfer: React.FC = () => {
             </FormSection>
           </FormContainer>
           
-          {/* 转账记录时间轴面板 */}
-          <TimelineContainer visible={showTimeline}>
-            <TransferHistoryDetail 
-              visible={showTimeline}
-              sourceAccountId={timelineSourceId}
-              targetAccountId={timelineIsInternal ? timelineTargetId : undefined}
-              isInternal={timelineIsInternal}
-              onClose={handleTimelineClose}
-            />
-          </TimelineContainer>
+        {/* 转账记录时间轴面板 */}
+        <TimelineContainer visible={showTimeline}>
+          <TransferHistoryDetail 
+            visible={showTimeline}
+            transferId={timelineTransferId} // 优先使用transferId
+            sourceAccountId={!timelineTransferId ? timelineSourceId : undefined} // 只有在没有transferId时才使用sourceAccountId
+            targetAccountId={timelineIsInternal && !timelineTransferId ? timelineTargetId : undefined}
+            isInternal={timelineIsInternal}
+            onClose={handleTimelineClose}
+          />
+        </TimelineContainer>
         </SplitLayout>
       </GlassCard>
       
