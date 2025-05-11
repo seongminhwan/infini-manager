@@ -108,6 +108,10 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
   const [progressValue, setProgressValue] = useState<number>(100);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(30);
   const [isCopied, setIsCopied] = useState<boolean>(false);
+  // 本地生成的二维码数据URL
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  // 二维码加载状态
+  const [loadingQrCode, setLoadingQrCode] = useState<boolean>(false);
   
   // 编辑模式状态
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
@@ -185,6 +189,26 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
       });
   };
   
+  // 生成二维码
+  const generateQrCode = useCallback(async (input: string) => {
+    try {
+      if (!input) {
+        console.warn('无法生成二维码: 输入为空');
+        return;
+      }
+      
+      setLoadingQrCode(true);
+      const response = await totpToolApi.generateQrCode(input);
+      if (response.success && response.data) {
+        setQrCodeDataUrl(response.data.qrCode);
+      }
+    } catch (error) {
+      console.error('生成二维码失败:', error);
+    } finally {
+      setLoadingQrCode(false);
+    }
+  }, []);
+
   // 生成TOTP验证码
   const generateTotpCode = useCallback(async (input: string) => {
     try {
@@ -207,6 +231,11 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
     if (visible && secretKeyToUse) {
       // 立即生成一次验证码
       generateTotpCode(secretKeyToUse);
+      
+      // 如果还没有生成二维码，生成一次
+      if (!qrCodeDataUrl && qrCodeUrlToUse) {
+        generateQrCode(qrCodeUrlToUse);
+      }
       
       // 计算当前时间的秒数取余30，得出剩余秒数
       const now = new Date();
@@ -237,7 +266,7 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
       // 清除定时器
       return () => clearInterval(intervalId);
     }
-  }, [visible, secretKeyToUse, generateTotpCode, isEditMode, editData]);
+  }, [visible, secretKeyToUse, qrCodeUrlToUse, qrCodeDataUrl, generateTotpCode, generateQrCode, isEditMode, editData]);
   
   // 点击验证码复制
   const handleCopyCode = () => {
@@ -581,12 +610,26 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
                 <div>
                   <Title level={5} style={{ textAlign: 'center' }}>2FA二维码</Title>
                   <QrCodeContainer>
-                    {qrCodeUrlToUse ? (
+                    {loadingQrCode ? (
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: 200, height: 200 }}>
+                        <Spin tip="生成二维码中..." />
+                      </div>
+                    ) : qrCodeDataUrl ? (
                       <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeUrlToUse)}`}
+                        src={qrCodeDataUrl}
                         alt="2FA二维码"
                         style={{ maxWidth: '100%', height: 'auto' }}
                       />
+                    ) : qrCodeUrlToUse ? (
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: 200, height: 200 }}>
+                        <Button 
+                          type="primary" 
+                          onClick={() => generateQrCode(qrCodeUrlToUse)}
+                          icon={<QrcodeOutlined />}
+                        >
+                          生成二维码
+                        </Button>
+                      </div>
                     ) : (
                       <div style={{ 
                         width: 200, 
@@ -901,11 +944,42 @@ const TwoFaViewModal: React.FC<TwoFaViewModalProps> = props => {
             <div>
               <Title level={5} style={{ textAlign: 'center' }}>2FA二维码</Title>
               <QrCodeContainer>
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeUrlToUse)}`}
-                  alt="2FA二维码"
-                  style={{ maxWidth: '100%', height: 'auto' }}
-                />
+                {loadingQrCode ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: 200, height: 200 }}>
+                    <Spin tip="生成二维码中..." />
+                  </div>
+                ) : qrCodeDataUrl ? (
+                  <img 
+                    src={qrCodeDataUrl}
+                    alt="2FA二维码"
+                    style={{ maxWidth: '100%', height: 'auto' }}
+                  />
+                ) : qrCodeUrlToUse ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: 200, height: 200 }}>
+                    <Button 
+                      type="primary" 
+                      onClick={() => generateQrCode(qrCodeUrlToUse)}
+                      icon={<QrcodeOutlined />}
+                    >
+                      生成二维码
+                    </Button>
+                  </div>
+                ) : (
+                  <div style={{ 
+                    width: 200, 
+                    height: 200, 
+                    background: '#f5f5f5', 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center',
+                    flexDirection: 'column' 
+                  }}>
+                    <QrcodeOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
+                    <Text type="secondary" style={{ marginTop: 8 }}>
+                      无二维码信息
+                    </Text>
+                  </div>
+                )}
               </QrCodeContainer>
             </div>
             
