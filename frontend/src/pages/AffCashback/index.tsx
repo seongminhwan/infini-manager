@@ -856,7 +856,10 @@ const AffCashback: React.FC = () => {
 345678${delimiter}2023-03-10${delimiter}2${delimiter}2023-04-01`}
               onChange={(e) => {
                 // 实时保存到本地，避免丢失
-                localStorage.setItem('aff_text_data', e.target.value);
+                const text = e.target.value;
+                localStorage.setItem('aff_text_data', text);
+                // 更新预览
+                updatePreviewData(text, delimiter);
               }}
               defaultValue={localStorage.getItem('aff_text_data') || ''}
             />
