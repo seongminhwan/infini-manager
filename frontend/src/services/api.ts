@@ -472,6 +472,20 @@ export const totpToolApi = {
       console.error('生成TOTP验证码失败:', error);
       throw error;
     }
+  },
+  
+  // 生成TOTP二维码（本地生成，不使用外部API，避免密钥泄露）
+  generateQrCode: async (input: string, size: number = 200) => {
+    try {
+      const response = await api.post(`${apiBaseUrl}/api/totp-tools/qrcode`, { 
+        input,
+        size
+      });
+      return response.data;
+    } catch (error) {
+      console.error('生成TOTP二维码失败:', error);
+      throw error;
+    }
   }
 };
 
