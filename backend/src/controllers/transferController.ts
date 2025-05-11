@@ -4,6 +4,10 @@
  */
 import { Request, Response, NextFunction } from 'express';
 import { Transfer, TransferStatus, ApiResponse, ControllerMethod } from '../types';
+import { InfiniAccountService } from '../service/InfiniAccountService';
+
+// 创建InfiniAccountService实例
+const infiniAccountService = new InfiniAccountService();
 
 /**
  * 创建新的转账请求
@@ -57,6 +61,79 @@ export const createTransfer: ControllerMethod = async (req: Request, res: Respon
     };
     
     res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 执行Infini内部转账
+ * 支持内部账户ID或外部用户UID/Email作为目标
+ */
+export const executeInternalTransfer: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { 
+      accountId,        // 源账户ID（必填）
+      contactType,      // 联系人类型：uid或email（必填）
+      targetIdentifier, // 目标标识符：UID、Email或内部账户ID（必填）
+      amount,           // 转账金额，字符串格式（必填）
+      source,           // 来源（必填）
+      isForced,         // 是否强制执行（可选，默认false）
+      remarks           // 备注信息（可选）
+    } = req.body;
+
+    // 验证必填参数
+    if (!accountId || !contactType || !targetIdentifier || !amount || !source) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数'
+      });
+    }
+
+    // 验证contactType必须是uid或email
+    if (contactType !== 'uid' && contactType !== 'email') {
+      return res.status(400).json({
+        success: false,
+        message: 'contactType参数必须是"uid"或"email"'
+      });
+    }
+
+    // 调用服务执行内部转账
+    const response = await infiniAccountService.internalTransfer(
+      accountId,
+      contactType as 'uid' | 'email',
+      targetIdentifier,
+      amount.toString(), // 确保金额是字符串格式
+      source,
+      !!isForced,        // 转换为布尔值
+      remarks
+    );
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 提供2FA验证码继续转账流程
+ */
+export const continueTransferWith2FA: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { transferId, verificationCode } = req.body;
+
+    // 验证必填参数
+    if (!transferId || !verificationCode) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数'
+      });
+    }
+
+    // 调用服务继续转账流程
+    const response = await infiniAccountService.continueTransferWith2FA(transferId, verificationCode);
+
+    res.json(response);
   } catch (error) {
     next(error);
   }
