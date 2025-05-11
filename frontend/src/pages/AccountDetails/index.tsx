@@ -386,22 +386,42 @@ const AccountDetails: React.FC = () => {
           initialValues={{ status: '' }}
         >
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-            <Form.Item name="accountId" label="账户">
+            <Form.Item label="账户筛选" style={{ marginBottom: 0 }}>
+              <Space>
+                <Form.Item name="searchType" noStyle>
+                  <Select style={{ width: 120 }} defaultValue="account">
+                    <Option value="account">转出/转入</Option>
+                    <Option value="source">转出账户</Option>
+                    <Option value="target">转入账户</Option>
+                    <Option value="remarks">备注</Option>
+                  </Select>
+                </Form.Item>
+                <Form.Item name="keyword" noStyle>
+                  <Input
+                    style={{ width: 240 }}
+                    placeholder="输入账户ID/邮箱/UID..."
+                    allowClear
+                    list="accounts-list"
+                  />
+                </Form.Item>
+                <datalist id="accounts-list">
+                  {accounts.map(account => (
+                    <option key={account.id} value={account.email} />
+                  ))}
+                </datalist>
+              </Space>
+            </Form.Item>
+            
+            <Form.Item name="source" label="来源">
               <Select 
-                style={{ width: 240 }}
-                placeholder="选择账户" 
+                style={{ width: 150 }}
+                placeholder="转账来源" 
                 allowClear
-                showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) => 
-                  (option?.children as unknown as string)
-                    .toLowerCase()
-                    .indexOf(input.toLowerCase()) >= 0
-                }
               >
-                {accounts.map(account => (
-                  <Option key={account.id} value={account.id}>{account.email}</Option>
-                ))}
+                <Option value="manual">手动转账</Option>
+                <Option value="affiliate">Affiliate返利</Option>
+                <Option value="batch">批量转账</Option>
+                <Option value="scheduled">定时任务</Option>
               </Select>
             </Form.Item>
             
