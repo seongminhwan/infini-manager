@@ -11,6 +11,12 @@ import csv from 'csv-parser';
 import { Readable } from 'stream';
 import path from 'path';
 
+// 为csv-parser模块添加简单的类型定义
+declare module 'csv-parser' {
+  function csvParser(options?: any): NodeJS.ReadWriteStream;
+  export = csvParser;
+}
+
 // 创建InfiniAccountService实例
 const infiniAccountService = new InfiniAccountService();
 
@@ -1062,7 +1068,7 @@ async function parseCSVString(csvString: string): Promise<any[]> {
     
     stream
       .pipe(csv())
-      .on('data', (data) => {
+      .on('data', (data: Record<string, any>) => {
         // 处理CSV数据行
         // 期望的CSV格式: 序列号,infini uid,注册日期,开卡数量,开卡日期
         const sequenceNumber = data['序列号'] || data['sequence'] || data['序号'] || '';
@@ -1085,7 +1091,7 @@ async function parseCSVString(csvString: string): Promise<any[]> {
       .on('end', () => {
         resolve(results);
       })
-      .on('error', (error) => {
+      .on('error', (error: Error) => {
         reject(error);
       });
   });
