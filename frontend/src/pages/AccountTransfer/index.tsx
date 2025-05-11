@@ -272,10 +272,20 @@ const AccountTransfer: React.FC = () => {
                       placeholder="选择转出账户"
                       onChange={handleSourceChange}
                       loading={loadingAccounts}
+                      optionLabelProp="label"
                     >
                       {accounts.map(account => (
-                        <Option key={account.id} value={account.id}>
-                          {account.email} ({account.uid})
+                        <Option 
+                          key={account.id} 
+                          value={account.id}
+                          label={`${account.email} (${account.uid})`}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>{account.email} ({account.uid})</span>
+                            <span style={{ color: '#52c41a', fontWeight: 'bold' }}>
+                              ${account.availableBalance?.toFixed(2) || '0.00'}
+                            </span>
+                          </div>
                         </Option>
                       ))}
                     </Select>
@@ -288,6 +298,7 @@ const AccountTransfer: React.FC = () => {
                     <Input 
                       disabled
                       prefix="$"
+                      style={{ fontWeight: 'bold' }}
                     />
                   </Form.Item>
                 </Col>
@@ -317,10 +328,20 @@ const AccountTransfer: React.FC = () => {
                       <Select
                         placeholder="选择转入账户"
                         loading={loadingAccounts}
+                        optionLabelProp="label"
                       >
                         {accounts.map(account => (
-                          <Option key={account.id} value={account.id}>
-                            {account.email} ({account.uid})
+                          <Option 
+                            key={account.id} 
+                            value={account.id}
+                            label={`${account.email} (${account.uid})`}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>{account.email} ({account.uid})</span>
+                              <span style={{ color: '#52c41a', fontWeight: 'bold' }}>
+                                ${account.availableBalance?.toFixed(2) || '0.00'}
+                              </span>
+                            </div>
                           </Option>
                         ))}
                       </Select>
