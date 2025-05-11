@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, Table, Form, Select, DatePicker, Button, Input, Space, Typography, Tag, message } from 'antd';
 import { SearchOutlined, ReloadOutlined, ExportOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
-import { transferApi } from '../../services/api';
+import { infiniAccountApi, transferApi } from '../../services/api';
 import type { TablePaginationConfig } from 'antd/es/table';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
-import moment from 'moment';
+import dayjs from 'dayjs';
 
 const { Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -76,9 +76,9 @@ const AccountDetails: React.FC = () => {
   // 获取账户列表
   const fetchAccounts = async () => {
     try {
-      const response = await transferApi.getInfiniAccounts();
+      const response = await infiniAccountApi.getAllInfiniAccounts();
       if (response.success && response.data) {
-        setAccounts(response.data.map(account => ({
+        setAccounts(response.data.map((account: any) => ({
           id: account.id,
           email: account.email
         })));
@@ -167,8 +167,9 @@ const AccountDetails: React.FC = () => {
   // 处理表格变化
   const handleTableChange = (
     pagination: TablePaginationConfig,
-    filters: Record<string, FilterValue>,
-    sorter: SorterResult<TransferRecord>
+    filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<TransferRecord> | SorterResult<TransferRecord>[],
+    extra: any
   ) => {
     setTableParams({
       pagination,
@@ -320,7 +321,7 @@ const AccountDetails: React.FC = () => {
       key: 'created_at',
       width: 180,
       render: (text: string) => (
-        <span>{moment(text).format('YYYY-MM-DD HH:mm:ss')}</span>
+        <span>{text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '-'}</span>
       ),
     },
     {
@@ -329,7 +330,7 @@ const AccountDetails: React.FC = () => {
       key: 'completed_at',
       width: 180,
       render: (text: string) => (
-        <span>{text ? moment(text).format('YYYY-MM-DD HH:mm:ss') : '-'}</span>
+        <span>{text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '-'}</span>
       ),
     },
   ];
