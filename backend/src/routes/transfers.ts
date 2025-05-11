@@ -212,6 +212,45 @@ router.get('/:id', transferController.getTransferById);
 
 /**
  * @swagger
+ * /api/transfers/{id}/history:
+ *   get:
+ *     summary: 获取指定转账记录的历史记录
+ *     tags: [Transfers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: 转账记录ID
+ *     responses:
+ *       200:
+ *         description: 成功获取转账历史记录
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     transfer:
+ *                       type: object
+ *                       description: 转账记录基本信息
+ *                     histories:
+ *                       type: array
+ *                       description: 转账历史记录列表
+ *       404:
+ *         description: 转账记录不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.get('/:id/history', transferController.getTransferHistory);
+
+/**
+ * @swagger
  * /api/transfers/internal:
  *   post:
  *     summary: 执行Infini内部转账
