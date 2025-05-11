@@ -2982,6 +2982,11 @@ const AccountMonitor: React.FC = () => {
                     size="small"
                     shape="circle"
                     icon={<UpOutlined />} 
+                  <Button 
+                    type="primary"
+                    size="small"
+                    shape="circle"
+                    icon={<UpOutlined />} 
                     style={{ marginRight: 8 }}
                     disabled={index === 0}
                     onClick={() => {
@@ -3006,10 +3011,7 @@ const AccountMonitor: React.FC = () => {
                     type="primary"
                     size="small"
                     shape="circle"
-                    icon={<DownOutlined />} 
-                    disabled={index === getVisibleColumns().length - 1}
-                    onClick={() => {
-                      const newOrder = [...columnOrder];
+                    icon={<DownOutlined />}
                       // 如果columnOrder为空，先初始化
                       if (newOrder.length === 0) {
                         getVisibleColumns().forEach(col => {
