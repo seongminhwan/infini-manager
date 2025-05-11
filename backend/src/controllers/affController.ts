@@ -1170,11 +1170,19 @@ async function parseCSVString(csvString: string): Promise<any[]> {
 /**
  * 解析空格分隔文本
  */
-function parseSpaceSeparatedText(text: string): any[] {
+function parseSpaceSeparatedText(text: string, delimiter: string = ' ', fieldIndices?: any): any[] {
   const results: any[] = [];
   
   // 按行分割
   const lines = text.split('\n');
+  
+  // 设置默认字段索引
+  const indices = fieldIndices || {
+    uidIndex: 0,
+    registerDateIndex: 1,
+    cardCountIndex: 2,
+    cardDateIndex: 3
+  };
   
   // 处理每一行
   lines.forEach((line, index) => {
@@ -1183,29 +1191,52 @@ function parseSpaceSeparatedText(text: string): any[] {
       return;
     }
     
-    // 按空格分割字段
-    const fields = line.trim().split(/\s+/);
+    // 按指定分隔符分割字段
+    const fields = line.trim().split(delimiter);
     
     // 检查字段数量
     if (fields.length >= 1) {
-      // 提取UID（必须字段）
-      const infiniUid = fields[0];
+      // 从指定索引提取字段
+      const infiniUid = fields[indices.uidIndex] || '';
       
-      // 提取其他可选字段
-      const sequenceNumber = (index + 1).toString();
-      const registerDate = fields.length >= 2 ? fields[1] : '';
-      const cardCount = fields.length >= 3 ? parseInt(fields[2]) : 0;
-      const cardDate = fields.length >= 4 ? fields[3] : '';
-      
-      results.push({
-        sequenceNumber,
-        infiniUid,
-        registerDate,
-        cardCount,
-        cardDate
-      });
+      // 只有UID非空时才添加记录
+      if (infiniUid) {
+        const sequenceNumber = (index + 1).toString();
+        const registerDate = fields[indices.registerDateIndex] || '';
+        const cardCount = fields[indices.cardCountIndex] ? parseInt(fields[indices.cardCountIndex]) : 0;
+        const cardDate = fields[indices.cardDateIndex] || '';
+        
+        results.push({
+          sequenceNumber,
+          infiniUid,
+          registerDate,
+          cardCount,
+          cardDate
+        });
+      }
     }
   });
   
   return results;
 }
+
+/**
+ * 获取AFF返现批次的最大ID
+ */
+export const getMaxBatchId: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // 查询当前最大ID
+    const result = await db('infini_aff_cashbacks')
+      .max('id as maxId')
+      .first();
+    
+    const maxId = result ? (result.maxId || 0) : 0;
+    
+    return res.json({
+      success: true,
+      data: maxId
+    });
+  } catch (error) {
+    next(error);
+  }
+};
