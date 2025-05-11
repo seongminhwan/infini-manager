@@ -849,11 +849,38 @@ const AffCashback: React.FC = () => {
               {previewData.length > 0 && (
                 <div style={{ marginLeft: 16, flex: 1 }}>
                   <span>第一行预览: </span>
-                  {previewData.map((item, index) => (
-                    <Tag key={index} color="blue" style={{ margin: '0 4px' }}>
-                      {item || '<空>'}
-                    </Tag>
-                  ))}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', marginTop: 4 }}>
+                    {previewData.map((item, index) => {
+                      // 根据fieldIndices确定当前索引对应的字段名
+                      let fieldName = `字段${index + 1}`;
+                      if (index === fieldIndices.uidIndex) {
+                        fieldName = 'UID';
+                      } else if (index === fieldIndices.registerDateIndex) {
+                        fieldName = '注册日期';
+                      } else if (index === fieldIndices.cardCountIndex) {
+                        fieldName = '开卡数量';
+                      } else if (index === fieldIndices.cardDateIndex) {
+                        fieldName = '开卡日期';
+                      }
+                      
+                      return (
+                        <div key={index} style={{ 
+                          border: '1px solid #d9d9d9', 
+                          borderRadius: '4px', 
+                          padding: '4px 8px', 
+                          margin: '0 8px 8px 0',
+                          background: '#f0f0f0'
+                        }}>
+                          <div style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>
+                            {fieldName}:
+                          </div>
+                          <Tag color="blue" style={{ margin: 0 }}>
+                            {item || '<空>'}
+                          </Tag>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
