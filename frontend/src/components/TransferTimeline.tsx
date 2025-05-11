@@ -574,8 +574,8 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                     <Text>
                       <Text strong>目标:</Text> 
                       {historyData.transfer.targetAccount ? 
-                        `${historyData.transfer.targetAccount.email} (${historyData.transfer.targetAccount.uid})` : 
-                        `${historyData.transfer.contactType === 'email' ? '邮箱' : 'UID'}: ${historyData.transfer.targetIdentifier}`
+                        `${historyData.transfer.targetAccount.email || 'N/A'} (${historyData.transfer.targetAccount.uid || 'N/A'})` : 
+                        `${historyData.transfer.contactType === 'email' ? '邮箱' : 'UID'}: ${historyData.transfer.targetIdentifier || 'N/A'}`
                       }
                     </Text>
                   </div>
