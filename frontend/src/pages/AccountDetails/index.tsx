@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './styles.css';  // 导入样式文件
-import { Card, Table, Form, Select, DatePicker, Button, Input, Space, Typography, Tag, message, Modal, Row, Col, Descriptions } from 'antd';
+import { Card, Table, Form, Select, DatePicker, Button, Input, Space, Typography, Tag, message, Modal, Row, Col, Descriptions, Spin, Timeline, Empty } from 'antd';
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import TransferTimeline from '../../components/TransferTimeline';
 import styled from 'styled-components';
@@ -9,7 +9,7 @@ import type { TablePaginationConfig } from 'antd/es/table';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import dayjs from 'dayjs';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
