@@ -538,13 +538,21 @@ const AccountDetails: React.FC = () => {
       
       {/* 转账详情弹窗 */}
       <Modal
-        title="转账详情"
+        title={
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <span style={{ fontSize: '18px', fontWeight: 'bold', marginRight: '8px' }}>转账详情</span>
+            {selectedRecord && (
+              <Tag color="blue">ID: {selectedRecord.id}</Tag>
+            )}
+          </div>
+        }
         open={detailVisible}
         onCancel={handleCloseDetail}
         width={1200}
         style={{ top: 20 }}
+        bodyStyle={{ padding: '24px', backgroundColor: '#f9f9f9' }}
         footer={[
-          <Button key="close" onClick={handleCloseDetail}>
+          <Button key="close" onClick={handleCloseDetail} size="large">
             关闭
           </Button>
         ]}
