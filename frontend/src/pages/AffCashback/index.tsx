@@ -103,9 +103,47 @@ const AffCashback: React.FC = () => {
     cardDateIndex: 3
   });
   
-  // 加载账户列表
+  // 获取最大批次ID
+  const fetchMaxBatchId = async () => {
+    if (batchIdLoading) return;
+    
+    setBatchIdLoading(true);
+    try {
+      const res = await api.get(`${apiBaseUrl}/api/aff/cashbacks/max-id`);
+      if (res.data.success) {
+        setMaxBatchId(res.data.data || 0);
+      }
+    } catch (error) {
+      console.error('获取最大批次ID出错:', error);
+    } finally {
+      setBatchIdLoading(false);
+    }
+  };
+  
+  // 生成批次名称
+  const generateBatchName = () => {
+    // 格式化当前日期时间: yyyy-mm-dd-HH:mm:ss
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    
+    // 生成批次名称
+    const dateStr = `${year}-${month}-${day}-${hours}:${minutes}:${seconds}`;
+    const batchName = `${dateStr}-${maxBatchId + 1}`;
+    
+    // 自动填入表单
+    form.setFieldsValue({ batchName });
+  };
+  
+  // 加载账户列表和最大批次ID
   useEffect(() => {
-  const fetchAccounts = async () => {
+    fetchMaxBatchId();
+    
+    const fetchAccounts = async () => {
     try {
       const res = await api.get(`${apiBaseUrl}/api/infini-accounts`);
       if (res.data.success) {
