@@ -590,20 +590,41 @@ const AccountTransfer: React.FC = () => {
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item
-                    name="isForced"
-                    label={
-                      <span>
-                        强制执行 
-                        <Text type="secondary" style={{ marginLeft: 8 }}>
-                          <QuestionCircleOutlined /> 忽略风险警告
-                        </Text>
-                      </span>
-                    }
-                    valuePropName="checked"
-                  >
-                    <Switch />
-                  </Form.Item>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="isForced"
+                        label={
+                          <span>
+                            强制执行 
+                            <Text type="secondary" style={{ marginLeft: 8 }}>
+                              <QuestionCircleOutlined /> 忽略风险警告
+                            </Text>
+                          </span>
+                        }
+                        valuePropName="checked"
+                      >
+                        <Switch />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="auto2FA"
+                        label={
+                          <span>
+                            自动2FA验证
+                            <Text type="secondary" style={{ marginLeft: 8 }}>
+                              <QuestionCircleOutlined /> 自动获取验证码
+                            </Text>
+                          </span>
+                        }
+                        valuePropName="checked"
+                        initialValue={true}
+                      >
+                        <Switch defaultChecked />
+                      </Form.Item>
+                    </Col>
+                  </Row>
                 </Col>
               </Row>
               
