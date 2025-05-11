@@ -4,19 +4,16 @@ import { ConfigProvider, theme as antdTheme, message } from 'antd';
 import { ThemeProvider } from 'styled-components';
 import zhCN from 'antd/lib/locale/zh_CN';
 import AppRoutes from './routes';
+import WarningPage from './pages/WarningPage';
+import { lightTheme, darkTheme, GlobalStyle } from './styles/theme';
 
 // 配置全局message组件
 message.config({
   duration: 3, // 显示时间，单位秒
   maxCount: 3, // 最大显示数量
   top: 60, // 距离顶部的位置
-  getContainer: () => document.body, // 指定挂载的DOM节点
-  rtl: false, // 是否从右到左展示
-  // 提高z-index确保消息能够显示在其他元素之上
-  style: { zIndex: 9999 }
+  getContainer: () => document.body // 指定挂载的DOM节点
 });
-import WarningPage from './pages/WarningPage';
-import { lightTheme, darkTheme, GlobalStyle } from './styles/theme';
 import './App.css';
 
 const App: React.FC = () => {
