@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Select, Card, Typography, Row, Col, message, Radio, Switch, Modal, Spin, Collapse } from 'antd';
-import { SwapOutlined, SendOutlined, HistoryOutlined, QuestionCircleOutlined, FilterOutlined, SettingOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Select, Card, Typography, Row, Col, message, Radio, Switch, Modal, Spin, Dropdown, Menu } from 'antd';
+import { SwapOutlined, SendOutlined, HistoryOutlined, QuestionCircleOutlined, DownOutlined, CaretDownOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { infiniAccountApi, transferApi } from '../../services/api';
 
@@ -35,24 +35,23 @@ const ButtonGroup = styled.div`
   gap: 16px;
 `;
 
-// 高级搜索面板样式
-const FilterPanel = styled.div`
-  margin-top: 10px;
-  margin-bottom: 15px;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid #f0f0f0;
-  background: #fafafa;
+// 排序按钮样式
+const SortLabel = styled.span`
+  margin-left: 16px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.65);
 `;
 
-const SortButton = styled(Button)`
-  margin: 0 5px;
-  min-width: 80px;
-`;
-
-// 搜索按钮样式
-const AdvancedSearchButton = styled(Button)`
-  margin-left: 8px;
+const SortOption = styled.span`
+  cursor: pointer;
+  color: #1890ff;
+  font-weight: bold;
+  margin: 0 4px;
+  border-bottom: 1px dashed #1890ff;
+  
+  &:hover {
+    opacity: 0.8;
+  }
 `;
 
 // 转账来源选项
@@ -163,86 +162,50 @@ const AccountTransfer: React.FC = () => {
     return emailMatch || uidMatch || balanceMatch;
   };
   
-  // 高级搜索和排序状态
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  // 渲染排序字段菜单
+  const fieldMenu = (
+    <Menu
+      onClick={({key}) => handleSortFieldChange(key as 'balance' | 'email' | 'uid')}
+      selectedKeys={[sortField]}
+    >
+      <Menu.Item key="balance">余额</Menu.Item>
+      <Menu.Item key="email">邮箱</Menu.Item>
+      <Menu.Item key="uid">UID</Menu.Item>
+    </Menu>
+  );
   
-  // 切换高级搜索面板显示状态
-  const toggleFilterPanel = () => {
-    setShowFilterPanel(!showFilterPanel);
-  };
+  // 渲染排序顺序菜单
+  const orderMenu = (
+    <Menu
+      onClick={({key}) => handleSortOrderChange(key as 'asc' | 'desc')}
+      selectedKeys={[sortOrder]}
+    >
+      <Menu.Item key="asc">升序</Menu.Item>
+      <Menu.Item key="desc">降序</Menu.Item>
+    </Menu>
+  );
   
-  // 渲染高级搜索面板
-  const renderFilterPanel = () => {
-    if (!showFilterPanel) return null;
+  // 渲染排序标签
+  const renderSortLabel = () => {
+    if (loadingAccounts || accounts.length === 0) return null;
     
     return (
-      <FilterPanel>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Title level={5} style={{ margin: 0 }}><FilterOutlined /> 账户高级筛选</Title>
-              <Text type="secondary">
-                当前: 按
-                <Text strong style={{ color: '#1890ff', margin: '0 4px' }}>
-                  {sortField === 'balance' ? '余额' : (sortField === 'email' ? '邮箱' : 'UID')}
-                </Text>
-                <Text strong style={{ color: '#1890ff', margin: '0 4px' }}>
-                  {sortOrder === 'asc' ? '升序' : '降序'}
-                </Text>
-                排列
-              </Text>
-            </div>
-          </Col>
-          
-          <Col span={12}>
-            <div>
-              <Text strong>排序字段：</Text>
-              <div style={{ marginTop: 8 }}>
-                <SortButton 
-                  type={sortField === 'balance' ? 'primary' : 'default'}
-                  onClick={() => handleSortFieldChange('balance')}
-                >
-                  余额
-                </SortButton>
-                <SortButton 
-                  type={sortField === 'email' ? 'primary' : 'default'}
-                  onClick={() => handleSortFieldChange('email')}
-                >
-                  邮箱
-                </SortButton>
-                <SortButton 
-                  type={sortField === 'uid' ? 'primary' : 'default'}
-                  onClick={() => handleSortFieldChange('uid')}
-                >
-                  UID
-                </SortButton>
-              </div>
-            </div>
-          </Col>
-          
-          <Col span={12}>
-            <div>
-              <Text strong>排序方式：</Text>
-              <div style={{ marginTop: 8 }}>
-                <SortButton 
-                  type={sortOrder === 'asc' ? 'primary' : 'default'}
-                  onClick={() => handleSortOrderChange('asc')}
-                  icon={<SwapOutlined style={{ transform: 'rotate(90deg)' }} />}
-                >
-                  升序
-                </SortButton>
-                <SortButton 
-                  type={sortOrder === 'desc' ? 'primary' : 'default'}
-                  onClick={() => handleSortOrderChange('desc')}
-                  icon={<SwapOutlined style={{ transform: 'rotate(-90deg)' }} />}
-                >
-                  降序
-                </SortButton>
-              </div>
-            </div>
-          </Col>
-        </Row>
-      </FilterPanel>
+      <SortLabel>
+        按 
+        <Dropdown overlay={fieldMenu} trigger={['click']}>
+          <SortOption>
+            {sortField === 'balance' ? '余额' : (sortField === 'email' ? '邮箱' : 'UID')}
+            <CaretDownOutlined style={{ fontSize: '12px', marginLeft: '2px' }} />
+          </SortOption>
+        </Dropdown>
+        <Dropdown overlay={orderMenu} trigger={['click']}>
+          <SortOption>
+            {sortOrder === 'asc' ? '升序' : '降序'}
+            <CaretDownOutlined style={{ fontSize: '12px', marginLeft: '2px' }} />
+          </SortOption>
+        </Dropdown>
+        排列
+      </SortLabel>
     );
   };
   // 处理转账提交
@@ -429,16 +392,7 @@ const AccountTransfer: React.FC = () => {
                     label={
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         <span>源账户</span>
-                        {!loadingAccounts && accounts.length > 0 && (
-                          <AdvancedSearchButton 
-                            type="link" 
-                            icon={<SettingOutlined />} 
-                            onClick={toggleFilterPanel}
-                            size="small"
-                          >
-                            高级搜索
-                          </AdvancedSearchButton>
-                        )}
+                        {renderSortLabel()}
                       </div>
                     }
                     rules={[{ required: true, message: '请选择源账户' }]}
@@ -471,8 +425,6 @@ const AccountTransfer: React.FC = () => {
                     </Select>
                   </Form.Item>
                   
-                  {/* 高级搜索面板 */}
-                  {!loadingAccounts && accounts.length > 0 && renderFilterPanel()}
                   
                   <Form.Item
                     name="sourceBalance"
