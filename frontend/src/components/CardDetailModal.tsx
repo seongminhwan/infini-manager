@@ -35,8 +35,7 @@ import {
   QrcodeOutlined,
   FieldTimeOutlined
 } from '@ant-design/icons';
-import axios from 'axios';
-import { apiBaseUrl, totpToolApi } from '../services/api';
+import { api, apiBaseUrl, totpToolApi } from '../services/api';
 import styled from 'styled-components';
 
 const { Title, Text } = Typography;
@@ -205,7 +204,7 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
       setTwoFaFetchAttempted(true);
       
       // 从账户详情API获取2FA信息
-      const response = await axios.get(`${apiBaseUrl}/api/infini-accounts/${accountId}`);
+      const response = await api.get(`${apiBaseUrl}/api/infini-accounts/${accountId}`);
       
       if (response.data.success && response.data.data) {
         const accountData = response.data.data;
@@ -363,7 +362,7 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
     try {
       setLoading(true);
       
-      const response = await axios.get(`${apiBaseUrl}/api/infini-cards/detail`, {
+      const response = await api.get(`${apiBaseUrl}/api/infini-cards/detail`, {
         params: {
           accountId,
           cardId
@@ -391,7 +390,7 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
       message.loading('正在刷新卡片信息...');
       
       // 调用同步卡片信息接口
-      const response = await axios.post(`${apiBaseUrl}/api/infini-cards/sync`, {
+      const response = await api.post(`${apiBaseUrl}/api/infini-cards/sync`, {
         accountId
       });
       
