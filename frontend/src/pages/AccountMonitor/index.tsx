@@ -3045,7 +3045,11 @@ const AccountMonitor: React.FC = () => {
   const copyToClipboard = (text: string, messageText: string = '已复制到剪贴板') => {
     navigator.clipboard.writeText(text)
       .then(() => {
-        message.success(messageText);
+        message.success({
+          content: messageText,
+          icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+          duration: 2
+        });
       })
       .catch(err => {
         console.error('复制失败:', err);
