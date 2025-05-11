@@ -82,7 +82,7 @@ export const transferApi = {
   // 执行内部转账 - 支持所有转账场景，包括2FA验证
   executeInternalTransfer: async (
     accountId: string,
-    contactType: 'uid' | 'email',
+    contactType: 'uid' | 'email' | 'inner',
     targetIdentifier: string,
     amount: string,
     source: string,
