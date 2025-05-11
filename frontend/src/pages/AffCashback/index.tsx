@@ -91,6 +91,8 @@ const AffCashback: React.FC = () => {
   const [batchAmountModalVisible, setBatchAmountModalVisible] = useState<boolean>(false);
   const [batchAmount, setBatchAmount] = useState<number>(5.6);
   const [delimiter, setDelimiter] = useState<string>(' '); // 默认分隔符为空格
+  const [delimiterType, setDelimiterType] = useState<string>('space'); // 分隔符类型：space, comma, custom
+  const [previewData, setPreviewData] = useState<string[]>([]); // 预览数据
   const [showAdvancedConfig, setShowAdvancedConfig] = useState<boolean>(false);
   const [fieldIndices, setFieldIndices] = useState<any>({
     uidIndex: 0,
