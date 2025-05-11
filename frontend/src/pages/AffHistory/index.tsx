@@ -534,9 +534,33 @@ const AffHistory: React.FC = () => {
     );
   };
 
+  // 关闭AFF返现批次
+  const handleCloseCashback = async () => {
+    if (!currentCashback) return;
+    
+    setLoading(true);
+    try {
+      const res = await api.post(`${apiBaseUrl}/api/aff/cashbacks/${currentCashback.id}/close`);
+      
+      if (res.data.success) {
+        message.success('AFF返现批次已成功关闭');
+        // 刷新批次详情和批次列表
+        fetchCashbackDetail(currentCashback.id);
+        fetchCashbacks();
+      } else {
+        message.error(`关闭批次失败: ${res.data.message}`);
+      }
+    } catch (error) {
+      console.error('关闭AFF返现批次失败', error);
+      message.error('操作失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div>
-      <Title level={3}>AFF返现记录表</Title>
+      <Title level={3}>AFF历史记录</Title>
       
       <Card>
         <Table
@@ -571,6 +595,11 @@ const AffHistory: React.FC = () => {
         onCancel={() => setDetailModalVisible(false)}
         width={1000}
         footer={[
+          ...(currentCashback && ['pending', 'processing'].includes(currentCashback.status) ? [
+            <Button key="close_batch" type="primary" danger onClick={handleCloseCashback} loading={loading}>
+              关闭批次
+            </Button>
+          ] : []),
           <Button key="close" onClick={() => setDetailModalVisible(false)}>
             关闭
           </Button>
