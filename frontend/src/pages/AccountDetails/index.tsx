@@ -811,7 +811,7 @@ const AccountDetails: React.FC = () => {
                                   </Text>
                                 </div>
                                 <Text type="secondary">
-                                  {formatDateTime(history.created_at)}
+                                  {formatDateTime(history.createdAt)}
                                 </Text>
                               </div>
                               
