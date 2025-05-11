@@ -160,8 +160,8 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
         if (hasReachedFinalState(histories)) {
           // 找出所有最终状态记录
           const finalStates = histories
-            .filter(h => h.status === 'completed' || h.status === 'failed')
-            .map(h => h.status);
+            .filter((h: any) => h.status === 'completed' || h.status === 'failed')
+            .map((h: any) => h.status);
           
           console.log(`检测到转账ID ${id} 已达到最终态: ${finalStates.join(', ')}`);
           console.log('停止所有后续轮询和请求');
