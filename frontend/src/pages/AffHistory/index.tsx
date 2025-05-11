@@ -19,7 +19,8 @@ import {
   Row,
   Col,
   Divider,
-  Drawer
+  Drawer,
+  message
 } from 'antd';
 import { SearchOutlined, FileSearchOutlined, HistoryOutlined } from '@ant-design/icons';
 import TransferHistoryDetail from '../../components/TransferHistoryDetail';
