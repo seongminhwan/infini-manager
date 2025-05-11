@@ -2515,7 +2515,10 @@ const AccountMonitor: React.FC = () => {
       ),
       render: (text: string) => (
         <Tooltip title={text}>
-          <strong>{text}</strong>
+          <div style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(text)}>
+            <strong>{text}</strong>
+            <CopyOutlined style={{ marginLeft: 8 }} />
+          </div>
         </Tooltip>
       )
     },
