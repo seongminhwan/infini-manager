@@ -29,13 +29,22 @@ const TimelineContainer = styled.div`
   display: flex;
   flex-direction: column;
   padding: 0 16px;
+  background-color: #fafafa;
+  border-radius: 8px;
 `;
 
 const TimelineCard = styled(Card)`
   cursor: pointer;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid #f0f0f0;
+  
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    border-color: #e6f7ff;
+  }
 `;
 
 const HistoryModalContent = styled.div`
