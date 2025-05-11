@@ -784,6 +784,7 @@ const AccountTransfer: React.FC = () => {
           {/* 转账记录时间轴面板 */}
           <TimelineContainer visible={showTimeline}>
             <TransferTimeline 
+              visible={showTimeline}
               sourceAccountId={timelineSourceId}
               targetAccountId={timelineIsInternal ? timelineTargetId : undefined}
               isInternal={timelineIsInternal}
