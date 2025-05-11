@@ -95,7 +95,7 @@ const AffCashback: React.FC = () => {
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
-        const res = await api.get('/api/infini-accounts');
+        const res = await api.get(`/api/infini-accounts`);
         if (res.data.success) {
           // 按余额降序排序账户列表
           const sortedAccounts = [...res.data.data].sort((a, b) => b.balance - a.balance);
@@ -113,7 +113,7 @@ const AffCashback: React.FC = () => {
   const handleCreateBatch = async (values: any) => {
     setLoading(true);
     try {
-      const res = await api.post('/api/aff/cashbacks', {
+      const res = await api.post(`/api/aff/cashbacks`, {
         accountId: values.accountId,
         batchName: values.batchName,
         defaultAmount: values.defaultAmount || 5.6,
