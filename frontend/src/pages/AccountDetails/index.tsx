@@ -471,14 +471,6 @@ const AccountDetails: React.FC = () => {
                 </Form.Item>
               </Space>
             </Form.Item>
-            
-            <Form.Item name="keyword" label="关键字搜索">
-              <Input 
-                style={{ width: 200 }}
-                placeholder="ID/邮箱/UID..."
-                allowClear
-              />
-            </Form.Item>
           </div>
           
           <div style={{ textAlign: 'right' }}>
