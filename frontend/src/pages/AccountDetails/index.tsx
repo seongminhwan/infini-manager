@@ -531,8 +531,14 @@ const AccountDetails: React.FC = () => {
           scroll={{ x: 1500 }}
           onRow={(record) => ({
             onClick: () => handleRowClick(record),
-            style: { cursor: 'pointer' }
+            style: { 
+              cursor: 'pointer', 
+              transition: 'all 0.3s ease'
+            },
+            className: 'custom-table-row'
           })}
+          rowClassName={(record) => 'transfer-row'}
+          className="account-details-table"
         />
       </TableCard>
       
