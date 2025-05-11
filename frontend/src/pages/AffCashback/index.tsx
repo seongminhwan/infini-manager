@@ -712,19 +712,76 @@ const AffCashback: React.FC = () => {
         
         <Divider />
         
-        <Title level={5}>方式二：输入空格分隔文本</Title>
+        <Title level={5}>方式二：输入分隔文本</Title>
         <Paragraph>
-          请输入空格分隔的文本，每行一条记录，格式：uid 注册日期 开卡数量 开卡日期
+          请输入分隔的文本，每行一条记录，默认使用空格分隔，格式：uid 注册日期 开卡数量 开卡日期
         </Paragraph>
         
         <Form layout="vertical">
+          <Form.Item label="分隔符">
+            <Input 
+              placeholder="请输入分隔符，默认为空格" 
+              value={delimiter} 
+              onChange={e => setDelimiter(e.target.value || ' ')}
+              style={{ width: 200 }}
+              addonBefore="使用"
+              addonAfter="作为分隔符"
+            />
+          </Form.Item>
+          
+          <Button 
+            type="link" 
+            onClick={() => setShowAdvancedConfig(!showAdvancedConfig)}
+            style={{ padding: '0 0 16px 0' }}
+          >
+            {showAdvancedConfig ? '隐藏高级配置' : '显示高级配置'}
+          </Button>
+          
+          {showAdvancedConfig && (
+            <div style={{ background: '#f5f5f5', padding: 16, borderRadius: 4, marginBottom: 16 }}>
+              <Paragraph>
+                <strong>高级配置：</strong>指定字段在分隔后的位置索引（从0开始计数）
+              </Paragraph>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                <Form.Item label="UID索引" style={{ marginBottom: 8, minWidth: 150 }}>
+                  <InputNumber 
+                    min={0} 
+                    value={fieldIndices.uidIndex} 
+                    onChange={val => setFieldIndices({...fieldIndices, uidIndex: val !== null ? val : 0})}
+                  />
+                </Form.Item>
+                <Form.Item label="注册日期索引" style={{ marginBottom: 8, minWidth: 150 }}>
+                  <InputNumber 
+                    min={0} 
+                    value={fieldIndices.registerDateIndex} 
+                    onChange={val => setFieldIndices({...fieldIndices, registerDateIndex: val !== null ? val : 1})}
+                  />
+                </Form.Item>
+                <Form.Item label="开卡数量索引" style={{ marginBottom: 8, minWidth: 150 }}>
+                  <InputNumber 
+                    min={0} 
+                    value={fieldIndices.cardCountIndex} 
+                    onChange={val => setFieldIndices({...fieldIndices, cardCountIndex: val !== null ? val : 2})}
+                  />
+                </Form.Item>
+                <Form.Item label="开卡日期索引" style={{ marginBottom: 8, minWidth: 150 }}>
+                  <InputNumber 
+                    min={0} 
+                    value={fieldIndices.cardDateIndex} 
+                    onChange={val => setFieldIndices({...fieldIndices, cardDateIndex: val !== null ? val : 3})}
+                  />
+                </Form.Item>
+              </div>
+            </div>
+          )}
+          
           <Form.Item>
             <TextArea
               rows={6}
-              placeholder="输入格式示例：
-123456 2023-01-01 1 2023-02-01
-789012 2023-02-15 0 
-345678 2023-03-10 2 2023-04-01"
+              placeholder={`输入格式示例（使用${delimiter || '空格'}分隔）：
+123456${delimiter}2023-01-01${delimiter}1${delimiter}2023-02-01
+789012${delimiter}2023-02-15${delimiter}0
+345678${delimiter}2023-03-10${delimiter}2${delimiter}2023-04-01`}
               onChange={(e) => {
                 // 实时保存到本地，避免丢失
                 localStorage.setItem('aff_text_data', e.target.value);
@@ -739,7 +796,7 @@ const AffCashback: React.FC = () => {
               loading={loading}
               onClick={() => {
                 const text = localStorage.getItem('aff_text_data') || '';
-                parseText(text);
+                parseText(text, delimiter, fieldIndices);
                 // 成功后清除本地存储
                 if (!loading) {
                   localStorage.removeItem('aff_text_data');
