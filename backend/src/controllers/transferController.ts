@@ -226,3 +226,27 @@ export const getTransferById: ControllerMethod = async (req: Request, res: Respo
     next(error);
   }
 };
+
+/**
+ * 获取转账历史记录
+ * 返回指定转账ID的完整历史记录，包括状态变化和详细信息
+ */
+export const getTransferHistory: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少转账ID参数'
+      });
+    }
+    
+    // 调用服务获取转账历史记录
+    const response = await infiniAccountService.getTransferHistory(id);
+    
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
