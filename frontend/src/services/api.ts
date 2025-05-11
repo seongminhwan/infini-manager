@@ -87,10 +87,11 @@ export const transferApi = {
     amount: string,
     source: string,
     isForced: boolean = false,
-    remarks?: string
+    remarks?: string,
+    auto2FA: boolean = false
   ) => {
     try {
-      console.log(`执行内部转账，源账户ID: ${accountId}, 目标: ${contactType}:${targetIdentifier}, 金额: ${amount}`);
+      console.log(`执行内部转账，源账户ID: ${accountId}, 目标: ${contactType}:${targetIdentifier}, 金额: ${amount}, 自动2FA: ${auto2FA}`);
       const response = await api.post(`${apiBaseUrl}/api/transfers/internal`, {
         accountId,
         contactType,
@@ -98,7 +99,8 @@ export const transferApi = {
         amount,       // 使用字符串格式传递金额
         source,
         isForced,
-        remarks
+        remarks,
+        auto2FA       // 添加auto2FA参数
       });
       return response.data;
     } catch (error) {
