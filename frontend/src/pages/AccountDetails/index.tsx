@@ -539,12 +539,13 @@ const AccountDetails: React.FC = () => {
             className: 'custom-table-row'
           })}
           rowClassName={(record) => 'transfer-row'}
-          className="account-details-table"
+        className="account-details-table transfer-table"
         />
       </TableCard>
       
       {/* 转账详情弹窗 */}
       <Modal
+        className="transfer-detail-modal"
         title={
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <span style={{ fontSize: '18px', fontWeight: 'bold', marginRight: '8px' }}>转账详情</span>
