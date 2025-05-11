@@ -18,7 +18,7 @@ const api: AxiosInstance = axios.create({
 });
 
 // API基础URL
-const apiBaseUrl = 'http://localhost:33202';
+const apiBaseUrl = 'http://localhost:33201';
 
 /**
  * 配置API服务
