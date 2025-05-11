@@ -2525,7 +2525,7 @@ const AccountMonitor: React.FC = () => {
     {
       title: '用户ID',
       dataIndex: 'uid',
-      key: 'uid',
+      key: 'userId',
       width: 240,
       ellipsis: true,
       render: (text: string) => (
