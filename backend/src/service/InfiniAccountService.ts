@@ -3729,6 +3729,16 @@ export class InfiniAccountService {
       });
 
       console.log(`创建预转账记录成功，ID: ${transferId}`);
+      
+      // 添加转账历史记录 - 初始状态
+      await this.addTransferHistory(transferId, 'pending', '转账请求已创建', {
+        accountId,
+        contactType,
+        targetIdentifier,
+        amount,
+        source,
+        remarks
+      });
 
       // 获取有效Cookie
       const cookie = await this.getCookieForAccount(account, '执行内部转账失败，');
@@ -3751,14 +3761,13 @@ export class InfiniAccountService {
         amount
       };
 
-      // 记录请求数据
-      await db('infini_transfers')
-        .where('id', transferId)
-        .update({
-          request_data: JSON.stringify(requestData),
-          status: 'processing',
-          updated_at: new Date()
-        });
+      // 记录请求数据并更新状态为processing
+      await this.updateTransferStatus(transferId, 'processing', undefined, JSON.stringify(requestData));
+      
+      // 添加转账历史记录 - 处理中状态
+      await this.addTransferHistory(transferId, 'processing', '正在处理转账请求', {
+        requestData
+      });
 
       // 调用Infini API执行转账
       console.log(`正在调用Infini内部转账API，请求数据:`, requestData);
@@ -3792,10 +3801,20 @@ export class InfiniAccountService {
         });
 
       console.log(`Infini内部转账API响应:`, response.data);
+      
+      // 添加转账历史记录 - API响应
+      await this.addTransferHistory(transferId, 'processing', 'Infini API响应已接收', {
+        apiResponse: response.data
+      });
 
       // 处理响应
       if (response.data.code === 0) {
         await this.updateTransferStatus(transferId, 'completed');
+        
+        // 添加转账历史记录 - 完成状态
+        await this.addTransferHistory(transferId, 'completed', '转账已完成', {
+          result: response.data.data
+        });
 
         // 同步账户信息以获取最新余额
         // const syncResult = await this.syncInfiniAccount(accountId);
@@ -3809,15 +3828,17 @@ export class InfiniAccountService {
           message: '内部转账成功'
         };
       } else {
-        await this.updateTransferStatus(
-          transferId,
-          'failed',
-          response.data.message || '转账失败，API返回错误'
-        );
+        const errorMessage = response.data.message || '转账失败，API返回错误';
+        await this.updateTransferStatus(transferId, 'failed', errorMessage);
+        
+        // 添加转账历史记录 - 失败状态
+        await this.addTransferHistory(transferId, 'failed', `转账失败: ${errorMessage}`, {
+          error: response.data
+        });
 
         return {
           success: false,
-          message: `内部转账失败: ${response.data.message || '未知错误'}`
+          message: `内部转账失败: ${errorMessage}`
         };
       }
     } catch (error) {
@@ -3868,11 +3889,13 @@ export class InfiniAccountService {
    * @param transferId 转账ID
    * @param status 新状态
    * @param errorMessage 错误信息（可选）
+   * @param requestData 请求数据（可选）
    */
   private async updateTransferStatus(
     transferId: number | string,
     status: 'pending' | 'processing' | 'completed' | 'failed',
-    errorMessage?: string
+    errorMessage?: string,
+    requestData?: string
   ): Promise<void> {
     const updateData: Record<string, any> = {
       status,
@@ -3881,6 +3904,10 @@ export class InfiniAccountService {
 
     if (errorMessage) {
       updateData.error_message = errorMessage;
+    }
+
+    if (requestData) {
+      updateData.request_data = requestData;
     }
 
     if (status === 'completed') {
@@ -3892,6 +3919,111 @@ export class InfiniAccountService {
       .update(updateData);
 
     console.log(`已更新转账记录 ${transferId} 的状态为 ${status}`);
+  }
+  
+  /**
+   * 添加转账历史记录
+   * @param transferId 转账ID
+   * @param status 状态
+   * @param message 消息描述
+   * @param details 详细信息（可选，将转换为JSON字符串）
+   */
+  private async addTransferHistory(
+    transferId: number | string,
+    status: 'pending' | 'processing' | 'completed' | 'failed',
+    message: string,
+    details?: any
+  ): Promise<number> {
+    try {
+      console.log(`添加转账历史记录，转账ID: ${transferId}, 状态: ${status}, 消息: ${message}`);
+      
+      // 将details转换为JSON字符串
+      const detailsJson = details ? JSON.stringify(details) : null;
+      
+      // 插入历史记录
+      const [historyId] = await db('infini_transfer_histories').insert({
+        transfer_id: transferId,
+        status,
+        message,
+        details: detailsJson,
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+      
+      console.log(`成功添加转账历史记录，ID: ${historyId}`);
+      return historyId;
+    } catch (error) {
+      console.error(`添加转账历史记录失败:`, error);
+      // 历史记录添加失败不应影响主流程，因此只记录错误
+      return 0;
+    }
+  }
+  
+  /**
+   * 获取转账历史记录
+   * @param transferId 转账ID
+   * @returns 包含历史记录的响应对象
+   */
+  async getTransferHistory(transferId: string): Promise<ApiResponse> {
+    try {
+      console.log(`获取转账历史记录，转账ID: ${transferId}`);
+      
+      // 查询转账记录是否存在
+      const transfer = await db('infini_transfers')
+        .where('id', transferId)
+        .first();
+      
+      if (!transfer) {
+        return {
+          success: false,
+          message: '找不到指定的转账记录'
+        };
+      }
+      
+      // 查询历史记录
+      const histories = await db('infini_transfer_histories')
+        .where('transfer_id', transferId)
+        .orderBy('created_at', 'asc') // 按时间升序，展示完整流程
+        .select('*');
+      
+      console.log(`找到${histories.length}条转账历史记录`);
+      
+      // 处理历史记录中的JSON字段
+      const formattedHistories = histories.map(history => ({
+        id: history.id,
+        transferId: history.transfer_id,
+        status: history.status,
+        message: history.message,
+        details: history.details ? JSON.parse(history.details) : null,
+        createdAt: history.created_at
+      }));
+      
+      return {
+        success: true,
+        data: {
+          transfer: {
+            id: transfer.id,
+            accountId: transfer.account_id,
+            contactType: transfer.contact_type,
+            targetIdentifier: transfer.target_identifier,
+            amount: transfer.amount,
+            source: transfer.source,
+            status: transfer.status,
+            remarks: transfer.remarks,
+            createdAt: transfer.created_at,
+            completedAt: transfer.completed_at
+          },
+          histories: formattedHistories
+        },
+        message: '成功获取转账历史记录'
+      };
+    } catch (error) {
+      console.error('获取转账历史记录失败:', error);
+      return {
+        success: false,
+        message: `获取转账历史记录失败: ${(error as Error).message}`
+      };
+    }
   }
 
   // 移除了continueTransferWith2FA和autoGet2FAAndCompleteTransfer方法，
