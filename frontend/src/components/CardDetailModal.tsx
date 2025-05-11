@@ -180,6 +180,10 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
   const [isCopied, setIsCopied] = useState<boolean>(false);
   // 是否已尝试加载2FA信息
   const [twoFaFetchAttempted, setTwoFaFetchAttempted] = useState<boolean>(false);
+  // 本地生成的二维码数据URL
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  // 是否正在加载二维码
+  const [loadingQrCode, setLoadingQrCode] = useState<boolean>(false);
   
   // 切换详细视图模式
   const toggleDetailMode = () => {
@@ -218,6 +222,12 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
           // 如果有密钥，开始生成验证码
           if (accountData.twoFaInfo.secretKey) {
             generateTotpCode(accountData.twoFaInfo.secretKey);
+            // 生成二维码
+            const inputData = accountData.twoFaInfo.qrCodeUrl || 
+              (accountData.twoFaInfo.secretKey ? generateTotpUri(accountData.twoFaInfo.secretKey) : '');
+            if (inputData) {
+              generateQrCode(inputData);
+            }
           }
         } else {
           // 账户没有2FA信息或未绑定2FA
@@ -240,6 +250,26 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
     }
   };
   
+  // 生成二维码
+  const generateQrCode = useCallback(async (input: string) => {
+    try {
+      if (!input) {
+        console.warn('无法生成二维码: 输入为空');
+        return;
+      }
+      
+      setLoadingQrCode(true);
+      const response = await totpToolApi.generateQrCode(input);
+      if (response.success && response.data) {
+        setQrCodeDataUrl(response.data.qrCode);
+      }
+    } catch (error) {
+      console.error('生成二维码失败:', error);
+    } finally {
+      setLoadingQrCode(false);
+    }
+  }, []);
+
   // 生成TOTP验证码
   const generateTotpCode = useCallback(async (input: string) => {
     try {
@@ -262,6 +292,12 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
     if (visible && detailMode && twoFaInfo?.secretKey) {
       // 立即生成一次验证码
       generateTotpCode(twoFaInfo.secretKey);
+      
+      // 如果还没有生成二维码，生成一次
+      if (!qrCodeDataUrl) {
+        const inputData = twoFaInfo.qrCodeUrl || generateTotpUri(twoFaInfo.secretKey);
+        generateQrCode(inputData);
+      }
       
       // 计算当前时间的秒数取余30，得出剩余秒数
       const now = new Date();
@@ -294,7 +330,7 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
       // 清除定时器
       return () => clearInterval(intervalId);
     }
-  }, [visible, detailMode, twoFaInfo?.secretKey, generateTotpCode]);
+  }, [visible, detailMode, twoFaInfo?.secretKey, qrCodeDataUrl, generateTotpCode, generateQrCode]);
   
   // 点击验证码复制
   const handleCopyCode = () => {
@@ -726,16 +762,33 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({
                           {/* 二维码区域 */}
                           <div>
                             <Title level={5} style={{ textAlign: 'center' }}>2FA二维码</Title>
-                            <QrCodeContainer>
-                              {twoFaInfo.qrCodeUrl || twoFaInfo.secretKey ? (
+                          <QrCodeContainer>
+                              {loadingQrCode ? (
+                                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: 200, height: 200 }}>
+                                  <Spin tip="生成二维码中..." />
+                                </div>
+                              ) : qrCodeDataUrl ? (
                                 <img 
-                                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                                    twoFaInfo.qrCodeUrl || 
-                                    (twoFaInfo.secretKey ? generateTotpUri(twoFaInfo.secretKey) : '')
-                                  )}`}
+                                  src={qrCodeDataUrl}
                                   alt="2FA二维码"
                                   style={{ maxWidth: '100%', height: 'auto' }}
                                 />
+                              ) : twoFaInfo.qrCodeUrl || twoFaInfo.secretKey ? (
+                                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: 200, height: 200 }}>
+                                  <Button 
+                                    type="primary" 
+                                    onClick={() => {
+                                      const inputData = twoFaInfo.qrCodeUrl || 
+                                        (twoFaInfo.secretKey ? generateTotpUri(twoFaInfo.secretKey) : '');
+                                      if (inputData) {
+                                        generateQrCode(inputData);
+                                      }
+                                    }}
+                                    icon={<QrcodeOutlined />}
+                                  >
+                                    生成二维码
+                                  </Button>
+                                </div>
                               ) : (
                                 <div style={{ 
                                   width: 200, 
