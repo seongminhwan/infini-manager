@@ -134,6 +134,12 @@ const AccountTransfer: React.FC = () => {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyForm] = Form.useForm();
   const [currentTransferId, setCurrentTransferId] = useState<string | null>(null);
+  
+  // 转账记录面板状态
+  const [showTimeline, setShowTimeline] = useState(false);
+  const [timelineSourceId, setTimelineSourceId] = useState<string>('');
+  const [timelineTargetId, setTimelineTargetId] = useState<string>('');
+  const [timelineIsInternal, setTimelineIsInternal] = useState(true);
 
   // 按指定字段和顺序排序账户
   const sortAccounts = (accounts: any[], field: string, order: 'asc' | 'desc') => {
