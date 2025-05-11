@@ -40,8 +40,7 @@ import {
   QrcodeOutlined,
 } from '@ant-design/icons';
 import styled from 'styled-components';
-import { randomUserApi, kycImageApi, infiniAccountApi, totpToolApi, apiBaseUrl } from '../services/api';
-import axios from 'axios';
+import api, { randomUserApi, kycImageApi, infiniAccountApi, totpToolApi, apiBaseUrl } from '../services/api';
 
 const { Text, Title } = Typography;
 const { Option } = Select;
@@ -181,7 +180,7 @@ const RandomUserRegisterModal: React.FC<RandomUserRegisterModalProps> = ({
   const fetchEmailAccounts = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${apiBaseUrl}/api/email-accounts`);
+      const response = await api.get(`${apiBaseUrl}/api/email-accounts`);
       
       if (response.data.success) {
         const accounts = response.data.data || [];
@@ -404,7 +403,7 @@ const RandomUserRegisterModal: React.FC<RandomUserRegisterModalProps> = ({
       addLog(`使用邀请码: ${invitationCode || DEFAULT_INVITATION_CODE}`, 'info');
 
       try {
-        const response = await axios.request(options);
+        const response = await api.request(options);
         
         if (response.data && response.data.code === 0) {
           addLog('Infini注册成功', 'success');
