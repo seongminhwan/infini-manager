@@ -20,6 +20,7 @@ import infiniCardsRoutes from './routes/infiniCards';
 import randomUsersRoutes from './routes/randomUsers';
 import totpToolsRoutes from './routes/totpTools';
 import configsRoutes from './routes/configs';
+import affRoutes from './routes/aff';
 
 // 导入类型
 import { ApiResponse } from './types';
@@ -113,6 +114,7 @@ app.use('/api/infini-cards', infiniCardsRoutes);
 app.use('/api/random-users', randomUsersRoutes);
 app.use('/api/totp-tools', totpToolsRoutes);
 app.use('/api/configs', configsRoutes);
+app.use('/api/aff', affRoutes);
 
 // 404错误处理
 app.use((req: Request, res: Response, next: NextFunction) => {
