@@ -733,15 +733,20 @@ const AffCashback: React.FC = () => {
           </Form.Item>
           
           <Form.Item
-            name="batchName"
             label="批次名称"
-            rules={[{ required: true, message: '请输入批次名称' }]}
+            required
           >
             <Input.Group compact>
-              <Input 
-                placeholder="例如：2025年5月AFF返现" 
-                style={{ width: 'calc(100% - 120px)' }}
-              />
+              <Form.Item
+                name="batchName"
+                noStyle
+                rules={[{ required: true, message: '请输入批次名称' }]}
+              >
+                <Input 
+                  placeholder="例如：2025年5月AFF返现" 
+                  style={{ width: 'calc(100% - 120px)' }}
+                />
+              </Form.Item>
               <Button 
                 type="primary"
                 loading={batchIdLoading}
