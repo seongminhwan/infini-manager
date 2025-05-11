@@ -79,7 +79,7 @@ export const configApi = {
  * 处理所有与转账相关的API请求
  */
 export const transferApi = {
-  // 执行内部转账
+  // 执行内部转账 - 支持所有转账场景，包括2FA验证
   executeInternalTransfer: async (
     accountId: string,
     contactType: 'uid' | 'email',
@@ -88,10 +88,11 @@ export const transferApi = {
     source: string,
     isForced: boolean = false,
     remarks?: string,
-    auto2FA: boolean = false
+    auto2FA: boolean = false,
+    verificationCode?: string
   ) => {
     try {
-      console.log(`执行内部转账，源账户ID: ${accountId}, 目标: ${contactType}:${targetIdentifier}, 金额: ${amount}, 自动2FA: ${auto2FA}`);
+      console.log(`执行内部转账，源账户ID: ${accountId}, 目标: ${contactType}:${targetIdentifier}, 金额: ${amount}, 自动2FA: ${auto2FA}, 验证码: ${verificationCode ? '已提供' : '未提供'}`);
       const response = await api.post(`${apiBaseUrl}/api/transfers/internal`, {
         accountId,
         contactType,
@@ -100,40 +101,12 @@ export const transferApi = {
         source,
         isForced,
         remarks,
-        auto2FA       // 添加auto2FA参数
+        auto2FA,      // 是否自动处理2FA验证
+        verificationCode // 手动提供的2FA验证码（如果有）
       });
       return response.data;
     } catch (error) {
       console.error('执行内部转账失败:', error);
-      throw error;
-    }
-  },
-  
-  // 自动获取2FA验证码并完成转账流程
-  autoGet2FAAndCompleteTransfer: async (transferId: string | number) => {
-    try {
-      console.log(`自动获取2FA验证码并完成转账流程，转账ID: ${transferId}`);
-      const response = await api.post(`${apiBaseUrl}/api/transfers/auto-2fa`, {
-        transferId
-      });
-      return response.data;
-    } catch (error) {
-      console.error('自动完成转账流程失败:', error);
-      throw error;
-    }
-  },
-  
-  // 提供2FA验证码继续转账流程
-  continueTransferWith2FA: async (transferId: string | number, verificationCode: string) => {
-    try {
-      console.log(`继续转账流程，转账ID: ${transferId}, 验证码: ${verificationCode}`);
-      const response = await api.post(`${apiBaseUrl}/api/transfers/continue-with-2fa`, {
-        transferId,
-        verificationCode
-      });
-      return response.data;
-    } catch (error) {
-      console.error('继续转账流程失败:', error);
       throw error;
     }
   },
