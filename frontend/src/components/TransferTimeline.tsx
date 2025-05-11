@@ -116,9 +116,11 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
     try {
       setLoading(true);
       
-      const response = await transferApi.getTransferRecords(
+      const response = await transferApi.getTransfers(
         sourceAccountId,
-        isInternal ? targetAccountId : undefined
+        undefined, // 状态参数设为undefined，获取所有状态
+        1, // 页码
+        50 // 获取较多记录
       );
       
       if (response.success && response.data) {
