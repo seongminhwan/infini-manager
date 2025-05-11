@@ -848,35 +848,67 @@ const AffCashback: React.FC = () => {
               
               {previewData.length > 0 && (
                 <div style={{ marginLeft: 16, flex: 1 }}>
-                  <span>第一行预览: </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', marginTop: 4 }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: 8 }}>第一行预览:</div>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    background: '#f9f9f9', 
+                    border: '1px solid #e8e8e8',
+                    borderRadius: '6px',
+                    padding: '12px',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                  }}>
                     {previewData.map((item, index) => {
                       // 根据fieldIndices确定当前索引对应的字段名
                       let fieldName = `字段${index + 1}`;
+                      let fieldColor = 'default';
+                      
                       if (index === fieldIndices.uidIndex) {
                         fieldName = 'UID';
+                        fieldColor = 'blue';
                       } else if (index === fieldIndices.registerDateIndex) {
                         fieldName = '注册日期';
+                        fieldColor = 'green';
                       } else if (index === fieldIndices.cardCountIndex) {
                         fieldName = '开卡数量';
+                        fieldColor = 'orange';
                       } else if (index === fieldIndices.cardDateIndex) {
                         fieldName = '开卡日期';
+                        fieldColor = 'purple';
                       }
                       
                       return (
                         <div key={index} style={{ 
-                          border: '1px solid #d9d9d9', 
-                          borderRadius: '4px', 
-                          padding: '4px 8px', 
-                          margin: '0 8px 8px 0',
-                          background: '#f0f0f0'
+                          margin: '4px 8px',
+                          minWidth: '120px',
+                          maxWidth: '200px',
+                          flexGrow: 1
                         }}>
-                          <div style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>
-                            {fieldName}:
+                          <div style={{ 
+                            fontSize: '13px', 
+                            fontWeight: 'bold',
+                            color: '#595959',
+                            marginBottom: '4px',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}>
+                            <Tag color={fieldColor} style={{ margin: '0 4px 0 0', fontSize: '11px' }}>
+                              {index}
+                            </Tag>
+                            {fieldName}
                           </div>
-                          <Tag color="blue" style={{ margin: 0 }}>
+                          <div style={{ 
+                            background: 'white', 
+                            border: '1px solid #d9d9d9',
+                            borderRadius: '4px',
+                            padding: '6px 8px',
+                            wordBreak: 'break-all',
+                            color: item ? '#1f1f1f' : '#bfbfbf',
+                            fontFamily: 'monospace',
+                            fontSize: '13px'
+                          }}>
                             {item || '<空>'}
-                          </Tag>
+                          </div>
                         </div>
                       );
                     })}
