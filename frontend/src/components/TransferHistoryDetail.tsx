@@ -77,9 +77,11 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
   style 
 }) => {
   const [transferHistory, setTransferHistory] = useState<any[]>([]);
-  const [selectedTransferId, setSelectedTransferId] = useState<string | number | undefined>(transferId);
+  const [transferRecords, setTransferRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  
+  const actualTransferId = useRef<string | number | undefined>(transferId);
   
   // 停止轮询
   const stopPolling = () => {
@@ -94,15 +96,10 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
     return () => stopPolling();
   }, []);
   
-  // 当transferId变化时，更新selectedTransferId
-  useEffect(() => {
-    if (transferId) {
-      setSelectedTransferId(transferId);
-    }
-  }, [transferId]);
-
   // 获取单笔转账历史记录
-  const fetchTransferHistory = async (id: string | number) => {
+  const fetchTransferHistory = async (id?: string | number) => {
+    if (!id) return;
+    
     setLoading(true);
     try {
       const response = await transferApi.getTransferHistory(id.toString());
@@ -119,84 +116,61 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
     }
   };
   
-  // 获取账户的转账记录
-  const fetchTransferRecords = async () => {
-    if (!sourceAccountId) return;
-    
+  // 获取指定账户的转账记录
+  const fetchAccountTransfers = async (accountId: string | number) => {
     setLoading(true);
     try {
-      const response = await transferApi.getTransfers({
-        accountId: sourceAccountId.toString(),
+      const response = await transferApi.getTransfers({ 
+        accountId: accountId.toString(),
         page: 1,
         pageSize: 10
       });
-      
       if (response.success && response.data && response.data.transfers) {
+        setTransferRecords(response.data.transfers);
+        
+        // 获取第一条记录的历史
         if (response.data.transfers.length > 0) {
-          // 选择第一条记录并获取其历史
           const firstTransfer = response.data.transfers[0];
-          setSelectedTransferId(firstTransfer.id);
+          actualTransferId.current = firstTransfer.id;
           await fetchTransferHistory(firstTransfer.id);
         }
+      } else {
+        setTransferRecords([]);
       }
     } catch (error) {
-      console.error('获取转账记录失败:', error);
+      console.error('获取账户转账记录失败:', error);
+      setTransferRecords([]);
     } finally {
       setLoading(false);
     }
   };
   
-  // 启动轮询
-  const startPolling = () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-    }
-    
-    // 立即执行一次
-    if (selectedTransferId) {
-      fetchTransferHistory(selectedTransferId);
-    } else if (sourceAccountId) {
-      fetchTransferRecords();
-    }
-    
-    // 设置轮询
-    const interval = setInterval(() => {
-      if (selectedTransferId) {
-        fetchTransferHistory(selectedTransferId);
-      } else if (sourceAccountId) {
-        fetchTransferRecords();
-      }
-    }, 3000); // 3秒轮询一次
-    
-    setPollingInterval(interval);
-  };
-  
-  // 根据组件属性决定初始化方式
-  useEffect(() => {
-    // 如果提供了transferId，直接获取该转账的历史记录
-    if (selectedTransferId) {
-      fetchTransferHistory(selectedTransferId);
-    } 
-    // 如果提供了sourceAccountId但没有transferId，则获取该账户的转账记录
-    else if (sourceAccountId) {
-      fetchTransferRecords();
-    }
-    
-    // 启动轮询
-    startPolling();
-    
-    // 组件卸载时清理
-    return () => stopPolling();
-  }, [selectedTransferId, sourceAccountId, visible]);
-  
   // 刷新数据
-  const handleRefresh = () => {
-    if (selectedTransferId) {
-      fetchTransferHistory(selectedTransferId);
+  const refreshData = () => {
+    if (transferId) {
+      fetchTransferHistory(transferId);
     } else if (sourceAccountId) {
-      fetchTransferRecords();
+      fetchAccountTransfers(sourceAccountId);
     }
   };
+  
+  // 加载转账历史记录
+  useEffect(() => {
+    // 单笔转账记录详情
+    if (transferId) {
+      actualTransferId.current = transferId;
+      fetchTransferHistory(transferId);
+    } 
+    // 账户转账记录列表
+    else if (sourceAccountId) {
+      fetchAccountTransfers(sourceAccountId);
+    }
+    
+    // 返回清理函数
+    return () => {
+      stopPolling();
+    };
+  }, [transferId, sourceAccountId]);
 
   // 格式化日期时间
   const formatDateTime = (dateValue: string | number | undefined): string => {
@@ -263,11 +237,9 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
         return source;
     }
   };
-  
+
   // 如果不可见，不渲染组件
-  if (!visible) {
-    return null;
-  }
+  if (!visible) return null;
 
   return (
     <Card 
@@ -288,30 +260,29 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
     >
       <HistoryContainer>
         <HistoryHeader>
-          <span>转账历史记录</span>
-          <Space>
-            {selectedTransferId && (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <span style={{ marginRight: '10px' }}>转账历史记录</span>
+            {actualTransferId.current && (
               <Tooltip title="转账ID">
-                <Tag color="blue">ID: {selectedTransferId}</Tag>
+                <Tag color="blue">ID: {actualTransferId.current}</Tag>
               </Tooltip>
             )}
+          </div>
+          <div>
             <Button 
-              icon={<ReloadOutlined />} 
               type="text" 
-              size="small" 
-              onClick={handleRefresh}
-              title="刷新"
+              icon={<ReloadOutlined />} 
+              onClick={refreshData}
+              style={{ marginRight: '8px' }}
             />
             {onClose && (
               <Button 
-                icon={<CloseOutlined />} 
                 type="text" 
-                size="small" 
+                icon={<CloseOutlined />} 
                 onClick={onClose}
-                title="关闭"
               />
             )}
-          </Space>
+          </div>
         </HistoryHeader>
         <HistoryContent>
           {/* 加载状态 */}
@@ -328,7 +299,7 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
             >
               {transferHistory.map((history, index) => (
                 <Timeline.Item
-                  key={`history-${selectedTransferId}-${index}`}
+                  key={`history-${actualTransferId.current}-${index}`}
                   color={getStatusColor(history.status || 'processing')}
                   label={
                     <TimeLabel>
@@ -431,7 +402,7 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
                           {history.status === 'completed' && (
                             <div>
                               <Text strong>转账完成</Text>
-                              {Object.keys(history.details.result || {}).length > 0 && (
+                              {history.details.result && Object.keys(history.details.result).length > 0 && (
                                 <div style={{ marginTop: 4 }}>
                                   <Text type="secondary">{JSON.stringify(history.details.result)}</Text>
                                 </div>
