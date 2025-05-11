@@ -57,10 +57,39 @@ const AccountTransfer: React.FC = () => {
   const [targetType, setTargetType] = useState<'internal' | 'external'>('internal');
   const [contactType, setContactType] = useState<'uid' | 'email'>('uid');
   
+  // 排序状态
+  const [sortField, setSortField] = useState<'balance' | 'email' | 'uid'>('balance');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  
   // 2FA验证状态
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyForm] = Form.useForm();
   const [currentTransferId, setCurrentTransferId] = useState<string | null>(null);
+
+  // 按指定字段和顺序排序账户
+  const sortAccounts = (accounts: any[], field: string, order: 'asc' | 'desc') => {
+    return [...accounts].sort((a, b) => {
+      let valueA, valueB;
+      
+      if (field === 'balance') {
+        valueA = a.availableBalance || 0;
+        valueB = b.availableBalance || 0;
+      } else if (field === 'email') {
+        valueA = a.email?.toLowerCase() || '';
+        valueB = b.email?.toLowerCase() || '';
+      } else { // uid
+        valueA = a.uid?.toString() || '';
+        valueB = b.uid?.toString() || '';
+      }
+      
+      // 升序或降序
+      if (order === 'asc') {
+        return valueA > valueB ? 1 : -1;
+      } else {
+        return valueA < valueB ? 1 : -1;
+      }
+    });
+  };
 
   // 加载Infini账户列表
   useEffect(() => {
@@ -69,12 +98,8 @@ const AccountTransfer: React.FC = () => {
       try {
         const response = await infiniAccountApi.getAllInfiniAccounts();
         if (response.success && response.data) {
-          // 按余额排序（默认倒序，从高到低）
-          const sortedAccounts = [...response.data].sort((a, b) => {
-            const balanceA = a.availableBalance || 0;
-            const balanceB = b.availableBalance || 0;
-            return balanceB - balanceA; // 倒序排列
-          });
+          // 使用当前排序字段和顺序排序
+          const sortedAccounts = sortAccounts(response.data, sortField, sortOrder);
           setAccounts(sortedAccounts);
         } else {
           message.error('获取账户列表失败');
@@ -88,7 +113,25 @@ const AccountTransfer: React.FC = () => {
     };
 
     fetchAccounts();
-  }, []);
+  }, [sortField, sortOrder]);
+  
+  // 当排序条件改变时重新排序账户列表
+  useEffect(() => {
+    if (accounts.length > 0) {
+      const sortedAccounts = sortAccounts(accounts, sortField, sortOrder);
+      setAccounts(sortedAccounts);
+    }
+  }, [sortField, sortOrder]);
+  
+  // 处理排序字段变化
+  const handleSortFieldChange = (field: 'balance' | 'email' | 'uid') => {
+    setSortField(field);
+  };
+  
+  // 处理排序顺序变化
+  const handleSortOrderChange = (order: 'asc' | 'desc') => {
+    setSortOrder(order);
+  };
 
   // 模糊搜索过滤函数
   const filterOption = (input: string, option: any) => {
@@ -98,6 +141,36 @@ const AccountTransfer: React.FC = () => {
     const balanceStr = option.balance?.toString() || '';
     const balanceMatch = balanceStr.indexOf(input) >= 0;
     return emailMatch || uidMatch || balanceMatch;
+  };
+  
+  // 渲染排序控件
+  const renderSortControls = () => {
+    return (
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center' }}>
+        <Text strong style={{ marginRight: 16 }}>账户排序:</Text>
+        <Radio.Group 
+          value={sortField} 
+          onChange={(e) => handleSortFieldChange(e.target.value)}
+          style={{ marginRight: 16 }}
+        >
+          <Radio.Button value="balance">余额</Radio.Button>
+          <Radio.Button value="email">邮箱</Radio.Button>
+          <Radio.Button value="uid">UID</Radio.Button>
+        </Radio.Group>
+        
+        <Radio.Group 
+          value={sortOrder} 
+          onChange={(e) => handleSortOrderChange(e.target.value)}
+        >
+          <Radio.Button value="asc">
+            升序 <SwapOutlined style={{ transform: 'rotate(90deg)' }} />
+          </Radio.Button>
+          <Radio.Button value="desc">
+            降序 <SwapOutlined style={{ transform: 'rotate(-90deg)' }} />
+          </Radio.Button>
+        </Radio.Group>
+      </div>
+    );
   };
   // 处理转账提交
   const handleSubmit = async (values: any) => {
@@ -256,6 +329,9 @@ const AccountTransfer: React.FC = () => {
       
       <GlassCard>
         <FormSection>
+          {/* 账户排序控件 */}
+          {!loadingAccounts && accounts.length > 0 && renderSortControls()}
+          
           {loadingAccounts ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <Spin size="large" />
