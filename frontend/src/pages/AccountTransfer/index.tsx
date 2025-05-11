@@ -396,24 +396,24 @@ const AccountTransfer: React.FC = () => {
   const handleAutoVerify = async () => {
     if (!currentTransferId) return;
     
+    // 获取当前表单值
+    const values = form.getFieldsValue();
+    const sourceAccountId = values.sourceAccount;
+    let targetId = targetType === 'internal' ? values.internalTarget : undefined;
+    
+    // 先显示转账记录时间轴
+    showTransferTimeline(
+      sourceAccountId, 
+      targetId, 
+      targetType === 'internal'
+    );
+    
     setLoading(true);
     try {
       const response = await transferApi.autoGet2FAAndCompleteTransfer(currentTransferId);
       
       if (response.success) {
         message.success('转账成功（自动验证）');
-        
-        // 获取当前表单值
-        const values = form.getFieldsValue();
-        const sourceAccountId = values.sourceAccount;
-        let targetId = targetType === 'internal' ? values.internalTarget : undefined;
-        
-        // 显示转账记录时间轴
-        showTransferTimeline(
-          sourceAccountId, 
-          targetId, 
-          targetType === 'internal'
-        );
         
         form.resetFields();
         verifyForm.resetFields();
