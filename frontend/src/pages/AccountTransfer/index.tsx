@@ -623,9 +623,9 @@ const AccountTransfer: React.FC = () => {
                         label={
                           <span>
                             自动2FA验证
-                            <Text type="secondary" style={{ marginLeft: 8 }}>
-                              <QuestionCircleOutlined /> 自动获取验证码
-                            </Text>
+                            <Tooltip title="自动获取验证码">
+                              <QuestionCircleOutlined style={{ marginLeft: 4, color: 'rgba(0,0,0,0.45)' }} />
+                            </Tooltip>
                           </span>
                         }
                         valuePropName="checked"
