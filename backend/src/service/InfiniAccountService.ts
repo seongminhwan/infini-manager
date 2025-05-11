@@ -27,7 +27,7 @@ export class InfiniAccountService {
    * @param errorContext 错误上下文信息，用于自定义错误消息前缀
    * @returns 返回有效的Cookie或null，以及账户对象
    */
-  async getAccountCookie(accountId: string, errorContext: string = ''): Promise<{cookie: string | null, account: any}> {
+  async getAccountCookie(accountId: string, errorContext: string = ''): Promise<{ cookie: string | null, account: any }> {
     try {
       // 查找账户
       const account = await db('infini_accounts')
@@ -638,7 +638,7 @@ export class InfiniAccountService {
         if (twoFaInfoMap.has(account.id)) {
           account.twoFaInfo = twoFaInfoMap.get(account.id);
         }
-        
+
         // 添加分组信息
         account.groups = accountGroupsMap.get(account.id) || [];
       });
@@ -994,7 +994,7 @@ export class InfiniAccountService {
 
       // 获取包含分组信息的新账户
       const newAccount = await this.getInfiniAccountById(newAccountId.toString());
-      
+
       return {
         success: true,
         data: newAccount.data,
@@ -2783,7 +2783,7 @@ export class InfiniAccountService {
    * @returns 更新结果
    */
   async update2faInfo(
-    accountId: string, 
+    accountId: string,
     twoFaData: {
       qr_code_url?: string;
       secret_key?: string;
@@ -2839,7 +2839,7 @@ export class InfiniAccountService {
         // 创建新记录
         updateData.infini_account_id = accountId;
         updateData.created_at = new Date();
-        
+
         await db('infini_2fa_info').insert(updateData);
 
         console.log(`为账户 ${accountId} 创建了新的2FA信息记录`);
@@ -2878,7 +2878,7 @@ export class InfiniAccountService {
   async getAllAccountGroups(): Promise<ApiResponse> {
     try {
       console.log('执行获取所有账户分组方法...');
-      
+
       // 查询所有账户分组
       const groups = await db('infini_account_groups')
         .select([
@@ -3397,8 +3397,8 @@ export class InfiniAccountService {
       return {
         success: true,
         message: `成功将${accountsToAdd.length}个账户添加到分组`,
-        data: { 
-          addedCount: accountsToAdd.length, 
+        data: {
+          addedCount: accountsToAdd.length,
           totalCount: validAccounts.length,
           invalidCount: accountIds.length - validAccounts.length
         }
@@ -3542,7 +3542,7 @@ export class InfiniAccountService {
         });
 
         // 筛选出只属于默认分组的账户
-        const accountsOnlyInDefaultGroup = accountIds.filter(id => 
+        const accountsOnlyInDefaultGroup = accountIds.filter(id =>
           !accountGroupCountMap.has(id) || accountGroupCountMap.get(id) === 0
         );
 
@@ -3579,8 +3579,8 @@ export class InfiniAccountService {
       return {
         success: true,
         message: `成功将${existingRelations.length}个账户从分组中移除`,
-        data: { 
-          removedCount: existingRelations.length, 
+        data: {
+          removedCount: existingRelations.length,
           totalCount: accountIds.length
         }
       };
@@ -3603,6 +3603,7 @@ export class InfiniAccountService {
    * @param isForced 是否强制执行（忽略风险）
    * @param remarks 备注信息（可选）
    * @param auto2FA 是否自动处理2FA验证（可选，默认为false）
+   * @param verificationCode 2FA验证码（可选）
    * @returns 转账结果
    */
   async internalTransfer(
@@ -3613,7 +3614,8 @@ export class InfiniAccountService {
     source: string,
     isForced: boolean = false,
     remarks?: string,
-    auto2FA: boolean = false
+    auto2FA: boolean = false,
+    verificationCode?: string
   ): Promise<ApiResponse> {
     try {
       console.log(`开始执行内部转账，账户ID: ${accountId}, 目标: ${contactType}:${targetIdentifier}, 金额: ${amount}`);
@@ -3630,6 +3632,60 @@ export class InfiniAccountService {
           message: '找不到指定的Infini账户'
         };
       }
+
+         // 检查账户是否开启了2FA
+         if (account.google_2fa_is_bound) {
+          console.log(`账户已开启2FA，需要验证码`);
+          verificationCode = verificationCode || '';
+          if (!verificationCode) {
+            if (!auto2FA) {
+              return {
+                success: false,
+                message: '账户已开启2FA，请提供验证码',
+                data: {
+                  require2FA: true,
+                }
+              };
+            }
+  
+            // 检查账户是否有2FA信息记录
+            const twoFaInfo = await db('infini_2fa_info')
+              .where({ infini_account_id: account.id })
+              .first();
+  
+            if (!twoFaInfo || !twoFaInfo.secret_key) {
+              console.error(`自动2FA验证失败: 账户未配置2FA或缺少密钥`);
+              return {
+                success: false,
+                message: '账户未配置2FA或缺少密钥'
+              };
+            }
+  
+            // 使用账户的密钥生成当前的2FA验证码
+            const secret = twoFaInfo.secret_key;
+            console.log(`使用密钥生成2FA验证码: ${secret}`);
+  
+            // 使用TotpToolService生成TOTP验证码
+            const totpService = new TotpToolService();
+            const totpResult = await totpService.generateTotpCode(secret);
+  
+            if (!totpResult.success || !totpResult.data || !totpResult.data.code) {
+              console.error(`自动2FA验证失败: 无法生成2FA验证码 - ${totpResult.message}`);
+              return {
+                success: false,
+                message: `无法生成2FA验证码: ${totpResult.message || '未知错误'}`
+              };
+            }
+  
+            const twoFactorCode = totpResult.data.code;
+            console.log(`已为账户 ${account.email} 自动生成验证码: ${twoFactorCode}`);
+  
+            // 使用生成的验证码继续转账流程
+            console.log(`使用自动生成的验证码继续转账流程`);
+            verificationCode = twoFactorCode;
+          }
+  
+        }
 
       // 检查是否存在相同条件的准备状态转账记录
       if (!isForced) {
@@ -3662,6 +3718,7 @@ export class InfiniAccountService {
         account_id: accountId,
         contact_type: contactType,
         target_identifier: targetIdentifier,
+        verification_code: verificationCode,
         amount,
         source,
         is_forced: isForced,
@@ -3684,54 +3741,15 @@ export class InfiniAccountService {
         };
       }
 
-      // 检查账户是否开启了2FA
-      if (account.google_2fa_is_bound) {
-        console.log(`账户已开启2FA，需要验证码`);
-        
-        // 检查是否提供了验证码
-        const existingCode = await db('infini_transfers')
-          .where('id', transferId)
-          .select('verification_code')
-          .first();
-          
-        if (!existingCode || !existingCode.verification_code) {
-          await this.updateTransferStatus(transferId, 'processing', '需要2FA验证码');
-          
-          // 如果开启了自动2FA验证，则自动获取验证码
-          if (auto2FA) {
-            console.log(`已开启自动2FA验证，正在自动获取验证码...`);
-            const autoVerifyResult = await this.autoGet2FAAndCompleteTransfer(transferId.toString());
-            return autoVerifyResult;
-          } else {
-            return {
-              success: false,
-              message: '账户已开启2FA，请提供验证码',
-              data: {
-                require2FA: true,
-                transferId
-              }
-            };
-          }
-        }
-
-        console.log(`使用已提供的验证码继续转账流程`);
-      }
+   
 
       // 构建请求数据
       const requestData = {
         contactType,
         [contactType === 'uid' ? 'user_id' : 'email']: targetIdentifier,
+        email_verify_code: verificationCode,
         amount
       };
-
-      // 如果有2FA验证码，添加到请求数据中
-      const transfer = await db('infini_transfers')
-        .where('id', transferId)
-        .first();
-
-      if (transfer && transfer.verification_code) {
-        requestData['email_verify_code'] = transfer.verification_code;
-      }
 
       // 记录请求数据
       await db('infini_transfers')
@@ -3744,7 +3762,7 @@ export class InfiniAccountService {
 
       // 调用Infini API执行转账
       console.log(`正在调用Infini内部转账API，请求数据:`, requestData);
-      
+
       const response = await httpClient.post(
         `${INFINI_API_BASE_URL}/account/internal-transfer`,
         requestData,
@@ -3778,10 +3796,10 @@ export class InfiniAccountService {
       // 处理响应
       if (response.data.code === 0) {
         await this.updateTransferStatus(transferId, 'completed');
-        
+
         // 同步账户信息以获取最新余额
-        const syncResult = await this.syncInfiniAccount(accountId);
-        
+        // const syncResult = await this.syncInfiniAccount(accountId);
+
         return {
           success: true,
           data: {
@@ -3792,11 +3810,11 @@ export class InfiniAccountService {
         };
       } else {
         await this.updateTransferStatus(
-          transferId, 
-          'failed', 
+          transferId,
+          'failed',
           response.data.message || '转账失败，API返回错误'
         );
-        
+
         return {
           success: false,
           message: `内部转账失败: ${response.data.message || '未知错误'}`
@@ -3804,7 +3822,7 @@ export class InfiniAccountService {
       }
     } catch (error) {
       console.error('执行内部转账失败:', error);
-      
+
       // 如果已创建转账记录，更新状态
       try {
         const transfers = await db('infini_transfers')
@@ -3826,18 +3844,18 @@ export class InfiniAccountService {
           })
           .orderBy('created_at', 'desc')
           .limit(1);
-          
+
         if (transfers && transfers.length > 0) {
           await this.updateTransferStatus(
-            transfers[0].id, 
-            'failed', 
+            transfers[0].id,
+            'failed',
             (error as Error).message
           );
         }
       } catch (dbError) {
         console.error('更新转账状态失败:', dbError);
       }
-      
+
       return {
         success: false,
         message: `执行内部转账失败: ${(error as Error).message}`
@@ -3860,166 +3878,25 @@ export class InfiniAccountService {
       status,
       updated_at: new Date()
     };
-    
+
     if (errorMessage) {
       updateData.error_message = errorMessage;
     }
-    
+
     if (status === 'completed') {
       updateData.completed_at = new Date();
     }
-    
+
     await db('infini_transfers')
       .where('id', transferId)
       .update(updateData);
-      
+
     console.log(`已更新转账记录 ${transferId} 的状态为 ${status}`);
   }
 
-  /**
-   * 提供2FA验证码并继续转账流程
-   * @param transferId 转账ID
-   * @param verificationCode 2FA验证码
-   * @returns 转账结果
-   */
-  async continueTransferWith2FA(transferId: string | number, verificationCode: string): Promise<ApiResponse> {
-    try {
-      // 查找转账记录
-      const transfer = await db('infini_transfers')
-        .where('id', transferId)
-        .first();
-        
-      if (!transfer) {
-        return {
-          success: false,
-          message: '找不到指定的转账记录'
-        };
-      }
-      
-      // 检查转账状态
-      if (transfer.status !== 'pending' && transfer.status !== 'processing') {
-        return {
-          success: false,
-          message: `无法继续处理该转账，当前状态为: ${transfer.status}`
-        };
-      }
-      
-      // 更新验证码
-      await db('infini_transfers')
-        .where('id', transferId)
-        .update({
-          verification_code: verificationCode,
-          updated_at: new Date()
-        });
-        
-      console.log(`已更新转账记录 ${transferId} 的验证码`);
-      
-      // 继续转账流程
-      return this.internalTransfer(
-        transfer.account_id.toString(),
-        transfer.contact_type as 'uid' | 'email',
-        transfer.target_identifier,
-        transfer.amount,
-        transfer.source,
-        transfer.is_forced,
-        transfer.remarks
-      );
-    } catch (error) {
-      console.error('继续转账流程失败:', error);
-      return {
-        success: false,
-        message: `继续转账流程失败: ${(error as Error).message}`
-      };
-    }
-  }
+  // 移除了continueTransferWith2FA和autoGet2FAAndCompleteTransfer方法，
+  // 现在在internalTransfer中处理所有2FA场景
 
-  /**
-   * 自动获取2FA验证码并继续转账流程
-   * @param transferId 转账ID
-   * @returns 转账结果
-   */
-  async autoGet2FAAndCompleteTransfer(transferId: string): Promise<ApiResponse> {
-    try {
-      console.log(`开始自动获取2FA验证码并继续转账，转账ID: ${transferId}`);
-      
-      // 获取关联的转账记录
-      const transfer = await db('infini_transfers')
-        .where({ id: transferId })
-        .first();
-      
-      if (!transfer) {
-        console.error(`自动2FA验证失败: 找不到ID为${transferId}的转账记录`);
-        return {
-          success: false,
-          message: '转账记录不存在'
-        };
-      }
-      
-      // 获取账户信息
-      const account = await db('infini_accounts')
-        .where({ id: transfer.account_id })
-        .first();
-      
-      if (!account) {
-        console.error(`自动2FA验证失败: 找不到账户信息`);
-        return {
-          success: false,
-          message: '账户不存在'
-        };
-      }
-      
-      // 检查账户是否有2FA信息记录
-      const twoFaInfo = await db('infini_2fa_info')
-        .where({ infini_account_id: account.id })
-        .first();
-      
-      if (!twoFaInfo || !twoFaInfo.secret_key) {
-        console.error(`自动2FA验证失败: 账户未配置2FA或缺少密钥`);
-        return {
-          success: false,
-          message: '账户未配置2FA或缺少密钥'
-        };
-      }
-      
-      // 使用账户的密钥生成当前的2FA验证码
-      const secret = twoFaInfo.secret_key;
-      console.log(`使用密钥生成2FA验证码: ${secret}`);
-      
-      // 使用TotpToolService生成TOTP验证码
-      const totpService = new TotpToolService();
-      const totpResult = await totpService.generateTotpCode(secret);
-      
-      if (!totpResult.success || !totpResult.data || !totpResult.data.code) {
-        console.error(`自动2FA验证失败: 无法生成2FA验证码 - ${totpResult.message}`);
-        return {
-          success: false,
-          message: `无法生成2FA验证码: ${totpResult.message || '未知错误'}`
-        };
-      }
-      
-      const twoFactorCode = totpResult.data.code;
-      console.log(`已为账户 ${account.email} 自动生成验证码: ${twoFactorCode}`);
-      
-      // 更新转账记录中的验证码字段
-      await db('infini_transfers')
-        .where({ id: transferId })
-        .update({
-          verification_code: twoFactorCode,
-          updated_at: new Date()
-        });
-      
-      // 使用生成的验证码继续转账流程
-      console.log(`使用自动生成的验证码继续转账流程`);
-      return this.continueTransferWith2FA(transferId, twoFactorCode);
-    } catch (error) {
-      console.error('[AutoGet2FA] 自动获取2FA验证码失败:', error);
-      return {
-        success: false,
-        message: `自动获取2FA验证码失败: ${(error as Error).message}`
-      };
-    }
-  }
-  
   /**
    * 获取转账记录
    * @param accountId 可选的账户ID，用于筛选特定账户的转账记录
@@ -4029,7 +3906,7 @@ export class InfiniAccountService {
    * @returns 包含转账记录的响应对象
    */
   async getTransferRecords(
-    accountId?: string, 
+    accountId?: string,
     status?: string,
     page: number = 1,
     pageSize: number = 20
@@ -4043,38 +3920,38 @@ export class InfiniAccountService {
         ])
         .leftJoin('infini_accounts', 'infini_transfers.account_id', 'infini_accounts.id')
         .orderBy('infini_transfers.created_at', 'desc');
-        
+
       // 应用筛选条件
       if (accountId) {
         query = query.where('infini_transfers.account_id', accountId);
       }
-      
+
       if (status) {
         query = query.where('infini_transfers.status', status);
       }
-      
+
       // 获取总记录数
       const countQuery = db('infini_transfers')
         .count('id as total');
-        
+
       if (accountId) {
         countQuery.where('account_id', accountId);
       }
-      
+
       if (status) {
         countQuery.where('status', status);
       }
-      
+
       const [countResult] = await countQuery;
       const total = (countResult as any).total;
-      
+
       // 应用分页
       const offset = (page - 1) * pageSize;
       query = query.limit(pageSize).offset(offset);
-      
+
       // 执行查询
       const transfers = await query;
-      
+
       return {
         success: true,
         data: {
