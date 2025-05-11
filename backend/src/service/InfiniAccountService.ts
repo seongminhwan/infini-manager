@@ -3593,6 +3593,414 @@ export class InfiniAccountService {
   }
 
   /**
+   * 执行Infini内部转账
+   * @param accountId 内部账户ID
+   * @param contactType 联系人类型：uid或email
+   * @param targetIdentifier 目标标识符：UID、Email或内部账户ID
+   * @param amount 转账金额（字符串格式）
+   * @param source 转账来源
+   * @param isForced 是否强制执行（忽略风险）
+   * @param remarks 备注信息（可选）
+   * @returns 转账结果
+   */
+  async internalTransfer(
+    accountId: string,
+    contactType: 'uid' | 'email',
+    targetIdentifier: string,
+    amount: string,
+    source: string,
+    isForced: boolean = false,
+    remarks?: string
+  ): Promise<ApiResponse> {
+    try {
+      console.log(`开始执行内部转账，账户ID: ${accountId}, 目标: ${contactType}:${targetIdentifier}, 金额: ${amount}`);
+
+      // 查找账户
+      const account = await db('infini_accounts')
+        .where('id', accountId)
+        .first();
+
+      if (!account) {
+        console.error(`执行内部转账失败: 找不到ID为${accountId}的Infini账户`);
+        return {
+          success: false,
+          message: '找不到指定的Infini账户'
+        };
+      }
+
+      // 检查是否存在相同条件的准备状态转账记录
+      if (!isForced) {
+        const existingTransfer = await db('infini_transfers')
+          .where({
+            account_id: accountId,
+            contact_type: contactType,
+            target_identifier: targetIdentifier,
+            amount,
+            source,
+            status: 'pending'
+          })
+          .first();
+
+        if (existingTransfer) {
+          console.warn(`检测到重复的转账请求，ID: ${existingTransfer.id}`);
+          return {
+            success: false,
+            message: '检测到重复的转账请求，请确认是否继续',
+            data: {
+              duplicate: true,
+              transferId: existingTransfer.id
+            }
+          };
+        }
+      }
+
+      // 创建预转账记录
+      const [transferId] = await db('infini_transfers').insert({
+        account_id: accountId,
+        contact_type: contactType,
+        target_identifier: targetIdentifier,
+        amount,
+        source,
+        is_forced: isForced,
+        remarks: remarks || '',
+        status: 'pending',
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+
+      console.log(`创建预转账记录成功，ID: ${transferId}`);
+
+      // 获取有效Cookie
+      const cookie = await this.getCookieForAccount(account, '执行内部转账失败，');
+
+      if (!cookie) {
+        await this.updateTransferStatus(transferId, 'failed', '无法获取有效的登录凭证');
+        return {
+          success: false,
+          message: '执行内部转账失败，无法获取有效的登录凭证'
+        };
+      }
+
+      // 检查账户是否开启了2FA
+      if (account.google_2fa_is_bound) {
+        console.log(`账户已开启2FA，需要验证码`);
+        
+        // 检查是否提供了验证码
+        const existingCode = await db('infini_transfers')
+          .where('id', transferId)
+          .select('verification_code')
+          .first();
+          
+        if (!existingCode || !existingCode.verification_code) {
+          await this.updateTransferStatus(transferId, 'processing', '需要2FA验证码');
+          
+          return {
+            success: false,
+            message: '账户已开启2FA，请提供验证码',
+            data: {
+              require2FA: true,
+              transferId
+            }
+          };
+        }
+
+        console.log(`使用已提供的验证码继续转账流程`);
+      }
+
+      // 构建请求数据
+      const requestData = {
+        contactType,
+        [contactType === 'uid' ? 'user_id' : 'email']: targetIdentifier,
+        amount
+      };
+
+      // 如果有2FA验证码，添加到请求数据中
+      const transfer = await db('infini_transfers')
+        .where('id', transferId)
+        .first();
+
+      if (transfer && transfer.verification_code) {
+        requestData['email_verify_code'] = transfer.verification_code;
+      }
+
+      // 记录请求数据
+      await db('infini_transfers')
+        .where('id', transferId)
+        .update({
+          request_data: JSON.stringify(requestData),
+          status: 'processing',
+          updated_at: new Date()
+        });
+
+      // 调用Infini API执行转账
+      console.log(`正在调用Infini内部转账API，请求数据:`, requestData);
+      
+      const response = await httpClient.post(
+        `${INFINI_API_BASE_URL}/account/internal-transfer`,
+        requestData,
+        {
+          headers: {
+            'Cookie': cookie,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+            'Referer': 'https://app.infini.money/',
+            'Origin': 'https://app.infini.money',
+            'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        }
+      );
+
+      // 记录响应数据
+      await db('infini_transfers')
+        .where('id', transferId)
+        .update({
+          response_data: JSON.stringify(response.data)
+        });
+
+      console.log(`Infini内部转账API响应:`, response.data);
+
+      // 处理响应
+      if (response.data.code === 0) {
+        await this.updateTransferStatus(transferId, 'completed');
+        
+        // 同步账户信息以获取最新余额
+        const syncResult = await this.syncInfiniAccount(accountId);
+        
+        return {
+          success: true,
+          data: {
+            transferId,
+            ...response.data.data
+          },
+          message: '内部转账成功'
+        };
+      } else {
+        await this.updateTransferStatus(
+          transferId, 
+          'failed', 
+          response.data.message || '转账失败，API返回错误'
+        );
+        
+        return {
+          success: false,
+          message: `内部转账失败: ${response.data.message || '未知错误'}`
+        };
+      }
+    } catch (error) {
+      console.error('执行内部转账失败:', error);
+      
+      // 如果已创建转账记录，更新状态
+      try {
+        const transfers = await db('infini_transfers')
+          .where({
+            account_id: accountId,
+            contact_type: contactType,
+            target_identifier: targetIdentifier,
+            amount,
+            source,
+            status: 'pending'
+          })
+          .orWhere({
+            account_id: accountId,
+            contact_type: contactType,
+            target_identifier: targetIdentifier,
+            amount,
+            source,
+            status: 'processing'
+          })
+          .orderBy('created_at', 'desc')
+          .limit(1);
+          
+        if (transfers && transfers.length > 0) {
+          await this.updateTransferStatus(
+            transfers[0].id, 
+            'failed', 
+            (error as Error).message
+          );
+        }
+      } catch (dbError) {
+        console.error('更新转账状态失败:', dbError);
+      }
+      
+      return {
+        success: false,
+        message: `执行内部转账失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 更新转账状态
+   * @param transferId 转账ID
+   * @param status 新状态
+   * @param errorMessage 错误信息（可选）
+   */
+  private async updateTransferStatus(
+    transferId: number | string,
+    status: 'pending' | 'processing' | 'completed' | 'failed',
+    errorMessage?: string
+  ): Promise<void> {
+    const updateData: Record<string, any> = {
+      status,
+      updated_at: new Date()
+    };
+    
+    if (errorMessage) {
+      updateData.error_message = errorMessage;
+    }
+    
+    if (status === 'completed') {
+      updateData.completed_at = new Date();
+    }
+    
+    await db('infini_transfers')
+      .where('id', transferId)
+      .update(updateData);
+      
+    console.log(`已更新转账记录 ${transferId} 的状态为 ${status}`);
+  }
+
+  /**
+   * 提供2FA验证码并继续转账流程
+   * @param transferId 转账ID
+   * @param verificationCode 2FA验证码
+   * @returns 转账结果
+   */
+  async continueTransferWith2FA(transferId: string | number, verificationCode: string): Promise<ApiResponse> {
+    try {
+      // 查找转账记录
+      const transfer = await db('infini_transfers')
+        .where('id', transferId)
+        .first();
+        
+      if (!transfer) {
+        return {
+          success: false,
+          message: '找不到指定的转账记录'
+        };
+      }
+      
+      // 检查转账状态
+      if (transfer.status !== 'pending' && transfer.status !== 'processing') {
+        return {
+          success: false,
+          message: `无法继续处理该转账，当前状态为: ${transfer.status}`
+        };
+      }
+      
+      // 更新验证码
+      await db('infini_transfers')
+        .where('id', transferId)
+        .update({
+          verification_code: verificationCode,
+          updated_at: new Date()
+        });
+        
+      console.log(`已更新转账记录 ${transferId} 的验证码`);
+      
+      // 继续转账流程
+      return this.internalTransfer(
+        transfer.account_id.toString(),
+        transfer.contact_type as 'uid' | 'email',
+        transfer.target_identifier,
+        transfer.amount,
+        transfer.source,
+        transfer.is_forced,
+        transfer.remarks
+      );
+    } catch (error) {
+      console.error('继续转账流程失败:', error);
+      return {
+        success: false,
+        message: `继续转账流程失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 获取转账记录
+   * @param accountId 可选的账户ID，用于筛选特定账户的转账记录
+   * @param status 可选的转账状态，用于筛选特定状态的转账记录
+   * @param page 页码，默认为1
+   * @param pageSize 每页记录数，默认为20
+   * @returns 包含转账记录的响应对象
+   */
+  async getTransferRecords(
+    accountId?: string, 
+    status?: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<ApiResponse> {
+    try {
+      // 构建查询
+      let query = db('infini_transfers')
+        .select([
+          'infini_transfers.*',
+          'infini_accounts.email as account_email'
+        ])
+        .leftJoin('infini_accounts', 'infini_transfers.account_id', 'infini_accounts.id')
+        .orderBy('infini_transfers.created_at', 'desc');
+        
+      // 应用筛选条件
+      if (accountId) {
+        query = query.where('infini_transfers.account_id', accountId);
+      }
+      
+      if (status) {
+        query = query.where('infini_transfers.status', status);
+      }
+      
+      // 获取总记录数
+      const countQuery = db('infini_transfers')
+        .count('id as total');
+        
+      if (accountId) {
+        countQuery.where('account_id', accountId);
+      }
+      
+      if (status) {
+        countQuery.where('status', status);
+      }
+      
+      const [countResult] = await countQuery;
+      const total = (countResult as any).total;
+      
+      // 应用分页
+      const offset = (page - 1) * pageSize;
+      query = query.limit(pageSize).offset(offset);
+      
+      // 执行查询
+      const transfers = await query;
+      
+      return {
+        success: true,
+        data: {
+          transfers,
+          pagination: {
+            total,
+            page,
+            pageSize,
+            totalPages: Math.ceil(total / pageSize)
+          }
+        },
+        message: '成功获取转账记录'
+      };
+    } catch (error) {
+      console.error('获取转账记录失败:', error);
+      return {
+        success: false,
+        message: `获取转账记录失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
    * 批量同步所有Infini账户KYC信息
    * 针对每个账户，获取并更新KYC信息
    * 已完成KYC状态的账户会跳过再次同步
