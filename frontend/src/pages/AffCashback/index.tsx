@@ -90,6 +90,14 @@ const AffCashback: React.FC = () => {
   const [currentRelation, setCurrentRelation] = useState<RelationData | null>(null);
   const [batchAmountModalVisible, setBatchAmountModalVisible] = useState<boolean>(false);
   const [batchAmount, setBatchAmount] = useState<number>(5.6);
+  const [delimiter, setDelimiter] = useState<string>(' '); // 默认分隔符为空格
+  const [showAdvancedConfig, setShowAdvancedConfig] = useState<boolean>(false);
+  const [fieldIndices, setFieldIndices] = useState<any>({
+    uidIndex: 0,
+    registerDateIndex: 1,
+    cardCountIndex: 2,
+    cardDateIndex: 3
+  });
   
   // 加载账户列表
   useEffect(() => {
