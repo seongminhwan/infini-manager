@@ -3601,6 +3601,7 @@ export class InfiniAccountService {
    * @param source 转账来源
    * @param isForced 是否强制执行（忽略风险）
    * @param remarks 备注信息（可选）
+   * @param auto2FA 是否自动处理2FA验证（可选，默认为false）
    * @returns 转账结果
    */
   async internalTransfer(
@@ -3610,7 +3611,8 @@ export class InfiniAccountService {
     amount: string,
     source: string,
     isForced: boolean = false,
-    remarks?: string
+    remarks?: string,
+    auto2FA: boolean = false
   ): Promise<ApiResponse> {
     try {
       console.log(`开始执行内部转账，账户ID: ${accountId}, 目标: ${contactType}:${targetIdentifier}, 金额: ${amount}`);
