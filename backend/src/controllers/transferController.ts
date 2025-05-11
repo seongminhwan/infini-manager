@@ -93,17 +93,17 @@ export const executeInternalTransfer: ControllerMethod = async (req: Request, re
     }
 
     // 验证contactType必须是uid或email
-    if (contactType !== 'uid' && contactType !== 'email') {
+    if (contactType !== 'uid' && contactType !== 'email' && contactType !== 'inner') {
       return res.status(400).json({
         success: false,
-        message: 'contactType参数必须是"uid"或"email"'
+        message: 'contactType参数必须是"uid"或"email"或"inner"'
       });
     }
 
     // 调用服务执行内部转账
     const response = await infiniAccountService.internalTransfer(
       accountId,
-      contactType as 'uid' | 'email',
+      contactType as 'uid' | 'email' | 'inner',
       targetIdentifier,
       amount.toString(), // 确保金额是字符串格式
       source,
@@ -127,61 +127,19 @@ export const executeInternalTransfer: ControllerMethod = async (req: Request, re
  */
 export const getTransfers: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { accountId, status } = req.query;
+    const { accountId, status, page = '1', pageSize = '20' } = req.query;
     
-    // 实际业务中需要从数据库查询转账记录
-    // 这里仅做架构设计，返回模拟数据
-    const transfers: Transfer[] = [
-      {
-        id: 'TRANSFER_001',
-        sourceAccount: 'ACC_001',
-        targetAccount: 'ACC_002',
-        amount: 5000.00,
-        memo: '资金转移',
-        status: 'completed',
-        timestamp: '2025-05-06 15:30:22'
-      },
-      {
-        id: 'TRANSFER_002',
-        sourceAccount: 'ACC_003',
-        targetAccount: 'ACC_001',
-        amount: 1500.00,
-        memo: '还款',
-        status: 'completed',
-        timestamp: '2025-05-05 10:15:43'
-      },
-      {
-        id: 'TRANSFER_003',
-        sourceAccount: 'ACC_002',
-        targetAccount: 'ACC_004',
-        amount: 3200.00,
-        memo: '运营资金',
-        status: 'pending',
-        timestamp: '2025-05-06 16:45:12'
-      }
-    ];
+    // 获取页码和每页条数
+    const pageNum = parseInt(page as string, 10) || 1;
+    const pageSizeNum = parseInt(pageSize as string, 10) || 20;
     
-    // 根据查询参数进行筛选
-    let filteredTransfers = [...transfers];
-    
-    if (accountId) {
-      const accId = accountId as string;
-      filteredTransfers = filteredTransfers.filter(transfer => 
-        transfer.sourceAccount === accId || transfer.targetAccount === accId
-      );
-    }
-    
-    if (status) {
-      const statusStr = status as string;
-      filteredTransfers = filteredTransfers.filter(transfer => 
-        transfer.status === statusStr as TransferStatus
-      );
-    }
-    
-    const response: ApiResponse<Transfer[]> = {
-      success: true,
-      data: filteredTransfers
-    };
+    // 使用InfiniAccountService获取真实转账记录
+    const response = await infiniAccountService.getTransferRecords(
+      accountId as string | undefined,
+      status as string | undefined,
+      pageNum,
+      pageSizeNum
+    );
     
     res.json(response);
   } catch (error) {
