@@ -5,6 +5,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { Transfer, TransferStatus, ApiResponse, ControllerMethod } from '../types';
 import { InfiniAccountService } from '../service/InfiniAccountService';
+import db from '../db/db'; // 导入数据库实例
 
 // 创建InfiniAccountService实例
 const infiniAccountService = new InfiniAccountService();
