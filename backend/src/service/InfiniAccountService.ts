@@ -3633,10 +3633,12 @@ export class InfiniAccountService {
         };
       }
       
-      // 特殊处理inner类型的转账请求
+      // 特殊处理转账请求
       let actualContactType = contactType;
       let actualTargetIdentifier = targetIdentifier;
+      let matchedInternalAccount = null;
       
+      // 情况1: inner类型 - 用于内部账户间转账，需要转换为uid类型
       if (contactType === 'inner') {
         console.log(`检测到内部转账请求，目标账户ID: ${targetIdentifier}`);
         
@@ -3656,8 +3658,43 @@ export class InfiniAccountService {
         // 将contactType转换为uid，targetIdentifier转换为目标账户的uid
         actualContactType = 'uid';
         actualTargetIdentifier = targetAccount.uid;
+        matchedInternalAccount = targetAccount;
         
         console.log(`已转换内部转账请求，实际目标: ${actualContactType}:${actualTargetIdentifier}`);
+      }
+      // 情况2: uid类型 - 检查是否匹配内部用户
+      else if (contactType === 'uid') {
+        console.log(`检测到UID转账请求: ${targetIdentifier}，尝试匹配内部账户`);
+        
+        // 尝试查找匹配的内部账户
+        const matchedAccount = await db('infini_accounts')
+          .where('uid', targetIdentifier)
+          .first();
+          
+        if (matchedAccount) {
+          console.log(`UID ${targetIdentifier} 匹配到内部账户: ${matchedAccount.id} (${matchedAccount.email})`);
+          matchedInternalAccount = matchedAccount;
+          // 不修改actualContactType和actualTargetIdentifier，保持原始请求不变
+        } else {
+          console.log(`UID ${targetIdentifier} 没有匹配到内部账户，使用原始请求`);
+        }
+      }
+      // 情况3: email类型 - 检查是否匹配内部用户
+      else if (contactType === 'email') {
+        console.log(`检测到Email转账请求: ${targetIdentifier}，尝试匹配内部账户`);
+        
+        // 尝试查找匹配的内部账户
+        const matchedAccount = await db('infini_accounts')
+          .where('email', targetIdentifier)
+          .first();
+          
+        if (matchedAccount) {
+          console.log(`Email ${targetIdentifier} 匹配到内部账户: ${matchedAccount.id} (${matchedAccount.email})`);
+          matchedInternalAccount = matchedAccount;
+          // 不修改actualContactType和actualTargetIdentifier，保持原始请求不变
+        } else {
+          console.log(`Email ${targetIdentifier} 没有匹配到内部账户，使用原始请求`);
+        }
       }
 
       // 检查账户是否开启了2FA
@@ -3740,7 +3777,7 @@ export class InfiniAccountService {
       }
 
       // 创建预转账记录
-      const [transferId] = await db('infini_transfers').insert({
+      const transferRecord = {
         account_id: accountId,
         contact_type: actualContactType,
         target_identifier: actualTargetIdentifier,
@@ -3754,7 +3791,16 @@ export class InfiniAccountService {
         status: 'pending',
         created_at: new Date(),
         updated_at: new Date()
-      });
+      };
+      
+      // 如果匹配到了内部账户，添加相关信息
+      if (matchedInternalAccount) {
+        transferRecord.matched_account_id = matchedInternalAccount.id;
+        transferRecord.matched_account_email = matchedInternalAccount.email;
+        transferRecord.matched_account_uid = matchedInternalAccount.uid;
+      }
+      
+      const [transferId] = await db('infini_transfers').insert(transferRecord);
 
       console.log(`创建预转账记录成功，ID: ${transferId}`);
       
@@ -3767,7 +3813,12 @@ export class InfiniAccountService {
         actualTargetIdentifier,
         amount,
         source,
-        remarks
+        remarks,
+        matchedInternalAccount: matchedInternalAccount ? {
+          id: matchedInternalAccount.id,
+          email: matchedInternalAccount.email,
+          uid: matchedInternalAccount.uid
+        } : null
       });
 
       // 获取有效Cookie
