@@ -410,17 +410,30 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
       );
     }
     
-    return (
+      return (
       <Timeline
         mode="left"
         pending={loading ? "加载更多..." : false}
         pendingDot={loading ? <Spin size="small" /> : <ClockCircleOutlined />}
+        style={{ fontSize: '14px' }}
       >
         {records.map(record => (
           <Timeline.Item
             key={record.id}
             color={getStatusColor(record.status)}
-            label={formatDateTime(record.createdAt)}
+            label={
+              <span style={{ 
+                fontWeight: 'bold', 
+                color: '#1890ff', 
+                fontSize: '14px',
+                backgroundColor: '#f0f8ff',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                display: 'inline-block'
+              }}>
+                {formatDateTime(record.createdAt)}
+              </span>
+            }
           >
             <TimelineCard 
               size="small"
