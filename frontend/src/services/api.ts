@@ -75,6 +75,86 @@ export const configApi = {
 };
 
 /**
+ * 转账API
+ * 处理所有与转账相关的API请求
+ */
+export const transferApi = {
+  // 执行内部转账
+  executeInternalTransfer: async (
+    accountId: string,
+    contactType: 'uid' | 'email',
+    targetIdentifier: string,
+    amount: string,
+    source: string,
+    isForced: boolean = false,
+    remarks?: string
+  ) => {
+    try {
+      console.log(`执行内部转账，源账户ID: ${accountId}, 目标: ${contactType}:${targetIdentifier}, 金额: ${amount}`);
+      const response = await api.post(`${apiBaseUrl}/api/transfers/internal`, {
+        accountId,
+        contactType,
+        targetIdentifier,
+        amount,       // 使用字符串格式传递金额
+        source,
+        isForced,
+        remarks
+      });
+      return response.data;
+    } catch (error) {
+      console.error('执行内部转账失败:', error);
+      throw error;
+    }
+  },
+  
+  // 提供2FA验证码继续转账流程
+  continueTransferWith2FA: async (transferId: string | number, verificationCode: string) => {
+    try {
+      console.log(`继续转账流程，转账ID: ${transferId}, 验证码: ${verificationCode}`);
+      const response = await api.post(`${apiBaseUrl}/api/transfers/continue-with-2fa`, {
+        transferId,
+        verificationCode
+      });
+      return response.data;
+    } catch (error) {
+      console.error('继续转账流程失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取转账记录列表
+  getTransfers: async (accountId?: string, status?: string, page: number = 1, pageSize: number = 20) => {
+    try {
+      console.log(`获取转账记录列表，账户ID: ${accountId || '全部'}, 状态: ${status || '全部'}, 页码: ${page}`);
+      const response = await api.get(`${apiBaseUrl}/api/transfers`, {
+        params: {
+          accountId,
+          status,
+          page,
+          pageSize
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('获取转账记录列表失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取转账记录详情
+  getTransferById: async (id: string) => {
+    try {
+      console.log(`获取转账记录详情，转账ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/transfers/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取转账记录详情失败:', error);
+      throw error;
+    }
+  }
+};
+
+/**
  * Infini账户API
  * 使用统一的api实例处理所有请求
  */
