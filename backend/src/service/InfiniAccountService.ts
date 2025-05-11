@@ -3696,14 +3696,21 @@ export class InfiniAccountService {
         if (!existingCode || !existingCode.verification_code) {
           await this.updateTransferStatus(transferId, 'processing', '需要2FA验证码');
           
-          return {
-            success: false,
-            message: '账户已开启2FA，请提供验证码',
-            data: {
-              require2FA: true,
-              transferId
-            }
-          };
+          // 如果开启了自动2FA验证，则自动获取验证码
+          if (auto2FA) {
+            console.log(`已开启自动2FA验证，正在自动获取验证码...`);
+            const autoVerifyResult = await this.autoGet2FAAndCompleteTransfer(transferId.toString());
+            return autoVerifyResult;
+          } else {
+            return {
+              success: false,
+              message: '账户已开启2FA，请提供验证码',
+              data: {
+                require2FA: true,
+                transferId
+              }
+            };
+          }
         }
 
         console.log(`使用已提供的验证码继续转账流程`);
