@@ -310,7 +310,10 @@ const AccountTransfer: React.FC = () => {
     setLoading(true);
     try {
       
-      // 调用内部转账API
+      // 获取自动2FA验证开关值
+      const useAuto2FA = values.auto2FA || false;
+      
+      // 调用内部转账API，传递auto2FA参数
       const response = await transferApi.executeInternalTransfer(
         sourceAccountId,
         contactType,
@@ -318,7 +321,8 @@ const AccountTransfer: React.FC = () => {
         amount,
         source,
         isForced,
-        remarks
+        remarks,
+        useAuto2FA // 传递auto2FA参数
       );
       
       // 处理API响应
