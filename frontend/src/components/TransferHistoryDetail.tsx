@@ -120,6 +120,16 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
       const response = await transferApi.getTransferHistory(id.toString());
       if (response.success && response.data && response.data.histories) {
         setTransferHistory(response.data.histories);
+        
+        // 检查是否有最终状态的记录（已完成或失败）
+        const hasCompletedStatus = response.data.histories.some(
+          (history: any) => history.status === 'completed' || history.status === 'failed'
+        );
+        
+        // 如果转账已达到最终状态，停止轮询
+        if (hasCompletedStatus) {
+          stopPolling();
+        }
       } else {
         setTransferHistory([]);
       }
