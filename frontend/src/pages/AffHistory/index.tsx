@@ -637,7 +637,14 @@ const AffHistory: React.FC = () => {
         open={historyVisible}
       >
         {currentTransferId && <TransferHistoryDetail transferId={currentTransferId} />}
-        {currentTransferId && <TransferTimeline transferId={currentTransferId} />}
+        {currentTransferId && (
+          <TransferTimeline 
+            visible={true}
+            sourceAccountId={currentCashback?.accountId.toString()}
+            isInternal={true}
+            onClose={() => {}} // 抽屉已经有自己的关闭按钮
+          />
+        )}
       </Drawer>
     </div>
   );
