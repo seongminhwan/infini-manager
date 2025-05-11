@@ -284,13 +284,16 @@ const AccountTransfer: React.FC = () => {
     
     // 不同转账目标的处理
     let targetIdentifier = '';
+    let actualContactType: 'uid' | 'email' | 'inner' = contactType;
     
     if (targetType === 'internal') {
-      // 内部账户转账
+      // 内部账户转账 - 使用inner类型
       targetIdentifier = values.internalTarget;
+      actualContactType = 'inner';
     } else {
-      // 外部账户转账
+      // 外部账户转账 - 使用uid或email类型
       targetIdentifier = values.externalTarget;
+      actualContactType = contactType;
     }
     
     // 确保金额作为字符串处理
@@ -316,7 +319,7 @@ const AccountTransfer: React.FC = () => {
       // 调用内部转账API，传递auto2FA参数
       const response = await transferApi.executeInternalTransfer(
         sourceAccountId,
-        contactType,
+        actualContactType,
         targetIdentifier,
         amount,
         source,
