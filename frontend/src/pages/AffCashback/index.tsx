@@ -189,7 +189,7 @@ const AffCashback: React.FC = () => {
   };
 
   // 解析文本
-  const parseText = async (text: string) => {
+  const parseText = async (text: string, delimiter: string, fieldIndices: any) => {
     if (!text.trim()) {
       message.error('请输入有效的文本');
       return;
@@ -206,7 +206,9 @@ const AffCashback: React.FC = () => {
     try {
       const res = await api.post(`${apiBaseUrl}/api/aff/cashbacks/${currentBatch.id}/parse`, {
         dataType: 'text',
-        data: text
+        data: text,
+        delimiter,
+        fieldIndices
       });
       
       if (res.data.success) {
