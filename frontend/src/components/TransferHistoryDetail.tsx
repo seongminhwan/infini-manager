@@ -120,11 +120,12 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
   const fetchAccountTransfers = async (accountId: string | number) => {
     setLoading(true);
     try {
-      const response = await transferApi.getTransfers({ 
-        accountId: accountId.toString(),
-        page: 1,
-        pageSize: 10
-      });
+      const response = await transferApi.getTransfers(
+        accountId.toString(),  // accountId
+        undefined,             // status (不筛选)
+        1,                     // page
+        10                     // pageSize
+      );
       if (response.success && response.data && response.data.transfers) {
         setTransferRecords(response.data.transfers);
         
