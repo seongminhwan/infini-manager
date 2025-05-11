@@ -110,14 +110,19 @@ const AccountTransfer: React.FC = () => {
     });
   };
 
-  // 加载Infini账户列表
+  // 存储原始账户数据
+  const [originalAccounts, setOriginalAccounts] = useState<any[]>([]);
+  
+  // 加载Infini账户列表 - 只在组件加载时获取一次数据
   useEffect(() => {
     const fetchAccounts = async () => {
       setLoadingAccounts(true);
       try {
         const response = await infiniAccountApi.getAllInfiniAccounts();
         if (response.success && response.data) {
-          // 使用当前排序字段和顺序排序
+          // 保存原始数据
+          setOriginalAccounts(response.data);
+          // 初始排序
           const sortedAccounts = sortAccounts(response.data, sortField, sortOrder);
           setAccounts(sortedAccounts);
         } else {
@@ -132,24 +137,32 @@ const AccountTransfer: React.FC = () => {
     };
 
     fetchAccounts();
-  }, [sortField, sortOrder]);
+  }, []); // 不依赖排序字段，只加载一次
   
-  // 当排序条件改变时重新排序账户列表
-  useEffect(() => {
-    if (accounts.length > 0) {
-      const sortedAccounts = sortAccounts(accounts, sortField, sortOrder);
-      setAccounts(sortedAccounts);
-    }
-  }, [sortField, sortOrder]);
-  
-  // 处理排序字段变化
+  // 处理排序字段变化 - 只在本地排序，不重新加载数据
   const handleSortFieldChange = (field: 'balance' | 'email' | 'uid') => {
+    // 保存用户当前选择的值
+    const currentValues = form.getFieldsValue();
+    
+    // 更新排序字段
     setSortField(field);
+    
+    // 本地重新排序
+    const sortedAccounts = sortAccounts(originalAccounts, field, sortOrder);
+    setAccounts(sortedAccounts);
   };
   
-  // 处理排序顺序变化
+  // 处理排序顺序变化 - 只在本地排序，不重新加载数据
   const handleSortOrderChange = (order: 'asc' | 'desc') => {
+    // 保存用户当前选择的值
+    const currentValues = form.getFieldsValue();
+    
+    // 更新排序顺序
     setSortOrder(order);
+    
+    // 本地重新排序
+    const sortedAccounts = sortAccounts(originalAccounts, sortField, order);
+    setAccounts(sortedAccounts);
   };
 
   // 模糊搜索过滤函数
