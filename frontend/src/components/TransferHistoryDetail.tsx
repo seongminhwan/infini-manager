@@ -120,43 +120,81 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
     };
   }, []);
   
+  // 检查历史记录是否包含最终状态
+  const hasReachedFinalState = (histories: any[]) => {
+    // 如果已知存在completed或failed状态，则达到最终态
+    return histories.some(history => 
+      history.status === 'completed' || history.status === 'failed'
+    );
+  };
+  
   // 获取单笔转账历史记录 - 使用链式轮询方式
   const fetchTransferHistory = async (id?: string | number) => {
-    // 如果ID无效或不应继续轮询，则退出
-    if (!id || !shouldContinuePolling.current) return;
+    // 预检查：如果ID无效，则直接退出
+    if (!id) return;
     
+    // 关键检查点1：请求前再次检查是否应该继续轮询
+    if (!shouldContinuePolling.current) {
+      console.log(`轮询已停止，不再发送请求获取转账ID ${id} 的历史记录`);
+      return; // 直接退出，不进行API调用
+    }
+    
+    console.log(`正在获取转账ID ${id} 的历史记录...`);
     setLoading(true);
+    
     try {
-      console.log(`正在获取转账ID ${id} 的历史记录...`);
       const response = await transferApi.getTransferHistory(id.toString());
       
+      // 关键检查点2：检查请求返回后是否需要停止
+      if (!shouldContinuePolling.current) {
+        console.log(`轮询已在请求执行期间被停止，忽略响应结果`);
+        setLoading(false);
+        return; // 已被停止，不处理结果
+      }
+      
       if (response.success && response.data && response.data.histories) {
-        setTransferHistory(response.data.histories);
+        const histories = response.data.histories;
+        setTransferHistory(histories);
         
-        // 检查是否有最终状态的记录（已完成或失败）
-        const completedHistories = response.data.histories.filter(
-          (history: any) => history.status === 'completed' || history.status === 'failed'
-        );
-        
-        // 如果转账已达到最终状态，停止轮询
-        if (completedHistories.length > 0) {
-          console.log(`检测到转账ID ${id} 的最终态: ${completedHistories.map((h: any) => h.status).join(', ')}`);
-          console.log('已达到最终态，停止链式轮询');
+        // 检查是否包含最终状态
+        if (hasReachedFinalState(histories)) {
+          // 找出所有最终状态记录
+          const finalStates = histories
+            .filter(h => h.status === 'completed' || h.status === 'failed')
+            .map(h => h.status);
           
-          // 仅设置标志位为false，不再安排下一次请求
+          console.log(`检测到转账ID ${id} 已达到最终态: ${finalStates.join(', ')}`);
+          console.log('停止所有后续轮询和请求');
+          
+          // 标记停止轮询
           shouldContinuePolling.current = false;
-        } else if (shouldContinuePolling.current) {
-          // 如果没有达到最终状态且应该继续轮询，则安排下一次请求
-          console.log(`转账ID ${id} 尚未达到最终态，1秒后继续链式轮询`);
           
+          // 清除所有可能的超时调用
+          if (timeoutId.current) {
+            console.log('清除现有轮询超时调用');
+            clearTimeout(timeoutId.current);
+            timeoutId.current = null;
+          }
+          
+          setLoading(false);
+          return; // 关键：达到最终态立即返回，不执行后续代码
+        }
+        
+        // 未达到最终态，且应继续轮询
+        if (shouldContinuePolling.current) {
+          console.log(`转账ID ${id} 尚未达到最终态，1秒后继续获取`);
+          
+          // 设置新的超时调用
           timeoutId.current = setTimeout(() => {
             fetchTransferHistory(id);
           }, 1000);
         }
       } else {
+        // API请求成功但数据异常
+        console.log('API响应成功但数据异常，可能需要重试');
         setTransferHistory([]);
         
-        // 即使获取数据失败，如果仍应继续轮询，也安排下一次请求
+        // 仍需继续轮询（可能是暂时性错误）
         if (shouldContinuePolling.current) {
           timeoutId.current = setTimeout(() => {
             fetchTransferHistory(id);
@@ -164,16 +202,18 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
         }
       }
     } catch (error) {
+      // 捕获到API请求错误
       console.error('获取转账历史记录失败:', error);
       setTransferHistory([]);
       
-      // 即使出错，如果仍应继续轮询，也安排下一次请求
+      // 即使出错，如果仍应继续轮询，也安排重试
       if (shouldContinuePolling.current) {
         timeoutId.current = setTimeout(() => {
           fetchTransferHistory(id);
         }, 1000);
       }
     } finally {
+      // 设置加载状态为false（如果提前返回则不会执行）
       setLoading(false);
     }
   };
@@ -227,29 +267,45 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
   
   // 加载转账历史记录
   useEffect(() => {
+    console.log('组件依赖项变化，重置轮询状态');
+    
     // 重置轮询状态
     shouldContinuePolling.current = true;
     
     // 清除可能的超时调用
     if (timeoutId.current) {
+      console.log('清除现有超时调用');
       clearTimeout(timeoutId.current);
       timeoutId.current = null;
     }
     
     // 单笔转账记录详情
     if (transferId) {
+      console.log(`开始处理转账ID: ${transferId}`);
       actualTransferId.current = transferId;
-      // 开始链式轮询该transferId的历史记录
-      startPolling(transferId);
+      
+      // 立即获取历史记录，检查是否已有最终态
+      // 注意：这里不使用startPolling，而是直接调用fetchTransferHistory
+      fetchTransferHistory(transferId);
     } 
     // 账户转账记录列表
     else if (sourceAccountId) {
+      console.log(`开始获取账户ID: ${sourceAccountId} 的转账记录`);
       fetchAccountTransfers(sourceAccountId);
     }
     
     // 返回清理函数
     return () => {
-      stopPolling();
+      console.log('组件卸载或依赖项变化，执行清理');
+      // 设置停止标志
+      shouldContinuePolling.current = false;
+      
+      // 清除任何可能的超时调用
+      if (timeoutId.current) {
+        console.log('清除超时调用');
+        clearTimeout(timeoutId.current);
+        timeoutId.current = null;
+      }
     };
   }, [transferId, sourceAccountId]);
 
