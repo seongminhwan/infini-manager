@@ -5,6 +5,7 @@
 import httpClient from '../utils/httpClient';
 import db from '../db/db';
 import { ImapFlow } from 'imapflow';
+import { TotpToolService } from './TotpToolService';
 import {
   ApiResponse,
   InfiniAccount,
@@ -3984,19 +3985,19 @@ export class InfiniAccountService {
       const secret = twoFaInfo.secret_key;
       console.log(`使用密钥生成2FA验证码: ${secret}`);
       
-      // 使用TOTP算法生成六位数验证码（使用node-2fa或类似库）
-      const twoFactor = require('node-2fa');
-      const twoFactorResult = twoFactor.generateToken(secret);
+      // 使用TotpToolService生成TOTP验证码
+      const totpService = new TotpToolService();
+      const totpResult = await totpService.generateTotpCode(secret);
       
-      if (!twoFactorResult || !twoFactorResult.token) {
-        console.error(`自动2FA验证失败: 无法生成2FA验证码`);
+      if (!totpResult.success || !totpResult.data || !totpResult.data.code) {
+        console.error(`自动2FA验证失败: 无法生成2FA验证码 - ${totpResult.message}`);
         return {
           success: false,
-          message: '无法生成2FA验证码'
+          message: `无法生成2FA验证码: ${totpResult.message || '未知错误'}`
         };
       }
       
-      const twoFactorCode = twoFactorResult.token;
+      const twoFactorCode = totpResult.data.code;
       console.log(`已为账户 ${account.email} 自动生成验证码: ${twoFactorCode}`);
       
       // 更新转账记录中的验证码字段
