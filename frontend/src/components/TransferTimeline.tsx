@@ -426,7 +426,9 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                 </div>
                 <div style={{ marginTop: 8 }}>
                   <Text ellipsis style={{ maxWidth: '100%' }}>
-                    <Text strong>源账户:</Text> {record.sourceAccount.email} ({record.sourceAccount.uid})
+                    <Text strong>源账户:</Text> {record.sourceAccount ? 
+                      `${record.sourceAccount.email || 'N/A'} (${record.sourceAccount.uid || 'N/A'})` : 
+                      '未知账户'}
                   </Text>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
