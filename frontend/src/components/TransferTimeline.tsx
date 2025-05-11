@@ -107,7 +107,9 @@ const CloseButton = styled(Button)`
 // 转账记录项接口
 interface TransferRecord {
   id: string;
-  sourceAccount: {
+  account_id?: string;
+  account_email?: string;
+  sourceAccount?: {
     id: string;
     email: string;
     uid: string;
@@ -118,11 +120,14 @@ interface TransferRecord {
     uid?: string;
   };
   targetIdentifier?: string | object;
-  contactType: string;
+  target_identifier?: string;
+  contactType?: string;
+  contact_type?: string;
   amount: string | object;
   status: string;
-  createdAt: string | number;
+  createdAt?: string | number;
   created_at?: string | number;
+  completed_at?: string | number;
   source: string;
   remarks?: string;
 }
@@ -149,7 +154,7 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
 }) => {
   const [records, setRecords] = useState<TransferRecord[]>([]);
   const [loading, setLoading] = useState(false);
-  const [pollingInterval, setPollingInterval] = useState(1000); // 默认1秒
+  const [pollingInterval, setPollingInterval] = useState(3000); // 默认3秒
   const [isPolling, setIsPolling] = useState(true);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<string | null>(null);
@@ -158,6 +163,64 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
   
   // 轮询定时器
   const pollingTimerRef = useRef<any>(null);
+  
+  // 格式化日期时间 - 增强版
+  const formatDateTime = (dateValue: string | number | undefined): string => {
+    if (!dateValue) return '-';
+    
+    try {
+      // 处理毫秒级时间戳
+      if (typeof dateValue === 'number') {
+        // 确保是合理的时间戳 (判断长度为13位的毫秒时间戳)
+        if (String(dateValue).length >= 13) {
+          const date = new Date(dateValue);
+          return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+        } else if (String(dateValue).length === 10) {
+          // 处理10位的秒级时间戳
+          const date = new Date(dateValue * 1000);
+          return date.toLocaleString('zh-CN');
+        }
+        return new Date(dateValue).toLocaleString('zh-CN');
+      }
+      
+      // 处理字符串日期
+      return new Date(dateValue).toLocaleString('zh-CN');
+    } catch (error) {
+      console.error('日期格式化错误:', error, dateValue);
+      return String(dateValue);
+    }
+  };
+  
+  // 安全显示可能是对象的数据
+  const safeRender = (value: any): string => {
+    if (value === null || value === undefined) return 'N/A';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  };
+  
+  // 将后端数据格式转换为组件使用格式
+  const transformTransferData = (data: any[]): TransferRecord[] => {
+    return data.map(item => ({
+      ...item,
+      // 确保兼容字段映射
+      createdAt: item.created_at,
+      contactType: item.contact_type,
+      targetIdentifier: item.target_identifier,
+      // 如果sourceAccount不存在，创建一个基本结构
+      sourceAccount: item.sourceAccount || {
+        id: item.account_id,
+        email: item.account_email || '未知邮箱',
+        uid: item.account_id || '未知UID'
+      }
+    }));
+  };
   
   // 获取转账记录函数
   const fetchTransferRecords = async () => {
@@ -178,12 +241,14 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
         // 如果data是对象且包含transfers字段（嵌套结构）
         if (response.data.transfers && Array.isArray(response.data.transfers)) {
           console.log('获取到transfers数组数据:', response.data.transfers.length);
-          setRecords(response.data.transfers);
+          // 转换数据格式，确保字段映射正确
+          setRecords(transformTransferData(response.data.transfers));
         } 
         // 如果data本身是数组
         else if (Array.isArray(response.data)) {
           console.log('获取到数组数据:', response.data.length);
-          setRecords(response.data);
+          // 转换数据格式，确保字段映射正确
+          setRecords(transformTransferData(response.data));
         }
         // 如果data是其他格式，记录日志并设置为空数组避免报错
         else {
@@ -231,28 +296,6 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
     setHistoryData(null);
   };
   
-  // 格式化日期时间
-  const formatDateTime = (dateValue: string | number | undefined): string => {
-    if (!dateValue) return '-';
-    
-    try {
-      if (typeof dateValue === 'number') {
-        return new Date(dateValue).toLocaleString('zh-CN');
-      }
-      return new Date(dateValue).toLocaleString('zh-CN');
-    } catch (error) {
-      console.error('日期格式化错误:', error);
-      return String(dateValue);
-    }
-  };
-  
-  // 安全显示可能是对象的数据
-  const safeRender = (value: any): string => {
-    if (value === null || value === undefined) return 'N/A';
-    if (typeof value === 'object') return JSON.stringify(value);
-    return String(value);
-  };
-  
   // 渲染历史记录时间轴
   const renderHistoryTimeline = () => {
     if (!historyData) return null;
@@ -269,9 +312,10 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                 color: '#1890ff', 
                 fontSize: '14px',
                 backgroundColor: '#f0f8ff',
-                padding: '2px 6px',
+                padding: '4px 8px',
                 borderRadius: '4px',
-                display: 'inline-block'
+                display: 'inline-block',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
               }}>
                 {formatDateTime(history.created_at)}
               </span>
@@ -422,7 +466,7 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
       );
     }
     
-      return (
+    return (
       <Timeline
         mode="left"
         pending={loading ? "加载更多..." : false}
@@ -439,11 +483,13 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                 color: '#1890ff', 
                 fontSize: '14px',
                 backgroundColor: '#f0f8ff',
-                padding: '2px 6px',
+                padding: '4px 8px',
                 borderRadius: '4px',
-                display: 'inline-block'
+                display: 'inline-block',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
               }}>
-                {formatDateTime(record.createdAt)}
+                {/* 优先使用created_at字段，其次使用createdAt */}
+                {formatDateTime(record.created_at || record.createdAt)}
               </span>
             }
           >
@@ -478,7 +524,7 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                   <Text ellipsis style={{ maxWidth: '100%' }}>
                     <Text strong>源账户:</Text> {record.sourceAccount ? 
                       `${record.sourceAccount.email || 'N/A'} (${record.sourceAccount.uid || 'N/A'})` : 
-                      '未知账户'}
+                      record.account_email || '未知账户'}
                   </Text>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -491,7 +537,7 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                     <Text strong>目标:</Text> 
                     {record.targetAccount ? 
                       `${record.targetAccount.email || 'N/A'} (${record.targetAccount.uid || 'N/A'})` : 
-                      `${record.contactType === 'email' ? '邮箱' : 'UID'}: ${safeRender(record.targetIdentifier)}`
+                      `${(record.contactType || record.contact_type) === 'email' ? '邮箱' : 'UID'}: ${safeRender(record.targetIdentifier || record.target_identifier)}`
                     }
                   </Text>
                 </div>
@@ -614,7 +660,7 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                     <Text>
                       <Text strong>源账户:</Text> {historyData.transfer.sourceAccount ? 
                         `${historyData.transfer.sourceAccount.email || 'N/A'} (${historyData.transfer.sourceAccount.uid || 'N/A'})` : 
-                        '未知账户'}
+                        historyData.transfer.account_email || '未知账户'}
                     </Text>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -626,17 +672,24 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                       <Text strong>目标:</Text> 
                       {historyData.transfer.targetAccount ? 
                         `${historyData.transfer.targetAccount.email || 'N/A'} (${historyData.transfer.targetAccount.uid || 'N/A'})` : 
-                        `${historyData.transfer.contactType === 'email' ? '邮箱' : 'UID'}: ${safeRender(historyData.transfer.targetIdentifier)}`
+                        `${(historyData.transfer.contactType || historyData.transfer.contact_type) === 'email' ? '邮箱' : 'UID'}: ${safeRender(historyData.transfer.targetIdentifier || historyData.transfer.target_identifier)}`
                       }
                     </Text>
                   </div>
                   <div>
                     <Text>
                       <Text strong>创建时间:</Text> {
-                        formatDateTime(historyData.transfer.createdAt || historyData.transfer.created_at)
+                        formatDateTime(historyData.transfer.created_at || historyData.transfer.createdAt)
                       }
                     </Text>
                   </div>
+                  {historyData.transfer.completed_at && (
+                    <div>
+                      <Text>
+                        <Text strong>完成时间:</Text> {formatDateTime(historyData.transfer.completed_at)}
+                      </Text>
+                    </div>
+                  )}
                   {historyData.transfer.remarks && (
                     <div>
                       <Text type="secondary">
