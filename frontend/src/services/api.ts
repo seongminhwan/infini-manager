@@ -140,6 +140,18 @@ export const transferApi = {
       console.error('获取转账记录详情失败:', error);
       throw error;
     }
+  },
+  
+  // 获取转账历史记录
+  getTransferHistory: async (id: string) => {
+    try {
+      console.log(`获取转账历史记录，转账ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/transfers/${id}/history`);
+      return response.data;
+    } catch (error) {
+      console.error('获取转账历史记录失败:', error);
+      throw error;
+    }
   }
 };
 
