@@ -330,7 +330,27 @@ const AccountTransfer: React.FC = () => {
       
       // 处理API响应
       if (response.success) {
-        message.success('转账成功');
+        // 使用更明显的成功反馈，延长显示时间并提高优先级
+        message.success({
+          content: '转账提交成功！金额已从您的账户中扣除',
+          duration: 5,
+          style: {
+            marginTop: '20vh',
+          },
+        });
+        
+        // 立即刷新转账记录列表
+        setTimeout(() => {
+          // 延迟200ms刷新转账记录，确保后端数据已更新
+          if (showTimeline) {
+            // 通过强制重新设置sourceAccountId来触发TransferTimeline组件重新获取数据
+            setTimelineSourceId('');
+            setTimeout(() => {
+              setTimelineSourceId(sourceAccountId);
+            }, 50);
+          }
+        }, 200);
+        
         form.resetFields();
       } else {
         // 检查是否需要2FA验证
