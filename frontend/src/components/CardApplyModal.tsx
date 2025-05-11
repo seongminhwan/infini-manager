@@ -28,8 +28,7 @@ import {
   ExclamationCircleOutlined,
   IdcardOutlined
 } from '@ant-design/icons';
-import axios from 'axios';
-import { apiBaseUrl, infiniAccountApi } from '../services/api';
+import api, { apiBaseUrl, infiniAccountApi } from '../services/api';
 import styled from 'styled-components';
 
 const { Title, Text } = Typography;
@@ -244,7 +243,7 @@ const CardApplyModal: React.FC<CardApplyModalProps> = ({
       console.log('调用/card/kyc/basic接口，数据:', requestData);
       
       // 调用接口
-      const response = await axios.post(
+      const response = await api.post(
         `${apiBaseUrl}/api/infini-cards/kyc/basic`, 
         {
           accountId: account.id,
@@ -296,7 +295,7 @@ const CardApplyModal: React.FC<CardApplyModalProps> = ({
       }
       
       // 发送请求时传入accountId参数
-      const response = await axios.get(`${apiBaseUrl}/api/infini-cards/price/${cardType}`, {
+      const response = await api.get(`${apiBaseUrl}/api/infini-cards/price/${cardType}`, {
         params: {
           accountId: account.id
         }
@@ -392,7 +391,7 @@ const CardApplyModal: React.FC<CardApplyModalProps> = ({
       }
       
       // 步骤3: 调用卡片申请接口
-      const response = await axios.post(`${apiBaseUrl}/api/infini-cards/apply`, {
+      const response = await api.post(`${apiBaseUrl}/api/infini-cards/apply`, {
         accountId: account.id,
         cardType: selectedCardType
       });
