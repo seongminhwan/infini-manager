@@ -621,11 +621,21 @@ api.interceptors.request.use(
  */
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    // 如果响应成功但API返回错误状态
+    // 如果响应成功但API返回错误状态(success=false)
     if (response.data && response.data.success === false) {
       // 显示API返回的错误信息
       if (response.data.message) {
+        // 显示错误信息，确保即使是复杂的错误消息也能正确显示
         message.error(response.data.message);
+      } else if (response.data.msg) {
+        // 兼容msg字段
+        message.error(response.data.msg);
+      } else if (response.data.error) {
+        // 兼容error字段
+        message.error(response.data.error);
+      } else {
+        // 如果没有明确的错误信息字段，显示通用错误
+        message.error('请求失败，请检查网络连接或稍后重试');
       }
     }
     return response;
