@@ -163,8 +163,23 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
         50 // 获取较多记录
       );
       
+      // 判断response.data的类型并正确处理
       if (response.success && response.data) {
-        setRecords(response.data);
+        // 如果data是对象且包含transfers字段（嵌套结构）
+        if (response.data.transfers && Array.isArray(response.data.transfers)) {
+          console.log('获取到transfers数组数据:', response.data.transfers.length);
+          setRecords(response.data.transfers);
+        } 
+        // 如果data本身是数组
+        else if (Array.isArray(response.data)) {
+          console.log('获取到数组数据:', response.data.length);
+          setRecords(response.data);
+        }
+        // 如果data是其他格式，记录日志并设置为空数组避免报错
+        else {
+          console.error('获取到的数据格式不是预期的数组:', response.data);
+          setRecords([]);
+        }
       }
     } catch (error) {
       console.error('获取转账记录失败:', error);
