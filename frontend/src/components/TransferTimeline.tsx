@@ -32,9 +32,16 @@ const TimelineContainer = styled.div`
 `;
 
 const TimelineCard = styled(Card)`
+  cursor: pointer;
   margin-bottom: 8px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+`;
+
+const HistoryModalContent = styled.div`
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0 16px;
 `;
 
 const TimelineHeader = styled.div`
@@ -134,6 +141,10 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
   const [loading, setLoading] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(1000); // 默认1秒
   const [isPolling, setIsPolling] = useState(true);
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [selectedTransfer, setSelectedTransfer] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyData, setHistoryData] = useState<TransferHistoryResponse | null>(null);
   
   // 轮询定时器
   const pollingTimerRef = useRef<any>(null);
