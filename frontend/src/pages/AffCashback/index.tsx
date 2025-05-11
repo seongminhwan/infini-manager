@@ -198,6 +198,49 @@ const AffCashback: React.FC = () => {
     reader.readAsText(file);
   };
 
+  // 更新预览数据
+  const updatePreviewData = useCallback((text: string, delimiter: string) => {
+    if (!text.trim()) {
+      setPreviewData([]);
+      return;
+    }
+    
+    // 获取第一行文本
+    const firstLine = text.split('\n')[0].trim();
+    if (!firstLine) {
+      setPreviewData([]);
+      return;
+    }
+    
+    // 使用分隔符分割
+    const items = firstLine.split(delimiter);
+    setPreviewData(items);
+  }, []);
+  
+  // 处理分隔符变更
+  const handleDelimiterChange = useCallback((type: string, customValue?: string) => {
+    setDelimiterType(type);
+    let newDelimiter = ' ';
+    
+    switch (type) {
+      case 'space':
+        newDelimiter = ' ';
+        break;
+      case 'comma':
+        newDelimiter = ',';
+        break;
+      case 'custom':
+        newDelimiter = customValue || '';
+        break;
+    }
+    
+    setDelimiter(newDelimiter);
+    
+    // 更新预览
+    const text = localStorage.getItem('aff_text_data') || '';
+    updatePreviewData(text, newDelimiter);
+  }, [updatePreviewData]);
+  
   // 解析文本
   const parseText = async (text: string, delimiter: string, fieldIndices: any) => {
     if (!text.trim()) {
