@@ -12,9 +12,9 @@ interface TransferHistory {
   id: string;
   transfer_id: string;
   status: string;
-  details: string;
+  details: string | object;
   memo: string;
-  created_at: string;
+  created_at: string | number;
 }
 
 // 转账历史记录响应接口
@@ -108,11 +108,12 @@ interface TransferRecord {
     email?: string;
     uid?: string;
   };
-  targetIdentifier?: string;
+  targetIdentifier?: string | object;
   contactType: string;
-  amount: string;
+  amount: string | object;
   status: string;
-  createdAt: string;
+  createdAt: string | number;
+  created_at?: string | number;
   source: string;
   remarks?: string;
 }
@@ -221,6 +222,28 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
     setHistoryData(null);
   };
   
+  // 格式化日期时间
+  const formatDateTime = (dateValue: string | number | undefined): string => {
+    if (!dateValue) return '-';
+    
+    try {
+      if (typeof dateValue === 'number') {
+        return new Date(dateValue).toLocaleString('zh-CN');
+      }
+      return new Date(dateValue).toLocaleString('zh-CN');
+    } catch (error) {
+      console.error('日期格式化错误:', error);
+      return String(dateValue);
+    }
+  };
+  
+  // 安全显示可能是对象的数据
+  const safeRender = (value: any): string => {
+    if (value === null || value === undefined) return 'N/A';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  };
+  
   // 渲染历史记录时间轴
   const renderHistoryTimeline = () => {
     if (!historyData) return null;
@@ -231,14 +254,7 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
           <Timeline.Item
             key={history.id}
             color={getStatusColor(history.status)}
-            label={new Date(history.created_at).toLocaleString('zh-CN', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            })}
+            label={formatDateTime(history.created_at)}
           >
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
@@ -251,7 +267,7 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
               </div>
               {history.details && (
                 <div>
-                  <Text>{history.details}</Text>
+                  <Text>{safeRender(history.details)}</Text>
                 </div>
               )}
               {history.memo && (
@@ -395,7 +411,7 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
           <Timeline.Item
             key={record.id}
             color={getStatusColor(record.status)}
-            label={new Date(record.createdAt).toLocaleString('zh-CN')}
+            label={formatDateTime(record.createdAt)}
           >
             <TimelineCard 
               size="small"
@@ -433,15 +449,15 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   <Text style={{ marginRight: 8 }} type="secondary">转账</Text>
-                  <Text style={{ color: '#52c41a', fontWeight: 'bold' }}>${record.amount}</Text>
+                  <Text style={{ color: '#52c41a', fontWeight: 'bold' }}>${safeRender(record.amount)}</Text>
                   <ArrowRightOutlined style={{ margin: '0 8px' }} />
                 </div>
                 <div>
                   <Text ellipsis style={{ maxWidth: '100%' }}>
                     <Text strong>目标:</Text> 
                     {record.targetAccount ? 
-                      `${record.targetAccount.email} (${record.targetAccount.uid})` : 
-                      `${record.contactType === 'email' ? '邮箱' : 'UID'}: ${record.targetIdentifier}`
+                      `${record.targetAccount.email || 'N/A'} (${record.targetAccount.uid || 'N/A'})` : 
+                      `${record.contactType === 'email' ? '邮箱' : 'UID'}: ${safeRender(record.targetIdentifier)}`
                     }
                   </Text>
                 </div>
@@ -530,7 +546,7 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
 
       {/* 转账历史记录Modal */}
       <Modal
-        title="转账历史记录"
+        title="转账详情"
         open={historyModalVisible}
         onCancel={handleCloseHistoryModal}
         footer={[
@@ -538,7 +554,8 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
             关闭
           </Button>
         ]}
-        width={700}
+        width={900}
+        style={{ top: 20 }}
       >
         {historyLoading ? (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
@@ -568,14 +585,21 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <Text style={{ marginRight: 8 }} type="secondary">转账金额:</Text>
-                    <Text style={{ color: '#52c41a', fontWeight: 'bold' }}>${historyData.transfer.amount}</Text>
+                    <Text style={{ color: '#52c41a', fontWeight: 'bold' }}>${safeRender(historyData.transfer.amount)}</Text>
                   </div>
                   <div>
                     <Text>
                       <Text strong>目标:</Text> 
                       {historyData.transfer.targetAccount ? 
                         `${historyData.transfer.targetAccount.email || 'N/A'} (${historyData.transfer.targetAccount.uid || 'N/A'})` : 
-                        `${historyData.transfer.contactType === 'email' ? '邮箱' : 'UID'}: ${historyData.transfer.targetIdentifier || 'N/A'}`
+                        `${historyData.transfer.contactType === 'email' ? '邮箱' : 'UID'}: ${safeRender(historyData.transfer.targetIdentifier)}`
+                      }
+                    </Text>
+                  </div>
+                  <div>
+                    <Text>
+                      <Text strong>创建时间:</Text> {
+                        formatDateTime(historyData.transfer.createdAt || historyData.transfer.created_at)
                       }
                     </Text>
                   </div>
