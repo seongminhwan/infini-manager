@@ -1899,41 +1899,80 @@ const ResizableTitle: React.FC<{
   [x: string]: any;
 }> = ({ onResize, width, ...restProps }) => {
   const [resizing, setResizing] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
 
   // 使用有效的宽度值，确保resize功能始终可用
   const actualWidth = width || 100;
+  
+  // 使用useCallback优化事件处理函数，减少重渲染
+  const handleResize = useCallback(
+    (e: React.SyntheticEvent<Element>, data: ResizeCallbackData) => {
+      e.preventDefault();
+      onResize(e, data);
+    },
+    [onResize]
+  );
+  
+  // 使用useCallback优化事件处理函数，减少重渲染
+  const handleResizeStart = useCallback(() => {
+    setResizing(true);
+  }, []);
+  
+  const handleResizeStop = useCallback(() => {
+    setResizing(false);
+  }, []);
 
   return (
     <Resizable
       width={actualWidth}
       height={0}
       handle={
-        <span
+        <div
           className="react-resizable-handle"
           onClick={e => e.stopPropagation()}
-          onMouseEnter={() => setIsHovering(true)}
-          onMouseLeave={() => setIsHovering(false)}
           style={{
             position: 'absolute',
-            right: 0,
+            right: -10, // 向右偏移，使触发区域更宽
             top: 0,
-            bottom: 0,
-            width: 10, // 增加宽度，使拖拽区域更容易点击
-            zIndex: 1,
+            bottom: 0, 
+            width: 20, // 增加宽度到20px，使左右各有10px的可触发区域
+            zIndex: 10, // 提高z-index确保可点击
             cursor: 'col-resize',
-            background: (resizing || isHovering) ? 'rgba(0, 120, 212, 0.3)' : 'transparent', // 更明显的颜色
-            transition: 'background 0.2s',
-            borderRight: (resizing || isHovering) ? '2px solid #1890ff' : 'none', // 添加边框增强视觉效果
+            // 使用伪元素显示视觉指示器，避免频繁重渲染
+            // 实际可点击区域比视觉区域大
           }}
-        />
+        >
+          {/* 添加一个内部指示器，仅在拖拽或悬停时显示 */}
+          <div
+            style={{
+              position: 'absolute',
+              right: 10, // 居中显示
+              top: 0,
+              bottom: 0,
+              width: 2, // 细线
+              background: resizing ? '#1890ff' : 'rgba(24, 144, 255, 0.3)', // 拖拽时更明显
+              transition: 'background 0.2s',
+              opacity: resizing ? 1 : 0, // 默认隐藏，拖拽时显示
+            }}
+          />
+        </div>
       }
-      onResize={onResize}
-      onResizeStart={() => setResizing(true)}
-      onResizeStop={() => setResizing(false)}
-      draggableOpts={{ enableUserSelectHack: false }}
+      onResize={handleResize}
+      onResizeStart={handleResizeStart}
+      onResizeStop={handleResizeStop}
+      draggableOpts={{ 
+        enableUserSelectHack: false,
+        // 减少移动时的计算频率，提高性能
+        grid: [1, 0], // 只在水平方向移动，且最小单位为1px
+      }}
     >
-      <th {...restProps} style={{ ...restProps.style, position: 'relative' }} />
+      <th 
+        {...restProps} 
+        style={{ 
+          ...restProps.style, 
+          position: 'relative',
+          userSelect: 'none', // 防止文本选择干扰拖拽
+        }} 
+      />
     </Resizable>
   );
 };
