@@ -2521,10 +2521,18 @@ const AccountMonitor: React.FC = () => {
     },
     {
       title: '用户ID',
-      dataIndex: 'userId',
-      key: 'userId',
+      dataIndex: 'uid',
+      key: 'uid',
       width: 240,
       ellipsis: true,
+      render: (text: string) => (
+        <Tooltip title={text || '未设置'}>
+          <div style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(text || '')}>
+            <strong>{text || '未设置'}</strong>
+            <CopyOutlined style={{ marginLeft: 8 }} />
+          </div>
+        </Tooltip>
+      )
     },
     {
       title: 'KYC状态',
