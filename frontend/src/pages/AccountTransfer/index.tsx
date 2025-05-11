@@ -69,7 +69,13 @@ const AccountTransfer: React.FC = () => {
       try {
         const response = await infiniAccountApi.getAllInfiniAccounts();
         if (response.success && response.data) {
-          setAccounts(response.data);
+          // 按余额排序（默认倒序，从高到低）
+          const sortedAccounts = [...response.data].sort((a, b) => {
+            const balanceA = a.availableBalance || 0;
+            const balanceB = b.availableBalance || 0;
+            return balanceB - balanceA; // 倒序排列
+          });
+          setAccounts(sortedAccounts);
         } else {
           message.error('获取账户列表失败');
         }
@@ -84,6 +90,15 @@ const AccountTransfer: React.FC = () => {
     fetchAccounts();
   }, []);
 
+  // 模糊搜索过滤函数
+  const filterOption = (input: string, option: any) => {
+    // 搜索邮箱和UID
+    const emailMatch = option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0;
+    const uidMatch = option.value.toString().indexOf(input) >= 0;
+    const balanceStr = option.balance?.toString() || '';
+    const balanceMatch = balanceStr.indexOf(input) >= 0;
+    return emailMatch || uidMatch || balanceMatch;
+  };
   // 处理转账提交
   const handleSubmit = async (values: any) => {
     setLoading(true);
@@ -180,7 +195,6 @@ const AccountTransfer: React.FC = () => {
       setLoading(false);
     }
   };
-
   // 处理2FA验证码提交
   const handleVerifySubmit = async (values: any) => {
     if (!currentTransferId) return;
@@ -273,12 +287,17 @@ const AccountTransfer: React.FC = () => {
                       onChange={handleSourceChange}
                       loading={loadingAccounts}
                       optionLabelProp="label"
+                      showSearch
+                      filterOption={filterOption}
+                      optionFilterProp="label"
+                      style={{ width: '100%' }}
                     >
                       {accounts.map(account => (
                         <Option 
                           key={account.id} 
                           value={account.id}
                           label={`${account.email} (${account.uid})`}
+                          balance={account.availableBalance}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span>{account.email} ({account.uid})</span>
@@ -329,12 +348,17 @@ const AccountTransfer: React.FC = () => {
                         placeholder="选择转入账户"
                         loading={loadingAccounts}
                         optionLabelProp="label"
+                        showSearch
+                        filterOption={filterOption}
+                        optionFilterProp="label"
+                        style={{ width: '100%' }}
                       >
                         {accounts.map(account => (
                           <Option 
                             key={account.id} 
                             value={account.id}
                             label={`${account.email} (${account.uid})`}
+                            balance={account.availableBalance}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span>{account.email} ({account.uid})</span>
