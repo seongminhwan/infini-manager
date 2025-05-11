@@ -545,7 +545,6 @@ const AccountDetails: React.FC = () => {
       
       {/* 转账详情弹窗 */}
       <Modal
-        className="transfer-detail-modal"
         title={
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <span style={{ fontSize: '18px', fontWeight: 'bold', marginRight: '8px' }}>转账详情</span>
