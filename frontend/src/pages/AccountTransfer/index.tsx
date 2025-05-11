@@ -352,6 +352,13 @@ const AccountTransfer: React.FC = () => {
             okText: '继续转账',
             cancelText: '取消',
             onOk: async () => {
+              // 先显示转账记录时间轴
+              showTransferTimeline(
+                sourceAccountId, 
+                targetType === 'internal' ? targetIdentifier : undefined, 
+                targetType === 'internal'
+              );
+              
               // 使用相同参数，但设置isForced为true
               setLoading(true);
               try {
