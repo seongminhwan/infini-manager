@@ -18,7 +18,7 @@ const api: AxiosInstance = axios.create({
 });
 
 // API基础URL
-const apiBaseUrl = 'http://localhost:33201';
+const apiBaseUrl = 'http://localhost:33202';
 
 /**
  * 配置API服务
@@ -580,6 +580,155 @@ export const totpToolApi = {
       return response.data;
     } catch (error) {
       console.error('生成TOTP二维码失败:', error);
+      throw error;
+    }
+  }
+};
+
+/**
+ * AFF返现API
+ * 处理与AFF返现相关的API请求
+ */
+export const affApi = {
+  // 获取AFF返现批次列表
+  getAffCashbacks: async (page: number = 1, pageSize: number = 10) => {
+    try {
+      console.log(`获取AFF返现批次列表，页码: ${page}, 每页数量: ${pageSize}`);
+      const response = await api.get(`${apiBaseUrl}/api/aff/cashbacks`, {
+        params: { page, pageSize }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('获取AFF返现批次列表失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取AFF返现批次详情
+  getAffCashbackById: async (id: string) => {
+    try {
+      console.log(`获取AFF返现批次详情，批次ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/aff/cashbacks/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取AFF返现批次详情失败:', error);
+      throw error;
+    }
+  },
+  
+  // 创建AFF返现批次
+  createAffCashback: async () => {
+    try {
+      console.log('创建AFF返现批次');
+      const response = await api.post(`${apiBaseUrl}/api/aff/cashbacks`);
+      return response.data;
+    } catch (error) {
+      console.error('创建AFF返现批次失败:', error);
+      throw error;
+    }
+  },
+  
+  // 解析AFF数据
+  parseAffData: async (batchId: string, data: string, isFile: boolean = false) => {
+    try {
+      console.log(`解析AFF数据，批次ID: ${batchId}, 是否文件: ${isFile}`);
+      const response = await api.post(`${apiBaseUrl}/api/aff/cashbacks/${batchId}/parse`, {
+        data,
+        isFile
+      });
+      return response.data;
+    } catch (error) {
+      console.error('解析AFF数据失败:', error);
+      throw error;
+    }
+  },
+  
+  // 更新关联记录状态（合格或忽略）
+  updateRelationStatus: async (relationId: string, status: 'qualified' | 'ignored') => {
+    try {
+      console.log(`更新关联记录状态，关联ID: ${relationId}, 状态: ${status}`);
+      const response = await api.put(`${apiBaseUrl}/api/aff/relations/${relationId}/status`, {
+        status
+      });
+      return response.data;
+    } catch (error) {
+      console.error('更新关联记录状态失败:', error);
+      throw error;
+    }
+  },
+  
+  // 更新AFF返现金额
+  updateAffAmount: async (relationId: string, amount: number) => {
+    try {
+      console.log(`更新AFF返现金额，关联ID: ${relationId}, 金额: ${amount}`);
+      const response = await api.put(`${apiBaseUrl}/api/aff/relations/${relationId}/amount`, {
+        amount
+      });
+      return response.data;
+    } catch (error) {
+      console.error('更新AFF返现金额失败:', error);
+      throw error;
+    }
+  },
+  
+  // 更新所有待处理记录的返现金额
+  updateAllPendingAmount: async (batchId: string, amount: number) => {
+    try {
+      console.log(`更新所有待处理记录的返现金额，批次ID: ${batchId}, 金额: ${amount}`);
+      const response = await api.put(`${apiBaseUrl}/api/aff/cashbacks/${batchId}/amount`, {
+        amount
+      });
+      return response.data;
+    } catch (error) {
+      console.error('更新所有待处理记录的返现金额失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取AFF返现批次关联的用户列表
+  getAffCashbackRelations: async (batchId: string) => {
+    try {
+      console.log(`获取AFF返现批次关联的用户列表，批次ID: ${batchId}`);
+      const response = await api.get(`${apiBaseUrl}/api/aff/cashbacks/${batchId}/relations`);
+      return response.data;
+    } catch (error) {
+      console.error('获取AFF返现批次关联的用户列表失败:', error);
+      throw error;
+    }
+  },
+  
+  // 开始批量转账
+  startBatchTransfer: async (batchId: string) => {
+    try {
+      console.log(`开始批量转账，批次ID: ${batchId}`);
+      const response = await api.post(`${apiBaseUrl}/api/aff/cashbacks/${batchId}/transfer`);
+      return response.data;
+    } catch (error) {
+      console.error('开始批量转账失败:', error);
+      throw error;
+    }
+  },
+  
+  // 执行单个记录的转账
+  executeTransfer: async (relationId: string) => {
+    try {
+      console.log(`执行单个记录的转账，关联ID: ${relationId}`);
+      const response = await api.post(`${apiBaseUrl}/api/aff/relations/${relationId}/transfer`);
+      return response.data;
+    } catch (error) {
+      console.error('执行单个记录的转账失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取下一条待处理记录
+  getNextPendingRelation: async (batchId: string) => {
+    try {
+      console.log(`获取下一条待处理记录，批次ID: ${batchId}`);
+      const response = await api.get(`${apiBaseUrl}/api/aff/cashbacks/${batchId}/next`);
+      return response.data;
+    } catch (error) {
+      console.error('获取下一条待处理记录失败:', error);
       throw error;
     }
   }
