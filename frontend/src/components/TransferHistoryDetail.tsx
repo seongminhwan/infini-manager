@@ -91,6 +91,21 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
     }
   };
   
+  // 开始轮询转账历史记录（每秒刷新一次）
+  const startPolling = (id?: string | number) => {
+    // 先停止现有的轮询
+    stopPolling();
+    
+    if (!id) return;
+    
+    // 设置1秒的轮询间隔
+    const interval = setInterval(() => {
+      fetchTransferHistory(id);
+    }, 1000);
+    
+    setPollingInterval(interval);
+  };
+  
   // 组件卸载时停止轮询
   useEffect(() => {
     return () => stopPolling();
@@ -161,6 +176,8 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
     if (transferId) {
       actualTransferId.current = transferId;
       fetchTransferHistory(transferId);
+      // 开始轮询该transferId的历史记录
+      startPolling(transferId);
     } 
     // 账户转账记录列表
     else if (sourceAccountId) {
