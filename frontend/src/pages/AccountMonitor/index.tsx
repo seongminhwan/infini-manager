@@ -2953,6 +2953,41 @@ const AccountMonitor: React.FC = () => {
     loadConfigs();
   }, []);
   
+  // 根据columnOrder获取排序后的列
+  const getOrderedColumns = () => {
+    // 获取所有可见列
+    const visibleCols = allColumns.filter(col => columnsToShow.includes(col.key as string));
+    const visibleColumns = visibleCols.map(col => ({
+      key: col.key as string,
+      title: col.title as string
+    }));
+    
+    // 如果还没有顺序配置，返回默认可见列
+    if (columnOrder.length === 0) {
+      return visibleColumns;
+    }
+    
+    // 创建key到索引的映射
+    const orderMap = new Map<string, number>();
+    columnOrder.forEach((key, index) => {
+      orderMap.set(key, index);
+    });
+    
+    // 按照columnOrder排序
+    return [...visibleColumns].sort((a, b) => {
+      const aIndex = orderMap.get(a.key) ?? 999;
+      const bIndex = orderMap.get(b.key) ?? 999;
+      return aIndex - bIndex;
+    });
+  };
+  
+  // 初始化列顺序
+  const initColumnOrder = () => {
+    const visibleKeys = getVisibleColumns().map(col => col.key as string);
+    setColumnOrder(visibleKeys);
+    return visibleKeys;
+  };
+  
   // 列设置下拉菜单
   const columnsMenu = (
     <div style={{ padding: 12, minWidth: 300, backgroundColor: '#fff', border: '1px solid #f0f0f0', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
@@ -2972,12 +3007,10 @@ const AccountMonitor: React.FC = () => {
           <List
             size="small"
             bordered
-            dataSource={getVisibleColumns().map(col => ({
-              key: col.key as string,
-              title: col.title as string
-            }))}
+            dataSource={getOrderedColumns()}
             renderItem={(item, index) => (
               <List.Item
+                key={item.key}
                 actions={[
                   <Button 
                     type="primary"
@@ -2987,19 +3020,31 @@ const AccountMonitor: React.FC = () => {
                     style={{ marginRight: 8 }}
                     disabled={index === 0}
                     onClick={() => {
-                      const newOrder = [...columnOrder];
-                      // 如果columnOrder为空，先初始化
+                      // 获取当前排序后的列
+                      const orderedColumns = getOrderedColumns();
+                      
+                      // 复制列顺序数组或初始化
+                      let newOrder = [...columnOrder];
                       if (newOrder.length === 0) {
-                        getVisibleColumns().forEach(col => {
-                          newOrder.push(col.key as string);
-                        });
+                        newOrder = orderedColumns.map(col => col.key);
                       }
+                      
+                      // 获取当前项和上一项的key
+                      const currentKey = item.key;
+                      const prevKey = orderedColumns[index - 1].key;
+                      
+                      // 找到这两个key在顺序数组中的位置
+                      const currentIndex = newOrder.indexOf(currentKey);
+                      const prevIndex = newOrder.indexOf(prevKey);
+                      
                       // 交换位置
-                      if (index > 0) {
-                        const temp = newOrder[index];
-                        newOrder[index] = newOrder[index - 1];
-                        newOrder[index - 1] = temp;
-                        setColumnOrder(newOrder);
+                      if (currentIndex !== -1 && prevIndex !== -1) {
+                        const temp = newOrder[currentIndex];
+                        newOrder[currentIndex] = newOrder[prevIndex];
+                        newOrder[prevIndex] = temp;
+                        
+                        // 更新状态并保存
+                        setColumnOrder([...newOrder]);
                         debouncedSaveColumnOrder(newOrder);
                       }
                     }}
@@ -3010,21 +3055,33 @@ const AccountMonitor: React.FC = () => {
                     shape="circle"
                     icon={<DownOutlined />}
                     style={{ marginLeft: 8 }}
-                    disabled={index >= getVisibleColumns().length - 1}
+                    disabled={index >= getOrderedColumns().length - 1}
                     onClick={() => {
-                      const newOrder = [...columnOrder];
-                      // 如果columnOrder为空，先初始化
+                      // 获取当前排序后的列
+                      const orderedColumns = getOrderedColumns();
+                      
+                      // 复制列顺序数组或初始化
+                      let newOrder = [...columnOrder];
                       if (newOrder.length === 0) {
-                        getVisibleColumns().forEach(col => {
-                          newOrder.push(col.key as string);
-                        });
+                        newOrder = orderedColumns.map(col => col.key);
                       }
+                      
+                      // 获取当前项和下一项的key
+                      const currentKey = item.key;
+                      const nextKey = orderedColumns[index + 1].key;
+                      
+                      // 找到这两个key在顺序数组中的位置
+                      const currentIndex = newOrder.indexOf(currentKey);
+                      const nextIndex = newOrder.indexOf(nextKey);
+                      
                       // 交换位置
-                      if (index < getVisibleColumns().length - 1) {
-                        const temp = newOrder[index];
-                        newOrder[index] = newOrder[index + 1];
-                        newOrder[index + 1] = temp;
-                        setColumnOrder(newOrder);
+                      if (currentIndex !== -1 && nextIndex !== -1) {
+                        const temp = newOrder[currentIndex];
+                        newOrder[currentIndex] = newOrder[nextIndex];
+                        newOrder[nextIndex] = temp;
+                        
+                        // 更新状态并保存
+                        setColumnOrder([...newOrder]);
                         debouncedSaveColumnOrder(newOrder);
                       }
                     }}
