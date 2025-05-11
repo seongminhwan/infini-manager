@@ -607,9 +607,9 @@ const AccountTransfer: React.FC = () => {
                         label={
                           <span>
                             强制执行 
-                            <Text type="secondary" style={{ marginLeft: 8 }}>
-                              <QuestionCircleOutlined /> 忽略风险警告
-                            </Text>
+                            <Tooltip title="忽略风险警告">
+                              <QuestionCircleOutlined style={{ marginLeft: 4, color: 'rgba(0,0,0,0.45)' }} />
+                            </Tooltip>
                           </span>
                         }
                         valuePropName="checked"
