@@ -555,7 +555,7 @@ const AccountDetails: React.FC = () => {
         }
         open={detailVisible}
         onCancel={handleCloseDetail}
-        width={1800}
+        width={1400}
         style={{ top: 20 }}
         destroyOnClose={true}
         bodyStyle={{ padding: '24px', backgroundColor: '#f9f9f9' }}
