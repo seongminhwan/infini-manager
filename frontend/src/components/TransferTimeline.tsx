@@ -561,7 +561,9 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
                   </div>
                   <div style={{ marginTop: 8 }}>
                     <Text>
-                      <Text strong>源账户:</Text> {historyData.transfer.sourceAccount.email} ({historyData.transfer.sourceAccount.uid})
+                      <Text strong>源账户:</Text> {historyData.transfer.sourceAccount ? 
+                        `${historyData.transfer.sourceAccount.email || 'N/A'} (${historyData.transfer.sourceAccount.uid || 'N/A'})` : 
+                        '未知账户'}
                     </Text>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
