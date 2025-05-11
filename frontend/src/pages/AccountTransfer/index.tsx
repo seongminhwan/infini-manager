@@ -263,9 +263,19 @@ const AccountTransfer: React.FC = () => {
       } else {
         // 检查是否需要2FA验证
         if (response.data && response.data.require2FA) {
-          // 保存转账ID，显示验证码输入弹窗
+          // 保存转账ID
           setCurrentTransferId(response.data.transferId);
-          setShowVerifyModal(true);
+          
+          // 检查是否启用了自动2FA验证
+          const useAuto2FA = values.auto2FA || false;
+          
+          if (useAuto2FA) {
+            // 直接进行自动验证
+            await handleAutoVerification(response.data.transferId);
+          } else {
+            // 显示验证码输入弹窗
+            setShowVerifyModal(true);
+          }
           return;
         }
         
