@@ -1,11 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Timeline, Card, Typography, Empty, Spin, Badge, Tag, Input, Tooltip, Button, Space } from 'antd';
-import { ClockCircleOutlined, ArrowRightOutlined, ReloadOutlined, CloseOutlined } from '@ant-design/icons';
+import { Timeline, Card, Typography, Empty, Spin, Badge, Tag, Input, Tooltip, Button, Space, Modal } from 'antd';
+import { ClockCircleOutlined, ArrowRightOutlined, ReloadOutlined, CloseOutlined, HistoryOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { transferApi } from '../services/api';
 
 const { Title, Text } = Typography;
 const { Search } = Input;
+
+// 转账历史记录接口
+interface TransferHistory {
+  id: string;
+  transfer_id: string;
+  status: string;
+  details: string;
+  memo: string;
+  created_at: string;
+}
+
+// 转账历史记录响应接口
+interface TransferHistoryResponse {
+  transfer: TransferRecord;
+  histories: TransferHistory[];
+}
 
 // 样式组件
 const TimelineContainer = styled.div`
