@@ -731,6 +731,18 @@ export const affApi = {
       console.error('获取下一条待处理记录失败:', error);
       throw error;
     }
+  },
+  
+  // 关闭AFF返现批次
+  closeCashback: async (batchId: string) => {
+    try {
+      console.log(`关闭AFF返现批次，批次ID: ${batchId}`);
+      const response = await api.post(`${apiBaseUrl}/api/aff/cashbacks/${batchId}/close`);
+      return response.data;
+    } catch (error) {
+      console.error('关闭AFF返现批次失败:', error);
+      throw error;
+    }
   }
 };
 
