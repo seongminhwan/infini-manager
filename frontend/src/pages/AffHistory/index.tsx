@@ -113,7 +113,7 @@ const AffHistory: React.FC = () => {
   const fetchCashbacks = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/aff/cashbacks', {
+      const res = await api.get('/api/aff/cashbacks', {
         params: {
           page: pagination.current,
           pageSize: pagination.pageSize
@@ -138,7 +138,7 @@ const AffHistory: React.FC = () => {
   const fetchCashbackDetail = async (id: number) => {
     setLoading(true);
     try {
-      const res = await api.get(`/aff/cashbacks/${id}`);
+      const res = await api.get(`/api/aff/cashbacks/${id}`);
       
       if (res.data.success) {
         setCurrentCashback(res.data.data);
@@ -154,7 +154,7 @@ const AffHistory: React.FC = () => {
   const fetchRelations = async (batchId: number) => {
     setLoading(true);
     try {
-      const res = await api.get(`/aff/cashbacks/${batchId}/relations`);
+      const res = await api.get(`/api/aff/cashbacks/${batchId}/relations`);
       
       if (res.data.success) {
         setRelations(res.data.data.relations);
@@ -171,7 +171,7 @@ const AffHistory: React.FC = () => {
   const fetchTransferDetail = async (transferId: number) => {
     setLoading(true);
     try {
-      const res = await api.get(`/transfers/${transferId}`);
+      const res = await api.get(`/api/transfers/${transferId}`);
       
       if (res.data.success) {
         setCurrentTransfer(res.data.data);
