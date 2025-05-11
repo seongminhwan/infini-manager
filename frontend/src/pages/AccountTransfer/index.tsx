@@ -324,14 +324,6 @@ const AccountTransfer: React.FC = () => {
       // 处理API响应
       if (response.success) {
         message.success('转账成功');
-        
-        // 显示转账记录时间轴
-        showTransferTimeline(
-          sourceAccountId, 
-          targetType === 'internal' ? targetIdentifier : undefined, 
-          targetType === 'internal'
-        );
-        
         form.resetFields();
       } else {
         // 检查是否需要2FA验证
