@@ -243,48 +243,6 @@ router.get('/:id', transferController.getTransferById);
  */
 router.post('/internal', transferController.executeInternalTransfer);
 
-/**
- * @swagger
- * /api/transfers/continue-with-2fa:
- *   post:
- *     summary: 提供2FA验证码继续转账流程
- *     tags: [Transfers]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - transferId
- *               - verificationCode
- *             properties:
- *               transferId:
- *                 type: string
- *                 description: 转账记录ID
- *               verificationCode:
- *                 type: string
- *                 description: 2FA验证码
- *     responses:
- *       200:
- *         description: 转账验证处理结果
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *       400:
- *         description: 请求参数无效
- *       500:
- *         description: 服务器错误
- */
-  // 自动获取2FA验证码并完成转账流程
-  router.post('/auto-2fa', transferController.autoGet2FAAndCompleteTransfer);
-
-  // 提供2FA验证码继续转账流程
-  router.post('/continue-with-2fa', transferController.continueTransferWith2FA);
+// 移除了自动获取2FA验证码和继续转账的路由
+// 现在使用带有auto2FA和verificationCode参数的executeInternalTransfer方法处理所有转账场景
 export default router;
