@@ -23,11 +23,9 @@ const TimelineCard = styled(Card)`
 
 const TimelineHeader = styled.div`
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 16px;
 `;
 
 const ScrollContainer = styled.div`
@@ -48,11 +46,23 @@ const ScrollContainer = styled.div`
 const HeaderControls = styled.div`
   display: flex;
   align-items: center;
-  background: #f5f5f5;
+  margin-right: 10px;
+`;
+
+const PollingControls = styled.div`
+  display: flex;
+  align-items: center;
+  background: #f8f8f8;
+  border: 1px solid #eee;
   border-radius: 4px;
-  padding: 8px;
-  flex: 1;
-  margin-right: 16px;
+  padding: 4px 8px;
+  margin-right: 12px;
+`;
+
+const IntervalControls = styled.div`
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
 `;
 
 const CloseButton = styled(Button)`
@@ -324,44 +334,56 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
       />
       
       <TimelineHeader>
-        <Title level={4} style={{ margin: 0, minWidth: '120px' }}>转账记录</Title>
+        <Title level={4} style={{ margin: 0 }}>转账记录</Title>
         
         <HeaderControls>
-          <div style={{ marginRight: 16 }}>
+          <PollingControls>
             <Badge 
               status={isPolling ? "processing" : "default"} 
               text={isPolling ? "实时更新中" : "更新已暂停"} 
+              style={{ marginRight: 8 }}
             />
             <Button
               type="link"
               size="small"
               onClick={togglePolling}
+              style={{ padding: '0 4px', height: 'auto', minWidth: 'auto' }}
             >
               {isPolling ? "暂停" : "恢复"}
             </Button>
-          </div>
+          </PollingControls>
           
-          <Tooltip title="设置自动刷新间隔 (毫秒)">
-            <Search
-              placeholder="轮询间隔 (毫秒)"
-              defaultValue={pollingInterval.toString()}
-              style={{ width: 200 }}
-              onSearch={handleIntervalChange}
-              enterButton="设置"
+          <IntervalControls>
+            <Input 
+              placeholder="轮询间隔(毫秒)" 
+              defaultValue={pollingInterval.toString()} 
+              style={{ width: 100, marginRight: 4 }} 
+              onChange={(e) => {
+                if (e.target.value && !isNaN(Number(e.target.value))) {
+                  handleIntervalChange(e.target.value);
+                }
+              }}
             />
-          </Tooltip>
+            <Button 
+              type="primary"
+              size="small"
+              onClick={() => handleIntervalChange(pollingInterval.toString())}
+            >
+              设置
+            </Button>
+          </IntervalControls>
+          
+          <Button
+            type="primary"
+            ghost
+            icon={<ReloadOutlined />}
+            onClick={handleManualRefresh}
+            loading={loading}
+            style={{ marginRight: 10 }}
+          >
+            刷新
+          </Button>
         </HeaderControls>
-        
-        <Button
-          type="primary"
-          ghost
-          icon={<ReloadOutlined />}
-          onClick={handleManualRefresh}
-          loading={loading}
-          style={{ marginRight: '40px' }}
-        >
-          刷新
-        </Button>
       </TimelineHeader>
       
       <ScrollContainer>
