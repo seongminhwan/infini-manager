@@ -46,31 +46,61 @@ const TimeLabel = styled.span`
 
 // 接口定义
 interface TransferHistoryDetailProps {
-  transferId: string | number;
+  // 兼容原TransferTimeline组件接口
+  visible?: boolean;
+  sourceAccountId?: string | number;
+  targetAccountId?: string | number;
+  isInternal?: boolean;
+  onClose?: () => void;
+  
+  // TransferHistoryDetail原接口
+  transferId?: string | number;
   className?: string;
   style?: React.CSSProperties;
 }
 
 /**
  * 转账历史记录详情组件
- * 用于显示单笔转账的历史记录时间轴
+ * 用于显示转账历史记录时间轴，兼容TransferTimeline接口
  */
 const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({ 
+  // 兼容TransferTimeline接口的属性
+  visible = true,
+  sourceAccountId,
+  targetAccountId,
+  isInternal = true,
+  onClose,
+  
+  // 原TransferHistoryDetail属性
   transferId, 
   className,
   style 
 }) => {
   const [transferHistory, setTransferHistory] = useState<any[]>([]);
+  const [transferRecords, setTransferRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-
-  // 获取转账历史记录
+  const [pollingInterval, setPollingInterval] = useState<any>(null);
+  
+  const actualTransferId = useRef<string | number | undefined>(transferId);
+  
+  // 停止轮询
+  const stopPolling = () => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+  };
+  
+  // 组件卸载时停止轮询
   useEffect(() => {
-    if (!transferId) return;
-    
-    const fetchTransferHistory = async () => {
-      setLoading(true);
-      try {
-        const response = await transferApi.getTransferHistory(transferId.toString());
+    return () => stopPolling();
+  }, []);
+  
+  // 获取单笔转账历史记录
+  const fetchTransferHistory = async (id: string | number) => {
+    setLoading(true);
+    try {
+      const response = await transferApi.getTransferHistory(id.toString());
         if (response.success && response.data && response.data.histories) {
           setTransferHistory(response.data.histories);
         } else {
