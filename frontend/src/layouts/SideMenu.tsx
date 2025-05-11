@@ -14,6 +14,7 @@ import {
   FileImageOutlined,
   IdcardOutlined,
   TeamOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -125,6 +126,21 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       key: '/account-group-manage',
       icon: <TeamOutlined />,
       label: '账户分组管理',
+    },
+    {
+      key: 'aff-ops',
+      icon: <DollarOutlined />,
+      label: 'AFF返现',
+      children: [
+        {
+          key: '/aff-cashback',
+          label: 'AFF批量返现',
+        },
+        {
+          key: '/aff-history',
+          label: 'AFF记录表',
+        }
+      ]
     },
     {
       key: '/notification-manage',
