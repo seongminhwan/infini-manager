@@ -6,6 +6,7 @@ import zhCN from 'antd/lib/locale/zh_CN';
 import AppRoutes from './routes';
 import WarningPage from './pages/WarningPage';
 import { lightTheme, darkTheme, GlobalStyle } from './styles/theme';
+import './App.css';
 
 // 配置全局message组件
 message.config({
@@ -14,7 +15,6 @@ message.config({
   top: 60, // 距离顶部的位置
   getContainer: () => document.body // 指定挂载的DOM节点
 });
-import './App.css';
 
 const App: React.FC = () => {
   // 主题设置
