@@ -374,7 +374,7 @@ const AccountTransfer: React.FC = () => {
                 
                 const forceResponse = await transferApi.executeInternalTransfer(
                   sourceAccountId,
-                  contactType,
+                  actualContactType, // 使用更新后的contactType
                   targetIdentifier,
                   amount,
                   source,
