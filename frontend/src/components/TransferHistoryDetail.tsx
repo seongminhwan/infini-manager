@@ -85,6 +85,7 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
   
   // 停止轮询
   const stopPolling = () => {
+    console.log('停止轮询...');
     if (pollingInterval) {
       clearInterval(pollingInterval);
       setPollingInterval(null);
@@ -98,6 +99,17 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
     
     if (!id) return;
     
+    // 先检查转账历史记录中是否已有最终态，如果有则不启动轮询
+    const hasCompletedHistory = transferHistory.some(
+      history => history.status === 'completed' || history.status === 'failed'
+    );
+    
+    if (hasCompletedHistory) {
+      console.log(`转账ID ${id} 已有最终态记录，不启动轮询`);
+      return;
+    }
+    
+    console.log(`开始轮询转账ID ${id} 的历史记录`);
     // 设置1秒的轮询间隔
     const interval = setInterval(() => {
       fetchTransferHistory(id);
@@ -122,13 +134,22 @@ const TransferHistoryDetail: React.FC<TransferHistoryDetailProps> = ({
         setTransferHistory(response.data.histories);
         
         // 检查是否有最终状态的记录（已完成或失败）
-        const hasCompletedStatus = response.data.histories.some(
+        const completedHistories = response.data.histories.filter(
           (history: any) => history.status === 'completed' || history.status === 'failed'
         );
         
-        // 如果转账已达到最终状态，停止轮询
-        if (hasCompletedStatus) {
-          stopPolling();
+        // 如果转账已达到最终状态，打印日志并立即停止轮询
+        if (completedHistories.length > 0) {
+          console.log(`检测到转账ID ${id} 的最终态: ${completedHistories.map((h: any) => h.status).join(', ')}`);
+          console.log('停止历史记录轮询');
+          
+          // 确保轮询被停止
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            setPollingInterval(null);
+          }
+        } else {
+          console.log(`转账ID ${id} 尚未达到最终态，继续轮询`);
         }
       } else {
         setTransferHistory([]);
