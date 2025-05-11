@@ -1062,7 +1062,7 @@ async function parseCSVString(csvString: string): Promise<any[]> {
     const stream = Readable.from(csvString);
     
     stream
-      .pipe(csv())
+      .pipe(csv.default())
       .on('data', (data: Record<string, any>) => {
         // 处理CSV数据行
         // 期望的CSV格式: 序列号,infini uid,注册日期,开卡数量,开卡日期
