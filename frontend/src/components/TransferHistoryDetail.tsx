@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Typography, Spin, Timeline, Empty, Tag, Space, Tooltip } from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, Typography, Spin, Timeline, Empty, Tag, Space, Tooltip, Button } from 'antd';
+import { CloseOutlined, ReloadOutlined } from '@ant-design/icons';
 import { transferApi } from '../services/api';
 import styled from 'styled-components';
 
