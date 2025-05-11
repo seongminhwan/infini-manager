@@ -783,7 +783,7 @@ const AccountDetails: React.FC = () => {
                               display: 'inline-block',
                               boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                             }}>
-                              {history.created_at ? formatDateTime(history.created_at) : '-'}
+                              {history.createdAt ? formatDateTime(history.createdAt) : '-'}
                             </span>
                           }
                         >
