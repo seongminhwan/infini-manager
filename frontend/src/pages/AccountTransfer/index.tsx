@@ -401,6 +401,19 @@ const AccountTransfer: React.FC = () => {
       
       if (response.success) {
         message.success('转账成功（自动验证）');
+        
+        // 获取当前表单值
+        const values = form.getFieldsValue();
+        const sourceAccountId = values.sourceAccount;
+        let targetId = targetType === 'internal' ? values.internalTarget : undefined;
+        
+        // 显示转账记录时间轴
+        showTransferTimeline(
+          sourceAccountId, 
+          targetId, 
+          targetType === 'internal'
+        );
+        
         form.resetFields();
         verifyForm.resetFields();
         setShowVerifyModal(false);
