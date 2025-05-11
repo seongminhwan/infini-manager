@@ -3924,6 +3924,93 @@ export class InfiniAccountService {
   }
 
   /**
+   * 自动获取2FA验证码并继续转账流程
+   * @param transferId 转账ID
+   * @returns 转账结果
+   */
+  async autoGet2FAAndCompleteTransfer(transferId: string): Promise<ApiResponse> {
+    try {
+      console.log(`开始自动获取2FA验证码并继续转账，转账ID: ${transferId}`);
+      
+      // 获取关联的转账记录
+      const transfer = await db('infini_transfers')
+        .where({ id: transferId })
+        .first();
+      
+      if (!transfer) {
+        console.error(`自动2FA验证失败: 找不到ID为${transferId}的转账记录`);
+        return {
+          success: false,
+          message: '转账记录不存在'
+        };
+      }
+      
+      // 获取账户信息
+      const account = await db('infini_accounts')
+        .where({ id: transfer.account_id })
+        .first();
+      
+      if (!account) {
+        console.error(`自动2FA验证失败: 找不到账户信息`);
+        return {
+          success: false,
+          message: '账户不存在'
+        };
+      }
+      
+      // 检查账户是否有2FA信息记录
+      const twoFaInfo = await db('infini_2fa_info')
+        .where({ infini_account_id: account.id })
+        .first();
+      
+      if (!twoFaInfo || !twoFaInfo.secret_key) {
+        console.error(`自动2FA验证失败: 账户未配置2FA或缺少密钥`);
+        return {
+          success: false,
+          message: '账户未配置2FA或缺少密钥'
+        };
+      }
+      
+      // 使用账户的密钥生成当前的2FA验证码
+      const secret = twoFaInfo.secret_key;
+      console.log(`使用密钥生成2FA验证码: ${secret}`);
+      
+      // 使用TOTP算法生成六位数验证码（使用node-2fa或类似库）
+      const twoFactor = require('node-2fa');
+      const twoFactorResult = twoFactor.generateToken(secret);
+      
+      if (!twoFactorResult || !twoFactorResult.token) {
+        console.error(`自动2FA验证失败: 无法生成2FA验证码`);
+        return {
+          success: false,
+          message: '无法生成2FA验证码'
+        };
+      }
+      
+      const twoFactorCode = twoFactorResult.token;
+      console.log(`已为账户 ${account.email} 自动生成验证码: ${twoFactorCode}`);
+      
+      // 更新转账记录中的验证码字段
+      await db('infini_transfers')
+        .where({ id: transferId })
+        .update({
+          verification_code: twoFactorCode,
+          updated_at: new Date()
+        });
+      
+      // 使用生成的验证码继续转账流程
+      console.log(`使用自动生成的验证码继续转账流程`);
+      return this.continueTransferWith2FA(transferId, twoFactorCode);
+    } catch (error) {
+      console.error('[AutoGet2FA] 自动获取2FA验证码失败:', error);
+      return {
+        success: false,
+        message: `自动获取2FA验证码失败: ${(error as Error).message}`
+      };
+    }
+  }
+  
+  /**
    * 获取转账记录
    * @param accountId 可选的账户ID，用于筛选特定账户的转账记录
    * @param status 可选的转账状态，用于筛选特定状态的转账记录
