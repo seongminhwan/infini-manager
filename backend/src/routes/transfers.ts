@@ -47,6 +47,46 @@ const router: Router = express.Router();
  *         memo: 资金转移
  *         status: completed
  *         timestamp: 2025-05-06 15:30:22
+ * 
+ *     InternalTransfer:
+ *       type: object
+ *       required:
+ *         - accountId
+ *         - contactType
+ *         - targetIdentifier
+ *         - amount
+ *         - source
+ *       properties:
+ *         accountId:
+ *           type: string
+ *           description: 源账户ID
+ *         contactType:
+ *           type: string
+ *           enum: [uid, email]
+ *           description: 联系人类型（uid或email）
+ *         targetIdentifier:
+ *           type: string
+ *           description: 目标标识符（UID、Email或内部账户ID）
+ *         amount:
+ *           type: string
+ *           description: 转账金额（字符串格式）
+ *         source:
+ *           type: string
+ *           description: 转账来源
+ *         isForced:
+ *           type: boolean
+ *           description: 是否强制执行（忽略风险）
+ *         remarks:
+ *           type: string
+ *           description: 备注信息
+ *       example:
+ *         accountId: "1"
+ *         contactType: "uid"
+ *         targetIdentifier: "49345118"
+ *         amount: "1"
+ *         source: "manual"
+ *         isForced: false
+ *         remarks: "测试转账"
  */
 
 /**
@@ -169,5 +209,79 @@ router.get('/', transferController.getTransfers);
  *         description: 服务器错误
  */
 router.get('/:id', transferController.getTransferById);
+
+/**
+ * @swagger
+ * /api/transfers/internal:
+ *   post:
+ *     summary: 执行Infini内部转账
+ *     tags: [Transfers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/InternalTransfer'
+ *     responses:
+ *       200:
+ *         description: 转账操作处理结果
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: 请求参数无效
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/internal', transferController.executeInternalTransfer);
+
+/**
+ * @swagger
+ * /api/transfers/continue-with-2fa:
+ *   post:
+ *     summary: 提供2FA验证码继续转账流程
+ *     tags: [Transfers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - transferId
+ *               - verificationCode
+ *             properties:
+ *               transferId:
+ *                 type: string
+ *                 description: 转账记录ID
+ *               verificationCode:
+ *                 type: string
+ *                 description: 2FA验证码
+ *     responses:
+ *       200:
+ *         description: 转账验证处理结果
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: 请求参数无效
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/continue-with-2fa', transferController.continueTransferWith2FA);
 
 export default router;
