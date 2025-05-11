@@ -81,6 +81,8 @@ const AffCashback: React.FC = () => {
   const [form] = Form.useForm();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [batchIdLoading, setBatchIdLoading] = useState<boolean>(false);
+  const [maxBatchId, setMaxBatchId] = useState<number>(0);
   const [fileList, setFileList] = useState<any[]>([]);
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [currentBatch, setCurrentBatch] = useState<BatchData | null>(null);
