@@ -95,9 +95,11 @@ const AffCashback: React.FC = () => {
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
-        const res = await api.get('/infini-accounts');
+        const res = await api.get('/api/infini-accounts');
         if (res.data.success) {
-          setAccounts(res.data.data);
+          // 按余额降序排序账户列表
+          const sortedAccounts = [...res.data.data].sort((a, b) => b.balance - a.balance);
+          setAccounts(sortedAccounts);
         }
       } catch (error) {
         message.error('获取账户列表失败');
@@ -611,11 +613,21 @@ const AffCashback: React.FC = () => {
             name="accountId"
             label="转账账户"
             rules={[{ required: true, message: '请选择转账账户' }]}
+            extra="账户已按余额从高到低排序，可通过邮箱或余额搜索"
           >
-            <Select placeholder="选择转账账户">
+            <Select 
+              placeholder="选择转账账户" 
+              showSearch
+              optionFilterProp="children"
+              filterOption={(input, option) => {
+                const childrenText = option?.children ? option.children.toString().toLowerCase() : '';
+                return childrenText.includes(input.toLowerCase());
+              }}
+              style={{ width: '100%' }}
+            >
               {accounts.map(account => (
                 <Option key={account.id} value={account.id}>
-                  {account.email} (余额: {account.balance})
+                  <strong>{account.email}</strong> - 余额: <span style={{ color: '#1890ff', fontWeight: 'bold' }}>{account.balance}</span>
                 </Option>
               ))}
             </Select>
