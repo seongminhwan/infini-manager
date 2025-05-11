@@ -407,25 +407,43 @@ const AccountTransfer: React.FC = () => {
       setLoading(false);
     }
   };
-  // 处理自动2FA验证
+  // 处理自动2FA验证 - 现在使用executeInternalTransfer
   const handleAutoVerify = async () => {
     if (!currentTransferId) return;
     
     // 获取当前表单值
     const values = form.getFieldsValue();
     const sourceAccountId = values.sourceAccount;
-    let targetId = targetType === 'internal' ? values.internalTarget : undefined;
+    const isInternal = targetType === 'internal';
+    
+    // 获取转账相关参数
+    const targetIdentifier = isInternal ? values.internalTarget : values.externalTarget;
+    const amount = values.amount.toString();
+    const source = values.source || 'manual';
+    const isForced = values.isForced || false;
+    const remarks = values.memo || '';
     
     // 先显示转账记录时间轴
     showTransferTimeline(
       sourceAccountId, 
-      targetId, 
-      targetType === 'internal'
+      isInternal ? targetIdentifier : undefined, 
+      isInternal
     );
     
     setLoading(true);
     try {
-      const response = await transferApi.autoGet2FAAndCompleteTransfer(currentTransferId);
+      // 使用executeInternalTransfer，设置auto2FA为true
+      const response = await transferApi.executeInternalTransfer(
+        sourceAccountId,
+        contactType,
+        targetIdentifier,
+        amount,
+        source,
+        isForced,
+        remarks,
+        true, // 设置auto2FA为true
+        undefined // 不提供验证码
+      );
       
       if (response.success) {
         message.success('转账成功（自动验证）');
@@ -446,27 +464,42 @@ const AccountTransfer: React.FC = () => {
     }
   };
   
-  // 处理2FA验证码提交
+  // 处理2FA验证码提交 - 现在使用executeInternalTransfer
   const handleVerifySubmit = async (values: any) => {
     if (!currentTransferId) return;
     
     // 获取当前表单值
     const formValues = form.getFieldsValue();
     const sourceAccountId = formValues.sourceAccount;
-    let targetId = targetType === 'internal' ? formValues.internalTarget : undefined;
+    const isInternal = targetType === 'internal';
+    
+    // 获取转账相关参数
+    const targetIdentifier = isInternal ? formValues.internalTarget : formValues.externalTarget;
+    const amount = formValues.amount.toString();
+    const source = formValues.source || 'manual';
+    const isForced = formValues.isForced || false;
+    const remarks = formValues.memo || '';
     
     // 先显示转账记录时间轴
     showTransferTimeline(
       sourceAccountId, 
-      targetId, 
-      targetType === 'internal'
+      isInternal ? targetIdentifier : undefined, 
+      isInternal
     );
     
     setLoading(true);
     try {
-      const response = await transferApi.continueTransferWith2FA(
-        currentTransferId,
-        values.verificationCode
+      // 重新调用executeInternalTransfer，传入验证码
+      const response = await transferApi.executeInternalTransfer(
+        sourceAccountId,
+        contactType,
+        targetIdentifier,
+        amount,
+        source,
+        isForced,
+        remarks,
+        false, // 不自动获取验证码
+        values.verificationCode // 传入用户输入的验证码
       );
       
       if (response.success) {
