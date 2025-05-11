@@ -764,14 +764,41 @@ const AffCashback: React.FC = () => {
         
         <Form layout="vertical">
           <Form.Item label="分隔符">
-            <Input 
-              placeholder="请输入分隔符，默认为空格" 
-              value={delimiter} 
-              onChange={e => setDelimiter(e.target.value || ' ')}
-              style={{ width: 200 }}
-              addonBefore="使用"
-              addonAfter="作为分隔符"
-            />
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ marginRight: 8 }}>使用</span>
+                <Select 
+                  value={delimiterType}
+                  style={{ width: 120 }}
+                  onChange={(value) => handleDelimiterChange(value)}
+                >
+                  <Option value="space">空格</Option>
+                  <Option value="comma">英文逗号</Option>
+                  <Option value="custom">自定义</Option>
+                </Select>
+                
+                {delimiterType === 'custom' && (
+                  <Input 
+                    placeholder="输入自定义分隔符" 
+                    value={delimiter} 
+                    onChange={(e) => handleDelimiterChange('custom', e.target.value)}
+                    style={{ width: 150, marginLeft: 8 }}
+                  />
+                )}
+                <span style={{ margin: '0 8px' }}>作为分隔符</span>
+              </div>
+              
+              {previewData.length > 0 && (
+                <div style={{ marginLeft: 16, flex: 1 }}>
+                  <span>第一行预览: </span>
+                  {previewData.map((item, index) => (
+                    <Tag key={index} color="blue" style={{ margin: '0 4px' }}>
+                      {item || '<空>'}
+                    </Tag>
+                  ))}
+                </div>
+              )}
+            </div>
           </Form.Item>
           
           <Button 
