@@ -138,7 +138,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
         },
         {
           key: '/aff-history',
-          label: 'AFF记录表',
+          label: 'AFF历史记录',
         }
       ]
     },
