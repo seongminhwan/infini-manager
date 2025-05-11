@@ -3008,6 +3008,18 @@ const AccountMonitor: React.FC = () => {
       </Tabs>
     </div>
   );
+  // 复制文本到剪贴板
+  const copyToClipboard = (text: string, messageText: string = '已复制到剪贴板') => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        message.success(messageText);
+      })
+      .catch(err => {
+        console.error('复制失败:', err);
+        message.error('复制失败，请手动复制');
+      });
+  };
+
   // 添加账户筛选和搜索状态
   const [searchText, setSearchText] = useState<string>('');
   const [filteredAccounts, setFilteredAccounts] = useState<InfiniAccount[]>([]);
