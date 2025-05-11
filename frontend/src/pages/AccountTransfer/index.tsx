@@ -271,7 +271,7 @@ const AccountTransfer: React.FC = () => {
           
           if (useAuto2FA) {
             // 直接进行自动验证
-            await handleAutoVerification(response.data.transferId);
+            await handleAutoVerify();
           } else {
             // 显示验证码输入弹窗
             setShowVerifyModal(true);
