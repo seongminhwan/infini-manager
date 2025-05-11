@@ -2073,7 +2073,7 @@ const AccountMonitor: React.FC = () => {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
   
-  // 为保存配置创建防抖函数
+  // 为保存配置创建防抖函数，减少为200ms以提高响应速度
   const debouncedSaveColumnWidths = useRef<DebouncedFunc<(widths: Record<string, number>) => void>>(
     debounce((widths: Record<string, number>) => {
       // 将列宽配置保存到数据库
@@ -2088,7 +2088,7 @@ const AccountMonitor: React.FC = () => {
         .catch((error: Error) => {
           console.error('保存列宽配置失败:', error);
         });
-    }, 500)
+    }, 200) // 延迟减少为200ms
   ).current;
   
   const debouncedSaveColumnOrder = useRef<DebouncedFunc<(order: string[]) => void>>(
@@ -2105,7 +2105,7 @@ const AccountMonitor: React.FC = () => {
         .catch((error: Error) => {
           console.error('保存列顺序配置失败:', error);
         });
-    }, 500)
+    }, 200) // 延迟减少为200ms
   ).current;
   
   const debouncedSaveColumnsToShow = useRef<DebouncedFunc<(columns: string[]) => void>>(
@@ -2122,7 +2122,7 @@ const AccountMonitor: React.FC = () => {
         .catch((error: Error) => {
           console.error('保存显示列配置失败:', error);
         });
-    }, 500)
+    }, 200) // 延迟减少为200ms
   ).current;
   // 查看账户详情
   const viewAccountDetail = (account: InfiniAccount) => {
