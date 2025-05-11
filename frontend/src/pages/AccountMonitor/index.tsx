@@ -2953,10 +2953,12 @@ const AccountMonitor: React.FC = () => {
             }))}
             renderItem={(item, index) => (
               <List.Item
-                actions={[
+              actions={[
                   <Button 
-                    type="text" 
+                    type="primary"
+                    size="small"
                     icon={<UpOutlined />} 
+                    style={{ marginRight: 4 }}
                     disabled={index === 0}
                     onClick={() => {
                       const newOrder = [...columnOrder];
@@ -2977,7 +2979,8 @@ const AccountMonitor: React.FC = () => {
                     }}
                   />,
                   <Button 
-                    type="text" 
+                    type="primary"
+                    size="small"
                     icon={<DownOutlined />} 
                     disabled={index === getVisibleColumns().length - 1}
                     onClick={() => {
