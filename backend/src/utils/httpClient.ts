@@ -79,7 +79,7 @@ httpClient.interceptors.response.use(
         response_status: response.status,
         request_body: requestBody,
         response_data: responseBody,
-        is_success: true
+        success: true // 修改字段名，与数据库列名保持一致
       });
     } catch (loggingError) {
       // 日志记录失败不应影响正常请求流程
@@ -133,7 +133,7 @@ httpClient.interceptors.response.use(
         request_body: requestBody,
         response_data: responseBody,
         error_message: error.message,
-        is_success: false
+        success: false // 修改字段名，与数据库列名保持一致
       });
     } catch (loggingError) {
       // 日志记录失败不应影响正常请求流程

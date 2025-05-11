@@ -7,6 +7,7 @@
  */
 import axios, { AxiosResponse, AxiosError, AxiosRequestConfig, AxiosInstance } from 'axios';
 import { message } from 'antd';
+import { showGlobalError } from '../context/ErrorContext';
 
 // 创建axios实例
 const api: AxiosInstance = axios.create({
@@ -623,27 +624,41 @@ api.interceptors.response.use(
   (response: AxiosResponse) => {
     // 如果响应成功但API返回错误状态(success=false)
     if (response.data && response.data.success === false) {
+      // 记录完整响应以便调试
+      console.log('API返回success=false的响应:', response.data);
+      
       // 显示API返回的错误信息
+      let errorMsg = '';
       if (response.data.message) {
-        // 显示错误信息，确保即使是复杂的错误消息也能正确显示
-        message.error(response.data.message);
+        errorMsg = response.data.message;
+        console.log('使用message字段显示错误:', errorMsg);
       } else if (response.data.msg) {
-        // 兼容msg字段
-        message.error(response.data.msg);
+        errorMsg = response.data.msg;
+        console.log('使用msg字段显示错误:', errorMsg);
       } else if (response.data.error) {
-        // 兼容error字段
-        message.error(response.data.error);
+        errorMsg = response.data.error;
+        console.log('使用error字段显示错误:', errorMsg);
       } else {
-        // 如果没有明确的错误信息字段，显示通用错误
-        message.error('请求失败，请检查网络连接或稍后重试');
+        errorMsg = '请求失败，请检查网络连接或稍后重试';
+        console.log('未找到错误信息字段，使用默认错误消息');
+      }
+      
+      // 使用自定义的全局错误处理器显示错误
+      if (errorMsg) {
+        console.log('调用全局错误处理器显示错误:', errorMsg);
+        showGlobalError(errorMsg, 'error');
       }
     }
     return response;
   },
   (error: AxiosError) => {
+    console.error('API请求错误:', error);
+    
     if (error.response) {
       // 服务器返回错误状态码
       const { status, data } = error.response;
+      console.log('错误响应状态码:', status);
+      console.log('错误响应数据:', data);
       
       // 尝试从响应体中提取错误信息
       let errorMessage = '请求失败';
@@ -651,39 +666,52 @@ api.interceptors.response.use(
         // 如果响应中包含消息字段，优先使用该字段
         if ('message' in data && typeof data.message === 'string') {
           errorMessage = data.message;
+          console.log('从错误响应中提取message字段:', errorMessage);
         } else if ('msg' in data && typeof data.msg === 'string') {
           errorMessage = data.msg;
+          console.log('从错误响应中提取msg字段:', errorMessage);
         } else if ('error' in data && typeof data.error === 'string') {
           errorMessage = data.error;
+          console.log('从错误响应中提取error字段:', errorMessage);
+        } else {
+          console.log('错误响应中没有找到标准错误字段，尝试JSON序列化:', JSON.stringify(data));
         }
       }
       
       // 根据状态码定制不同的错误提示
+      let finalErrorMessage = '';
+      
       switch (status) {
         case 400:
-          message.error(errorMessage || '请求参数错误');
+          finalErrorMessage = `请求参数错误: ${errorMessage}`;
           break;
         case 401:
-          message.error(errorMessage || '未授权，请登录');
+          finalErrorMessage = `未授权，请登录: ${errorMessage}`;
           break;
         case 403:
-          message.error(errorMessage || '拒绝访问');
+          finalErrorMessage = `拒绝访问: ${errorMessage}`;
           break;
         case 404:
-          message.error(errorMessage || '请求的资源不存在');
+          finalErrorMessage = `请求的资源不存在: ${errorMessage}`;
           break;
         case 500:
-          message.error(errorMessage || '服务器内部错误');
+          finalErrorMessage = `服务器内部错误: ${errorMessage}`;
           break;
         default:
-          message.error(errorMessage || `请求失败，状态码: ${status}`);
+          finalErrorMessage = `请求失败，状态码: ${status}, ${errorMessage}`;
       }
+      
+      // 使用自定义的全局错误处理器显示错误
+      console.log('调用全局错误处理器显示HTTP错误:', finalErrorMessage);
+      showGlobalError(finalErrorMessage, 'error');
     } else if (error.request) {
       // 请求已发出但没有收到响应
-      message.error('服务器无响应，请检查网络连接或联系管理员');
+      console.log('请求已发出但没有收到响应:', error.request);
+      showGlobalError('服务器无响应，请检查网络连接或联系管理员', 'error');
     } else {
       // 请求设置时触发的错误
-      message.error(`请求错误: ${error.message}`);
+      console.log('请求设置错误:', error.message);
+      showGlobalError(`请求错误: ${error.message}`, 'error');
     }
     
     // 将错误对象继续抛出，以便在组件中可以进行更具体的处理

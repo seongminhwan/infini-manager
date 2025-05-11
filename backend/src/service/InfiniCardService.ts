@@ -40,6 +40,27 @@ export class InfiniCardService {
           message: '找不到指定的Infini账户'
         };
       }
+      // 先从数据库中获取卡片详情
+      const cardDetail = await db('infini_cards')
+        .where('card_id', cardId)
+        .first();
+
+      if (cardDetail) {
+        console.log(`从数据库获取卡片详情: ${cardDetail.card_no}`);
+        // 从数据库获取卡片详情
+        const cd= await db('infini_card_details')
+          .where('card_id', cardDetail.id)
+          .first();
+
+        return {
+          success: true,
+          data: {
+            ...cardDetail,
+            ...cd
+          },
+          message: '成功获取卡片详情'
+        };
+      }
 
       // 获取有效Cookie
       const { cookie } = await this.infiniAccountService.getAccountCookie(accountId, '获取卡片详情失败，');
@@ -52,7 +73,7 @@ export class InfiniCardService {
       }
 
       // 检查账户是否开启了2FA
-      const needVerificationCode = account.google2faIsBound === true;
+      const needVerificationCode = account.google_2fa_is_bound === 1;
       let verificationCode = '';
 
       if (needVerificationCode) {

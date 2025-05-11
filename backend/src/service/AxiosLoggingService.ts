@@ -13,7 +13,7 @@ export interface AxiosRequestLog {
   response_data?: string;
   request_headers?: string;
   error_message?: string;
-  is_success: boolean;
+  success: boolean; // 修改字段名，与数据库列名保持一致
 }
 
 export class AxiosLoggingService {

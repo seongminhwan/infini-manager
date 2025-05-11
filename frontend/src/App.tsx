@@ -6,6 +6,7 @@ import zhCN from 'antd/lib/locale/zh_CN';
 import AppRoutes from './routes';
 import WarningPage from './pages/WarningPage';
 import { lightTheme, darkTheme, GlobalStyle } from './styles/theme';
+import { ErrorProvider, setGlobalErrorHandler, useError } from './context/ErrorContext';
 import './App.css';
 
 // 配置全局message组件
@@ -43,28 +44,45 @@ const App: React.FC = () => {
 
   // 本地访问正常显示应用
   return (
-    <ConfigProvider
-      locale={zhCN}
-      theme={{
-        algorithm: isDarkMode ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
-        token: {
-          colorPrimary: currentTheme.primaryColor,
-          colorSuccess: currentTheme.successColor,
-          colorWarning: currentTheme.warningColor,
-          colorError: currentTheme.errorColor,
-          colorBgContainer: currentTheme.secondaryBackgroundColor,
-          borderRadius: 8,
-        },
-      }}
-    >
-      <ThemeProvider theme={currentTheme}>
-        <GlobalStyle theme={currentTheme} />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </ThemeProvider>
-    </ConfigProvider>
+    <ErrorProvider>
+      <ConfigProvider
+        locale={zhCN}
+        theme={{
+          algorithm: isDarkMode ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+          token: {
+            colorPrimary: currentTheme.primaryColor,
+            colorSuccess: currentTheme.successColor,
+            colorWarning: currentTheme.warningColor,
+            colorError: currentTheme.errorColor,
+            colorBgContainer: currentTheme.secondaryBackgroundColor,
+            borderRadius: 8,
+          },
+        }}
+      >
+        <ThemeProvider theme={currentTheme}>
+          <GlobalStyle theme={currentTheme} />
+          <BrowserRouter>
+            <AppErrorHandler>
+              <AppRoutes />
+            </AppErrorHandler>
+          </BrowserRouter>
+        </ThemeProvider>
+      </ConfigProvider>
+    </ErrorProvider>
   );
+};
+
+// 初始化全局错误处理器的组件
+const AppErrorHandler: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { addError } = useError();
+  
+  useEffect(() => {
+    // 设置全局错误处理器，使非React组件可以显示错误
+    setGlobalErrorHandler(addError);
+    console.log('全局错误处理器已初始化');
+  }, [addError]);
+  
+  return <>{children}</>;
 };
 
 export default App;
