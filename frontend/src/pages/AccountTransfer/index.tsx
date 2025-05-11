@@ -435,6 +435,18 @@ const AccountTransfer: React.FC = () => {
   const handleVerifySubmit = async (values: any) => {
     if (!currentTransferId) return;
     
+    // 获取当前表单值
+    const formValues = form.getFieldsValue();
+    const sourceAccountId = formValues.sourceAccount;
+    let targetId = targetType === 'internal' ? formValues.internalTarget : undefined;
+    
+    // 先显示转账记录时间轴
+    showTransferTimeline(
+      sourceAccountId, 
+      targetId, 
+      targetType === 'internal'
+    );
+    
     setLoading(true);
     try {
       const response = await transferApi.continueTransferWith2FA(
@@ -444,18 +456,6 @@ const AccountTransfer: React.FC = () => {
       
       if (response.success) {
         message.success('转账成功');
-        
-        // 获取当前表单值
-        const values = form.getFieldsValue();
-        const sourceAccountId = values.sourceAccount;
-        let targetId = targetType === 'internal' ? values.internalTarget : undefined;
-        
-        // 显示转账记录时间轴
-        showTransferTimeline(
-          sourceAccountId, 
-          targetId, 
-          targetType === 'internal'
-        );
         
         form.resetFields();
         verifyForm.resetFields();
