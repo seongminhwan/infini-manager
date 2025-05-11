@@ -1,0 +1,87 @@
+/* 账户明细页面样式 */
+
+/* 表格样式 */
+.account-details-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.account-details-table .ant-table-thead > tr > th {
+  background-color: #f0f7ff !important;
+  color: #1890ff;
+  font-weight: 500;
+}
+
+/* 表格行样式 */
+.transfer-row {
+  transition: all 0.3s ease;
+}
+
+.transfer-row:hover {
+  background-color: #f0f7ff !important;
+  box-shadow: inset 0 0 0 1px #e6f7ff;
+}
+
+.custom-table-row {
+  font-size: 14px;
+}
+
+/* 交替行背景色 */
+.transfer-row:nth-child(even) {
+  background-color: #fafcff;
+}
+
+/* 金额列样式 */
+.account-details-table .ant-table-cell:nth-child(5) {
+  font-weight: bold;
+}
+
+/* 标签样式 */
+.account-details-table .ant-tag {
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  margin-right: 6px;
+}
+
+/* 控制面板间距和阴影 */
+.control-panel {
+  margin-bottom: 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* 转账详情弹窗样式 */
+.transfer-detail-modal .ant-modal-content {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.transfer-detail-modal .ant-modal-body {
+  padding: 24px;
+  background-color: #f9f9f9;
+}
+
+/* 转账信息描述列表样式 */
+.transfer-detail-card {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.transfer-detail-title {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  background-color: #fafafa;
+  font-weight: bold;
+}
+
+/* 时间轴容器样式 */
+.timeline-container {
+  flex-grow: 1;
+  height: 580px;
+  overflow-y: auto;
+  padding: 16px;
+  background-color: #fff;
+  background-image: linear-gradient(to bottom, rgba(240, 249, 255, 0.2), transparent);
+}
