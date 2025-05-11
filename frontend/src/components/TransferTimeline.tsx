@@ -23,9 +23,11 @@ const TimelineCard = styled(Card)`
 
 const TimelineHeader = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 16px;
 `;
 
 const ScrollContainer = styled.div`
@@ -43,13 +45,14 @@ const ScrollContainer = styled.div`
   }
 `;
 
-const PollingConfig = styled.div`
+const HeaderControls = styled.div`
   display: flex;
   align-items: center;
-  margin-top: 16px;
-  padding: 8px;
   background: #f5f5f5;
   border-radius: 4px;
+  padding: 8px;
+  flex: 1;
+  margin-right: 16px;
 `;
 
 const CloseButton = styled(Button)`
@@ -321,13 +324,41 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
       />
       
       <TimelineHeader>
-        <Title level={4} style={{ margin: 0 }}>转账记录</Title>
+        <Title level={4} style={{ margin: 0, minWidth: '120px' }}>转账记录</Title>
+        
+        <HeaderControls>
+          <div style={{ marginRight: 16 }}>
+            <Badge 
+              status={isPolling ? "processing" : "default"} 
+              text={isPolling ? "实时更新中" : "更新已暂停"} 
+            />
+            <Button
+              type="link"
+              size="small"
+              onClick={togglePolling}
+            >
+              {isPolling ? "暂停" : "恢复"}
+            </Button>
+          </div>
+          
+          <Tooltip title="设置自动刷新间隔 (毫秒)">
+            <Search
+              placeholder="轮询间隔 (毫秒)"
+              defaultValue={pollingInterval.toString()}
+              style={{ width: 200 }}
+              onSearch={handleIntervalChange}
+              enterButton="设置"
+            />
+          </Tooltip>
+        </HeaderControls>
+        
         <Button
           type="primary"
           ghost
           icon={<ReloadOutlined />}
           onClick={handleManualRefresh}
           loading={loading}
+          style={{ marginRight: '40px' }}
         >
           刷新
         </Button>
@@ -336,32 +367,6 @@ const TransferTimeline: React.FC<TransferTimelineProps> = ({
       <ScrollContainer>
         {renderTimeline()}
       </ScrollContainer>
-      
-      <PollingConfig>
-        <div style={{ marginRight: 16 }}>
-          <Badge 
-            status={isPolling ? "processing" : "default"} 
-            text={isPolling ? "实时更新中" : "更新已暂停"} 
-          />
-          <Button
-            type="link"
-            size="small"
-            onClick={togglePolling}
-          >
-            {isPolling ? "暂停" : "恢复"}
-          </Button>
-        </div>
-        
-        <Tooltip title="设置自动刷新间隔 (毫秒)">
-          <Search
-            placeholder="轮询间隔 (毫秒)"
-            defaultValue={pollingInterval.toString()}
-            style={{ width: 200 }}
-            onSearch={handleIntervalChange}
-            enterButton="设置"
-          />
-        </Tooltip>
-      </PollingConfig>
     </TimelineContainer>
   );
 };
