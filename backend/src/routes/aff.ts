@@ -15,6 +15,9 @@ router.post('/cashbacks', affController.createAffCashback);
 // 获取AFF返现批次列表
 router.get('/cashbacks', affController.getAffCashbacks);
 
+// 获取AFF返现批次最大ID
+router.get('/cashbacks/max-id', affController.getMaxBatchId);
+
 // 获取AFF返现批次详情
 router.get('/cashbacks/:id', affController.getAffCashbackById);
 
