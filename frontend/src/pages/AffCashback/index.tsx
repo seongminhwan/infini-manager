@@ -200,7 +200,7 @@ const AffCashback: React.FC = () => {
     setLoading(true);
     
     try {
-      const res = await api.post(`/api/aff/cashbacks/${currentBatch.id}/parse`, {
+      const res = await api.post(`${apiBaseUrl}/api/aff/cashbacks/${currentBatch.id}/parse`, {
         dataType: 'text',
         data: text
       });
