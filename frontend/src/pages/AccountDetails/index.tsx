@@ -489,6 +489,7 @@ const AccountDetails: React.FC = () => {
               >
                 搜索
               </Button>
+              {/* 隐藏导出按钮
               <Button 
                 type="primary" 
                 ghost
@@ -497,6 +498,7 @@ const AccountDetails: React.FC = () => {
               >
                 导出数据
               </Button>
+              */}
             </Space>
           </div>
         </Form>
