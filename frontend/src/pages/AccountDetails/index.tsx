@@ -93,7 +93,7 @@ const AccountDetails: React.FC = () => {
   const fetchData = async (params: any = {}) => {
     setLoading(true);
     try {
-      const { accountId, status, dateRange, amountMin, amountMax, keyword } = params;
+      const { searchType, status, dateRange, amountMin, amountMax, keyword, source } = params;
       
       // 构建API请求参数
       const queryParams: any = {
@@ -102,59 +102,69 @@ const AccountDetails: React.FC = () => {
       };
       
       // 添加筛选条件
-      if (accountId) {
-        queryParams.accountId = accountId;
-      }
-      
       if (status) {
         queryParams.status = status;
       }
       
-      // 日期范围筛选 - 在实际API中可能需要特定格式
+      // 添加来源筛选
+      if (source) {
+        queryParams.source = source;
+      }
+      
+      // 日期范围筛选
       if (dateRange && dateRange[0] && dateRange[1]) {
         queryParams.startDate = dateRange[0].format('YYYY-MM-DD');
         queryParams.endDate = dateRange[1].format('YYYY-MM-DD');
       }
       
       // 金额范围筛选
-      if (amountMin) {
+      if (amountMin !== undefined && amountMin !== '') {
         queryParams.amountMin = amountMin;
       }
       
-      if (amountMax) {
+      if (amountMax !== undefined && amountMax !== '') {
         queryParams.amountMax = amountMax;
       }
       
-      // 关键词搜索
-      if (keyword) {
-        queryParams.keyword = keyword;
+      // 关键词搜索 - 根据searchType设置不同的搜索类型
+      if (keyword && keyword.trim() !== '') {
+        queryParams.keyword = keyword.trim();
+        
+        // 传递搜索类型，用于后端区分搜索范围
+        if (searchType) {
+          queryParams.searchType = searchType;
+        }
       }
       
       // 创建完整URL查询参数字符串
       let url = `/api/transfers?page=${queryParams.page}&pageSize=${queryParams.pageSize}`;
       
-      if (queryParams.accountId) {
-        url += `&accountId=${queryParams.accountId}`;
-      }
-      
       if (queryParams.status) {
         url += `&status=${queryParams.status}`;
+      }
+      
+      if (queryParams.source) {
+        url += `&source=${queryParams.source}`;
       }
       
       if (queryParams.startDate && queryParams.endDate) {
         url += `&startDate=${queryParams.startDate}&endDate=${queryParams.endDate}`;
       }
       
-      if (queryParams.amountMin) {
+      if (queryParams.amountMin !== undefined) {
         url += `&amountMin=${queryParams.amountMin}`;
       }
       
-      if (queryParams.amountMax) {
+      if (queryParams.amountMax !== undefined) {
         url += `&amountMax=${queryParams.amountMax}`;
       }
       
       if (queryParams.keyword) {
         url += `&keyword=${encodeURIComponent(queryParams.keyword)}`;
+        
+        if (queryParams.searchType) {
+          url += `&searchType=${queryParams.searchType}`;
+        }
       }
       
       // 使用fetch API直接请求，确保所有参数都被传递
