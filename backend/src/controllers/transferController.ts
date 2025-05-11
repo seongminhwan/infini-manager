@@ -116,6 +116,30 @@ export const executeInternalTransfer: ControllerMethod = async (req: Request, re
 };
 
 /**
+ * 自动获取2FA验证码并完成转账流程
+ */
+export const autoGet2FAAndCompleteTransfer: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { transferId } = req.body;
+
+    // 验证必填参数
+    if (!transferId) {
+      return res.status(400).json({
+        success: false,
+        message: 'transferId是必要参数'
+      });
+    }
+
+    // 调用服务自动获取2FA验证码并完成转账
+    const response = await infiniAccountService.autoGet2FAAndCompleteTransfer(transferId);
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * 提供2FA验证码继续转账流程
  */
 export const continueTransferWith2FA: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
