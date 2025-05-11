@@ -525,7 +525,13 @@ const AffHistory: React.FC = () => {
                   <Statistic title="失败" value={statusCounts?.failed || 0} />
                 </Col>
                 <Col span={8}>
-                  <Statistic title="总金额" value={totalAmount || 0} precision={2} />
+                  <Statistic 
+                    title="总金额" 
+                    value={totalAmount || 0} 
+                    precision={2}
+                    valueStyle={{ color: '#3f8600', fontWeight: 'bold' }}
+                    prefix="$" 
+                  />
                 </Col>
               </Row>
             </Card>
@@ -611,7 +617,7 @@ const AffHistory: React.FC = () => {
         </Spin>
       </Modal>
       
-      {/* 转账详情对话框 */}
+      {/* 转账流水详情对话框 */}
       <Modal
         title="转账流水详情"
         open={transferDetailVisible}
@@ -622,40 +628,11 @@ const AffHistory: React.FC = () => {
             关闭
           </Button>
         ]}
+        bodyStyle={{ padding: 0 }}
       >
-        <Spin spinning={loading}>
-          {currentTransfer && (
-            <Descriptions bordered>
-              <Descriptions.Item label="转账ID" span={3}>{currentTransfer.id}</Descriptions.Item>
-              <Descriptions.Item label="来源账户" span={3}>
-                {currentTransfer.sourceAccount?.email}
-              </Descriptions.Item>
-              <Descriptions.Item label="目标账户" span={3}>
-                {currentTransfer.targetAccount?.email || currentTransfer.targetAccount?.uid}
-              </Descriptions.Item>
-              <Descriptions.Item label="金额">{currentTransfer.amount}</Descriptions.Item>
-              <Descriptions.Item label="来源">{currentTransfer.source}</Descriptions.Item>
-              <Descriptions.Item label="状态">
-                {currentTransfer.status === 'completed' 
-                  ? <Tag color="green">已完成</Tag> 
-                  : <Tag color="red">失败</Tag>}
-              </Descriptions.Item>
-              <Descriptions.Item label="创建时间" span={3}>
-                {new Date(currentTransfer.createdAt).toLocaleString()}
-              </Descriptions.Item>
-              <Descriptions.Item label="完成时间" span={3}>
-                {currentTransfer.completedAt 
-                  ? new Date(currentTransfer.completedAt).toLocaleString() 
-                  : '-'}
-              </Descriptions.Item>
-              {currentTransfer.failReason && (
-                <Descriptions.Item label="失败原因" span={3}>
-                  {currentTransfer.failReason}
-                </Descriptions.Item>
-              )}
-            </Descriptions>
-          )}
-        </Spin>
+        {currentTransferId && (
+          <TransferHistoryDetail transferId={currentTransferId} />
+        )}
       </Modal>
       
       {/* 转账历史抽屉 */}
@@ -665,16 +642,9 @@ const AffHistory: React.FC = () => {
         width={800}
         onClose={() => setHistoryVisible(false)}
         open={historyVisible}
+        bodyStyle={{ padding: 0 }}
       >
         {currentTransferId && <TransferHistoryDetail transferId={currentTransferId} />}
-        {currentTransferId && (
-          <TransferTimeline 
-            visible={true}
-            sourceAccountId={currentCashback?.accountId.toString()}
-            isInternal={true}
-            onClose={() => {}} // 抽屉已经有自己的关闭按钮
-          />
-        )}
       </Drawer>
     </div>
   );
