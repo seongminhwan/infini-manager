@@ -113,7 +113,7 @@ const AffCashback: React.FC = () => {
   const handleCreateBatch = async (values: any) => {
     setLoading(true);
     try {
-      const res = await api.post('/aff/cashbacks', {
+      const res = await api.post('/api/aff/cashbacks', {
         accountId: values.accountId,
         batchName: values.batchName,
         defaultAmount: values.defaultAmount || 5.6,
@@ -162,7 +162,7 @@ const AffCashback: React.FC = () => {
       setLoading(true);
       
       try {
-        const res = await api.post(`/aff/cashbacks/${currentBatch.id}/parse`, {
+        const res = await api.post(`/api/aff/cashbacks/${currentBatch.id}/parse`, {
           dataType: 'csv',
           data: content
         });
@@ -200,7 +200,7 @@ const AffCashback: React.FC = () => {
     setLoading(true);
     
     try {
-      const res = await api.post(`/aff/cashbacks/${currentBatch.id}/parse`, {
+      const res = await api.post(`/api/aff/cashbacks/${currentBatch.id}/parse`, {
         dataType: 'text',
         data: text
       });
@@ -226,7 +226,7 @@ const AffCashback: React.FC = () => {
     setLoading(true);
     
     try {
-      const res = await api.get(`/aff/cashbacks/${currentBatch.id}/relations`);
+      const res = await api.get(`/api/aff/cashbacks/${currentBatch.id}/relations`);
       
       if (res.data.success) {
         setCurrentBatch(res.data.data.batch);
@@ -244,7 +244,7 @@ const AffCashback: React.FC = () => {
   // 更新用户状态
   const updateRelationStatus = async (relationId: number, isApproved?: boolean, isIgnored?: boolean) => {
     try {
-      const res = await api.put(`/aff/relations/${relationId}/status`, {
+      const res = await api.put(`/api/aff/relations/${relationId}/status`, {
         isApproved,
         isIgnored
       });
@@ -263,7 +263,7 @@ const AffCashback: React.FC = () => {
   // 更新返现金额
   const updateAmount = async (relationId: number, amount: number) => {
     try {
-      const res = await api.put(`/aff/relations/${relationId}/amount`, {
+      const res = await api.put(`/api/aff/relations/${relationId}/amount`, {
         amount
       });
       
@@ -283,7 +283,7 @@ const AffCashback: React.FC = () => {
     if (!currentBatch) return;
     
     try {
-      const res = await api.put(`/aff/cashbacks/${currentBatch.id}/amount`, {
+      const res = await api.put(`/api/aff/cashbacks/${currentBatch.id}/amount`, {
         amount: batchAmount
       });
       
@@ -306,7 +306,7 @@ const AffCashback: React.FC = () => {
     setTransferLoading(true);
     
     try {
-      const res = await api.post(`/aff/cashbacks/${currentBatch.id}/transfer`);
+      const res = await api.post(`/api/aff/cashbacks/${currentBatch.id}/transfer`);
       
       if (res.data.success) {
         message.success('批量转账已开始');
@@ -335,7 +335,7 @@ const AffCashback: React.FC = () => {
     
     try {
       // 获取下一条待处理记录
-      const nextRes = await api.get(`/aff/cashbacks/${currentBatch.id}/next`);
+      const nextRes = await api.get(`/api/aff/cashbacks/${currentBatch.id}/next`);
       
       if (nextRes.data.success) {
         if (nextRes.data.data.nextRelation) {
@@ -343,7 +343,7 @@ const AffCashback: React.FC = () => {
           const relationId = nextRes.data.data.nextRelation.id;
           
           try {
-            await api.post(`/aff/relations/${relationId}/transfer`);
+            await api.post(`/api/aff/relations/${relationId}/transfer`);
             // 短暂延迟，避免频繁请求
             setTimeout(() => {
               pollNextTransfer();
@@ -385,7 +385,7 @@ const AffCashback: React.FC = () => {
     try {
       setTransferModalVisible(false);
       
-      const res = await api.post(`/aff/relations/${relationId}/transfer`);
+      const res = await api.post(`/api/aff/relations/${relationId}/transfer`);
       
       if (res.data.success) {
         message.success('转账执行成功');
