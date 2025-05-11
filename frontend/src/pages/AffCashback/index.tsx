@@ -93,18 +93,22 @@ const AffCashback: React.FC = () => {
   
   // 加载账户列表
   useEffect(() => {
-    const fetchAccounts = async () => {
-      try {
-        const res = await infiniAccountApi.getAllInfiniAccounts();
-        if (res.data.success) {
-          // 按余额降序排序账户列表
-          const sortedAccounts = [...res.data.data].sort((a, b) => b.availableBalance - a.availableBalance);
-          setAccounts(sortedAccounts);
-        }
-      } catch (error) {
+  const fetchAccounts = async () => {
+    try {
+      const res = await api.get(`${apiBaseUrl}/api/infini-accounts`);
+      if (res.data.success) {
+        // 按余额降序排序账户列表
+        const sortedAccounts = [...res.data.data].sort((a, b) => b.availableBalance - a.availableBalance);
+        setAccounts(sortedAccounts);
+        console.log('加载账户列表成功', sortedAccounts); // 调试日志
+      } else {
         message.error('获取账户列表失败');
       }
-    };
+    } catch (error) {
+      console.error('获取账户列表出错:', error);
+      message.error('获取账户列表失败');
+    }
+  };
     
     fetchAccounts();
   }, []);
