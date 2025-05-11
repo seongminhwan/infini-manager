@@ -69,6 +69,8 @@ const AccountDetails: React.FC = () => {
   const [accounts, setAccounts] = useState<{ id: string, email: string }[]>([]);
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<TransferRecord | null>(null);
+  const [transferHistory, setTransferHistory] = useState<any[]>([]);
+  const [transferHistoryLoading, setTransferHistoryLoading] = useState(false);
   const [tableParams, setTableParams] = useState<TableParams>({
     pagination: {
       current: 1,
@@ -290,10 +292,64 @@ const AccountDetails: React.FC = () => {
     }
   };
 
+  // 格式化日期时间
+  const formatDateTime = (dateValue: string | number | undefined): string => {
+    if (!dateValue) return '-';
+    
+    try {
+      // 处理毫秒级时间戳
+      if (typeof dateValue === 'number') {
+        // 确保是合理的时间戳 (判断长度为13位的毫秒时间戳)
+        if (String(dateValue).length >= 13) {
+          const date = new Date(dateValue);
+          return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+        } else if (String(dateValue).length === 10) {
+          // 处理10位的秒级时间戳
+          const date = new Date(dateValue * 1000);
+          return date.toLocaleString('zh-CN');
+        }
+        return new Date(dateValue).toLocaleString('zh-CN');
+      }
+      
+      // 处理字符串日期
+      return new Date(dateValue).toLocaleString('zh-CN');
+    } catch (error) {
+      console.error('日期格式化错误:', error, dateValue);
+      return String(dateValue);
+    }
+  };
+  
+  // 获取转账历史记录
+  const fetchTransferHistory = async (transferId: string) => {
+    setTransferHistoryLoading(true);
+    try {
+      const response = await transferApi.getTransferHistory(transferId);
+      if (response.success && response.data && response.data.histories) {
+        setTransferHistory(response.data.histories);
+      } else {
+        setTransferHistory([]);
+      }
+    } catch (error) {
+      console.error('获取转账历史记录失败:', error);
+      setTransferHistory([]);
+    } finally {
+      setTransferHistoryLoading(false);
+    }
+  };
+
   // 打开转账详情弹窗
   const handleRowClick = (record: TransferRecord) => {
     setSelectedRecord(record);
     setDetailVisible(true);
+    // 获取该笔转账的历史记录
+    fetchTransferHistory(record.id);
   };
 
   // 关闭转账详情弹窗
@@ -569,7 +625,7 @@ const AccountDetails: React.FC = () => {
         {selectedRecord && (
           <Row gutter={24}>
             {/* 左侧：转账详细信息 */}
-            <Col span={12}>
+            <Col span={8}>
               <Card 
                 style={{ 
                   borderRadius: '8px', 
@@ -668,8 +724,8 @@ const AccountDetails: React.FC = () => {
               </Card>
             </Col>
             
-            {/* 右侧：转账时间轴 */}
-            <Col span={12}>
+            {/* 右侧：转账历史记录 */}
+            <Col span={16}>
               <Card 
                 style={{ 
                   borderRadius: '8px', 
@@ -690,7 +746,7 @@ const AccountDetails: React.FC = () => {
                   backgroundColor: '#fafafa',
                   fontWeight: 'bold'
                 }}>
-                  转账进度时间轴
+                  转账历史记录
                 </div>
                 <div style={{ 
                   flexGrow: 1, 
@@ -700,13 +756,78 @@ const AccountDetails: React.FC = () => {
                   backgroundColor: '#fff',
                   backgroundImage: 'linear-gradient(to bottom, rgba(240, 249, 255, 0.2), transparent)'
                 }}>
-                  <TransferTimeline 
-                    visible={true}
-                    sourceAccountId={selectedRecord.account_id}
-                    isInternal={true}
-                    onClose={() => {}}
-                    key={`transfer-${selectedRecord.id}`} // 添加key确保组件刷新
-                  />
+                  {/* 加载状态 */}
+                  {transferHistoryLoading ? (
+                    <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                      <Spin size="large" />
+                      <p>加载转账历史记录...</p>
+                    </div>
+                  ) : transferHistory && transferHistory.length > 0 ? (
+                    // 显示历史记录时间轴
+                    <Timeline
+                      mode="left"
+                      style={{ fontSize: '14px' }}
+                    >
+                      {transferHistory.map((history, index) => (
+                        <Timeline.Item
+                          key={`${selectedRecord.id}-history-${index}`}
+                          color={getStatusColor(history.status || 'processing')}
+                          label={
+                            <span style={{ 
+                              fontWeight: 'bold', 
+                              color: '#1890ff', 
+                              fontSize: '14px',
+                              backgroundColor: '#f0f8ff',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              display: 'inline-block',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                            }}>
+                              {history.created_at ? formatDateTime(history.created_at) : '-'}
+                            </span>
+                          }
+                        >
+                          <Card 
+                            size="small"
+                            style={{
+                              borderRadius: '8px',
+                              overflow: 'hidden',
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                              marginBottom: '12px'
+                            }}
+                          >
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                              <div>
+                                <Tag color={getStatusColor(history.status || 'processing')}>
+                                  {history.status === 'completed' ? '完成' : 
+                                   history.status === 'pending' ? '待处理' : 
+                                   history.status === 'processing' ? '处理中' : 
+                                   history.status === 'failed' ? '失败' : history.status}
+                                </Tag>
+                              </div>
+                              {history.details && (
+                                <div>
+                                  <Text>
+                                    {typeof history.details === 'object' 
+                                      ? JSON.stringify(history.details) 
+                                      : history.details}
+                                  </Text>
+                                </div>
+                              )}
+                              {history.memo && (
+                                <div>
+                                  <Text type="secondary">备注: {history.memo}</Text>
+                                </div>
+                              )}
+                            </Space>
+                          </Card>
+                        </Timeline.Item>
+                      ))}
+                    </Timeline>
+                  ) : (
+                    // 无历史记录时显示空状态
+                    <Empty description="暂无转账历史记录" />
+                  )}
                 </div>
               </Card>
             </Col>
