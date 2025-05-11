@@ -541,7 +541,8 @@ const AccountDetails: React.FC = () => {
         title="转账详情"
         open={detailVisible}
         onCancel={handleCloseDetail}
-        width={1000}
+        width={1200}
+        style={{ top: 20 }}
         footer={[
           <Button key="close" onClick={handleCloseDetail}>
             关闭
