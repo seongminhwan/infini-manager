@@ -36,6 +36,55 @@ const ButtonGroup = styled.div`
   gap: 16px;
 `;
 
+// 页面布局动画
+const slideInRight = keyframes`
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+`;
+
+const slideLeft = keyframes`
+  from {
+    width: 100%;
+  }
+  to {
+    width: 60%;
+  }
+`;
+
+// 左右分屏布局容器
+const SplitLayout = styled.div<{ showTimeline: boolean }>`
+  display: flex;
+  width: 100%;
+  position: relative;
+  transition: all 0.3s ease-in-out;
+`;
+
+// 左侧转账表单区域
+const FormContainer = styled.div<{ showTimeline: boolean }>`
+  flex: ${props => props.showTimeline ? '0 0 60%' : '0 0 100%'};
+  transition: all 0.5s ease-in-out;
+  animation: ${props => props.showTimeline ? slideLeft : 'none'} 0.5s ease-in-out;
+`;
+
+// 右侧转账记录时间轴区域
+const TimelineContainer = styled.div<{ visible: boolean }>`
+  flex: 0 0 40%;
+  max-width: 40%;
+  padding-left: 24px;
+  border-left: 1px solid #f0f0f0;
+  overflow: hidden;
+  height: calc(100vh - 200px);
+  position: relative;
+  display: ${props => props.visible ? 'block' : 'none'};
+  animation: ${props => props.visible ? slideInRight : 'none'} 0.5s ease-in-out;
+`;
+
 // 排序按钮样式
 const SortLabel = styled.span`
   margin-left: 16px;
