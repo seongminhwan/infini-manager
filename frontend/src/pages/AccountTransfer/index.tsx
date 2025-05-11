@@ -435,10 +435,16 @@ const AccountTransfer: React.FC = () => {
     
     setLoading(true);
     try {
+      // 计算实际联系人类型
+      let actualContactType: 'uid' | 'email' | 'inner' = contactType;
+      if (isInternal) {
+        actualContactType = 'inner';
+      }
+
       // 使用executeInternalTransfer，设置auto2FA为true
       const response = await transferApi.executeInternalTransfer(
         sourceAccountId,
-        contactType,
+        actualContactType, // 使用正确的contactType
         targetIdentifier,
         amount,
         source,
@@ -492,10 +498,16 @@ const AccountTransfer: React.FC = () => {
     
     setLoading(true);
     try {
+      // 计算实际联系人类型
+      let actualContactType: 'uid' | 'email' | 'inner' = contactType;
+      if (isInternal) {
+        actualContactType = 'inner';
+      }
+
       // 重新调用executeInternalTransfer，传入验证码
       const response = await transferApi.executeInternalTransfer(
         sourceAccountId,
-        contactType,
+        actualContactType, // 使用正确的contactType
         targetIdentifier,
         amount,
         source,
