@@ -35,7 +35,7 @@ import {
   QrcodeOutlined,
   FieldTimeOutlined
 } from '@ant-design/icons';
-import { api, apiBaseUrl, totpToolApi } from '../services/api';
+import api, { apiBaseUrl, totpToolApi } from '../services/api';
 import styled from 'styled-components';
 
 const { Title, Text } = Typography;
