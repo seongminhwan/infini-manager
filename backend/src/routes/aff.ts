@@ -39,6 +39,9 @@ router.put('/relations/:relationId/amount', affController.updateAffAmount);
 /**
  * AFF返现转账操作
  */
+// 关闭AFF返现批次
+router.post('/cashbacks/:batchId/close', affController.closeCashback);
+
 // 开始批量转账
 router.post('/cashbacks/:batchId/transfer', affController.startBatchTransfer);
 
