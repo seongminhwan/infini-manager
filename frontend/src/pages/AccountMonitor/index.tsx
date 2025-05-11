@@ -461,7 +461,11 @@ const AccountDetailModal: React.FC<{
   const copyToClipboard = (text: string, messageText: string = '已复制到剪贴板') => {
     navigator.clipboard.writeText(text)
       .then(() => {
-        message.success(messageText);
+        message.success({
+          content: messageText,
+          icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+          duration: 2
+        });
       })
       .catch(err => {
         console.error('复制失败:', err);
@@ -2514,10 +2518,19 @@ const AccountMonitor: React.FC = () => {
         <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
       ),
       render: (text: string) => (
-        <Tooltip title={text}>
-          <div style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(text)}>
-            <strong>{text}</strong>
-            <CopyOutlined style={{ marginLeft: 8 }} />
+        <Tooltip title="点击复制邮箱">
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <strong style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{text}</strong>
+            <Button 
+              type="text" 
+              size="small" 
+              icon={<CopyOutlined />} 
+              onClick={(e) => {
+                e.stopPropagation();
+                copyToClipboard(text, `邮箱 ${text} 已复制到剪贴板`);
+              }} 
+              style={{ marginLeft: 4 }}
+            />
           </div>
         </Tooltip>
       )
@@ -2529,10 +2542,20 @@ const AccountMonitor: React.FC = () => {
       width: 240,
       ellipsis: true,
       render: (text: string) => (
-        <Tooltip title={text || '未设置'}>
-          <div style={{ cursor: 'pointer' }} onClick={() => copyToClipboard(text || '')}>
-            <strong>{text || '未设置'}</strong>
-            <CopyOutlined style={{ marginLeft: 8 }} />
+        <Tooltip title="点击复制用户ID">
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <strong style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{text || '未设置'}</strong>
+            <Button 
+              type="text" 
+              size="small" 
+              icon={<CopyOutlined />} 
+              onClick={(e) => {
+                e.stopPropagation();
+                copyToClipboard(text || '', `用户ID ${text || '未设置'} 已复制到剪贴板`);
+              }} 
+              style={{ marginLeft: 4 }}
+              disabled={!text}
+            />
           </div>
         </Tooltip>
       )
