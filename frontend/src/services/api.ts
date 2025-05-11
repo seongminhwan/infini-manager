@@ -1,14 +1,16 @@
 /**
  * API服务配置
  * 配置axios拦截器，处理API请求和响应，统一错误处理
+ * 
+ * 统一的axios实例，所有API请求都应使用此实例，确保错误处理一致性
+ * 拦截所有非200状态码响应，通过message组件显示错误信息
  */
-// 关于API客户端
-import axios, { AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosResponse, AxiosError, AxiosRequestConfig, AxiosInstance } from 'axios';
 import { message } from 'antd';
 
-// 创建axios实例 - 不设置baseURL，让各组件使用完整URL路径
-const api = axios.create({
-  // 不设置超时时间，避免长时间运行的请求（如验证码获取）被中断
+// 创建axios实例
+const api: AxiosInstance = axios.create({
+  timeout: 60000, // 默认60秒超时时间，长时间运行的请求可在调用时覆盖
   headers: {
     'Content-Type': 'application/json',
   },
@@ -17,7 +19,10 @@ const api = axios.create({
 // API基础URL
 const apiBaseUrl = 'http://localhost:33201';
 
-// 配置API
+/**
+ * 配置API服务
+ * 所有API定义都应使用api实例，而非直接使用axios
+ */
 export const configApi = {
   // 获取所有配置
   getAllConfigs: async () => {
@@ -67,7 +72,11 @@ export const configApi = {
     }
   }
 };
-// Infini账户API
+
+/**
+ * Infini账户API
+ * 使用统一的api实例处理所有请求
+ */
 export const infiniAccountApi = {
   // 发送验证码
   // type=0: 注册验证码(默认), type=6: 2FA验证码
@@ -382,7 +391,9 @@ export const infiniAccountApi = {
   }
 };
 
-// 随机用户信息生成API
+/**
+ * 随机用户信息生成API
+ */
 export const randomUserApi = {
   // 生成随机用户信息
   generateRandomUsers: async (params: { email_suffix?: string, count?: number }) => {
@@ -461,7 +472,10 @@ export const randomUserApi = {
     }
   }
 };
-// TOTP工具API
+
+/**
+ * TOTP工具API
+ */
 export const totpToolApi = {
   // 生成TOTP验证码
   generateTotpCode: async (input: string) => {
@@ -489,20 +503,9 @@ export const totpToolApi = {
   }
 };
 
-// 请求拦截器
-api.interceptors.request.use(
-  (config) => {
-    // 这里可以添加请求前的处理，例如添加token等
-    return config;
-  },
-  (error) => {
-    // 请求错误处理
-    message.error('请求发送失败，请检查网络连接');
-    return Promise.reject(error);
-  }
-);
-
-// KYC图片管理API
+/**
+ * KYC图片管理API
+ */
 export const kycImageApi = {
   // 获取所有KYC图片
   getAllKycImages: async () => {
@@ -595,7 +598,27 @@ export const kycImageApi = {
     }
   }
 };
-// 响应拦截器
+
+/**
+ * 请求拦截器
+ * 在请求发送前处理配置，可以添加通用headers等
+ */
+api.interceptors.request.use(
+  (config) => {
+    // 这里可以添加请求前的处理，例如添加token等
+    return config;
+  },
+  (error) => {
+    // 请求错误处理
+    message.error('请求发送失败，请检查网络连接');
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * 响应拦截器
+ * 拦截所有响应，处理错误情况，展示错误消息
+ */
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     // 如果响应成功但API返回错误状态
@@ -658,8 +681,108 @@ api.interceptors.response.use(
   }
 );
 
+/**
+ * 便捷的HTTP请求方法，封装了常用的请求方式
+ * 所有方法都使用统一的api实例，确保错误处理一致性
+ */
+export const httpService = {
+  /**
+   * GET请求
+   * @param url 请求地址
+   * @param params 请求参数
+   * @param config 其他配置
+   * @returns Promise
+   */
+  get: async <T = any>(url: string, params?: any, config?: AxiosRequestConfig): Promise<T> => {
+    try {
+      const response = await api.get(url, { params, ...config });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  
+  /**
+   * POST请求
+   * @param url 请求地址
+   * @param data 请求体数据
+   * @param config 其他配置
+   * @returns Promise
+   */
+  post: async <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => {
+    try {
+      const response = await api.post(url, data, config);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  
+  /**
+   * PUT请求
+   * @param url 请求地址
+   * @param data 请求体数据
+   * @param config 其他配置
+   * @returns Promise
+   */
+  put: async <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => {
+    try {
+      const response = await api.put(url, data, config);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  
+  /**
+   * DELETE请求
+   * @param url 请求地址
+   * @param config 其他配置
+   * @returns Promise
+   */
+  delete: async <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> => {
+    try {
+      const response = await api.delete(url, config);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+};
+
 // 导出默认的API客户端
 export default api;
 
 // 导出API基础URL，以便在各组件中使用
 export { apiBaseUrl };
+
+/**
+ * 使用说明：
+ * 
+ * 1. 直接使用api实例进行请求：
+ *    import api from '../../services/api';
+ *    try {
+ *      const response = await api.get('/some/endpoint');
+ *      // 处理响应
+ *    } catch (error) {
+ *      // 错误已由拦截器统一处理，这里可以添加额外逻辑
+ *    }
+ * 
+ * 2. 使用封装的API服务：
+ *    import { infiniAccountApi } from '../../services/api';
+ *    try {
+ *      const response = await infiniAccountApi.getAllAccountGroups();
+ *      // 处理响应
+ *    } catch (error) {
+ *      // 错误已由拦截器统一处理，这里可以添加额外逻辑
+ *    }
+ * 
+ * 3. 使用便捷的HTTP方法：
+ *    import { httpService } from '../../services/api';
+ *    try {
+ *      const data = await httpService.get('/some/endpoint');
+ *      // 处理数据
+ *    } catch (error) {
+ *      // 错误已由拦截器统一处理，这里可以添加额外逻辑
+ *    }
+ */
