@@ -4,6 +4,7 @@ import MainLayout from '../layouts/MainLayout';
 import Overview from '../pages/Overview';
 import AccountMonitor from '../pages/AccountMonitor';
 import AccountTransfer from '../pages/AccountTransfer';
+import AccountDetails from '../pages/AccountDetails';
 import AccountRegister from '../pages/AccountRegister';
 import NotificationManage from '../pages/NotificationManage';
 import TriggerManage from '../pages/TriggerManage';
@@ -25,7 +26,8 @@ const AppRoutes: React.FC = () => {
         {/* 各功能页面路由 */}
         <Route path="/overview" element={<Overview />} />
         <Route path="/account-monitor" element={<AccountMonitor />} />
-        <Route path="/account-transfer" element={<AccountTransfer />} />
+      <Route path="/account-transfer" element={<AccountTransfer />} />
+      <Route path="/account-details" element={<AccountDetails />} />
         <Route path="/account-register" element={<AccountRegister />} />
         <Route path="/account-group-manage" element={<AccountGroupManage />} />
         <Route path="/notification-manage" element={<NotificationManage />} />
