@@ -38,7 +38,7 @@ const { Dragger } = Upload;
 interface Account {
   id: number;
   email: string;
-  balance: number;
+  availableBalance: number;
 }
 
 interface BatchData {
@@ -98,7 +98,7 @@ const AffCashback: React.FC = () => {
         const res = await infiniAccountApi.getAllInfiniAccounts();
         if (res.data.success) {
           // 按余额降序排序账户列表
-          const sortedAccounts = [...res.data.data].sort((a, b) => b.balance - a.balance);
+          const sortedAccounts = [...res.data.data].sort((a, b) => b.availableBalance - a.availableBalance);
           setAccounts(sortedAccounts);
         }
       } catch (error) {
@@ -611,8 +611,8 @@ const AffCashback: React.FC = () => {
         >
           <Form.Item
             name="accountId"
-            label="转账账户"
-            rules={[{ required: true, message: '请选择转账账户' }]}
+            label="用于返现的转账账户"
+            rules={[{ required: true, message: '请选择用于返现的转账账户' }]}
             extra="账户已按余额从高到低排序，可通过邮箱或余额搜索"
           >
             <Select 
@@ -627,7 +627,7 @@ const AffCashback: React.FC = () => {
             >
               {accounts.map(account => (
                 <Option key={account.id} value={account.id}>
-                  <strong>{account.email}</strong> - 余额: <span style={{ color: '#1890ff', fontWeight: 'bold' }}>{account.balance}</span>
+                  <strong>{account.email}</strong> - 余额: <span style={{ color: '#1890ff', fontWeight: 'bold' }}>{account.availableBalance}</span>
                 </Option>
               ))}
             </Select>
