@@ -127,21 +127,124 @@ export const executeInternalTransfer: ControllerMethod = async (req: Request, re
  */
 export const getTransfers: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { accountId, status, page = '1', pageSize = '20' } = req.query;
+    const { 
+      accountId, 
+      status, 
+      page = '1', 
+      pageSize = '20',
+      source,
+      amountMin,
+      amountMax,
+      keyword,
+      startDate,
+      endDate,
+      searchType
+    } = req.query;
     
     // 获取页码和每页条数
     const pageNum = parseInt(page as string, 10) || 1;
     const pageSizeNum = parseInt(pageSize as string, 10) || 20;
     
-    // 使用InfiniAccountService获取真实转账记录
-    const response = await infiniAccountService.getTransferRecords(
-      accountId as string | undefined,
-      status as string | undefined,
-      pageNum,
-      pageSizeNum
-    );
+    // 构建查询
+    let query = db('infini_transfers')
+      .select([
+        'infini_transfers.*',
+        'infini_accounts.email as account_email'
+      ])
+      .leftJoin('infini_accounts', 'infini_transfers.account_id', 'infini_accounts.id')
+      .orderBy('infini_transfers.created_at', 'desc');
+
+    // 应用筛选条件
+    if (accountId) {
+      query = query.where('infini_transfers.account_id', accountId);
+    }
+
+    if (status) {
+      query = query.where('infini_transfers.status', status);
+    }
     
-    res.json(response);
+    // 转账来源筛选
+    if (source) {
+      query = query.where('infini_transfers.source', source);
+    }
+    
+    // 金额范围筛选
+    if (amountMin) {
+      // 将金额字段转为数值进行比较
+      query = query.whereRaw('CAST(infini_transfers.amount AS DECIMAL) >= ?', [Number(amountMin)]);
+    }
+    
+    if (amountMax) {
+      query = query.whereRaw('CAST(infini_transfers.amount AS DECIMAL) <= ?', [Number(amountMax)]);
+    }
+    
+    // 日期范围筛选
+    if (startDate) {
+      query = query.where('infini_transfers.created_at', '>=', startDate);
+    }
+    
+    if (endDate) {
+      // 设置结束日期为当天结束时间
+      const endDateObj = new Date(endDate as string);
+      endDateObj.setHours(23, 59, 59, 999);
+      query = query.where('infini_transfers.created_at', '<=', endDateObj);
+    }
+    
+    // 关键字搜索
+    if (keyword) {
+      // 根据searchType决定搜索字段
+      if (searchType === 'target') {
+        // 仅搜索目标字段
+        query = query.where(function() {
+          this.where('infini_transfers.target_identifier', 'like', `%${keyword}%`)
+            .orWhere('infini_transfers.matched_account_email', 'like', `%${keyword}%`)
+            .orWhere('infini_transfers.matched_account_uid', 'like', `%${keyword}%`);
+        });
+      } else if (searchType === 'source') {
+        // 仅搜索来源账户
+        query = query.where(function() {
+          this.where('infini_accounts.email', 'like', `%${keyword}%`);
+        });
+      } else if (searchType === 'remarks') {
+        // 仅搜索备注
+        query = query.where('infini_transfers.remarks', 'like', `%${keyword}%`);
+      } else {
+        // 默认搜索所有相关字段
+        query = query.where(function() {
+          this.where('infini_transfers.target_identifier', 'like', `%${keyword}%`)
+            .orWhere('infini_transfers.matched_account_email', 'like', `%${keyword}%`)
+            .orWhere('infini_transfers.matched_account_uid', 'like', `%${keyword}%`)
+            .orWhere('infini_accounts.email', 'like', `%${keyword}%`)
+            .orWhere('infini_transfers.remarks', 'like', `%${keyword}%`);
+        });
+      }
+    }
+
+    // 获取总记录数
+    const countQuery = query.clone().clearSelect().clearOrder().count('infini_transfers.id as total').first();
+    const countResult = await countQuery;
+    const total = (countResult as any).total;
+
+    // 应用分页
+    const offset = (pageNum - 1) * pageSizeNum;
+    query = query.limit(pageSizeNum).offset(offset);
+
+    // 执行查询
+    const transfers = await query;
+
+    res.json({
+      success: true,
+      data: {
+        transfers,
+        pagination: {
+          total,
+          page: pageNum,
+          pageSize: pageSizeNum,
+          totalPages: Math.ceil(total / pageSizeNum)
+        }
+      },
+      message: '成功获取转账记录'
+    });
   } catch (error) {
     next(error);
   }
