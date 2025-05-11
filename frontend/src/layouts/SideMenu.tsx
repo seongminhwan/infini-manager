@@ -102,9 +102,19 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       label: '账户监控',
     },
     {
-      key: '/account-transfer',
+      key: 'account-ops',
       icon: <SwapOutlined />,
-      label: '账户转账',
+      label: '账户资金',
+      children: [
+        {
+          key: '/account-transfer',
+          label: '账户转账',
+        },
+        {
+          key: '/account-details',
+          label: '账户明细',
+        }
+      ]
     },
     {
       key: '/account-register',
