@@ -797,25 +797,121 @@ const AccountDetails: React.FC = () => {
                             }}
                           >
                             <Space direction="vertical" style={{ width: '100%' }}>
-                              <div>
-                                <Tag color={getStatusColor(history.status || 'processing')}>
-                                  {history.status === 'completed' ? '完成' : 
-                                   history.status === 'pending' ? '待处理' : 
-                                   history.status === 'processing' ? '处理中' : 
-                                   history.status === 'failed' ? '失败' : history.status}
-                                </Tag>
-                              </div>
-                              {history.details && (
+                              {/* 历史记录标题和状态 */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <div>
-                                  <Text>
-                                    {typeof history.details === 'object' 
-                                      ? JSON.stringify(history.details) 
-                                      : history.details}
+                                  <Tag color={getStatusColor(history.status || 'processing')}>
+                                    {history.status === 'completed' ? '完成' : 
+                                     history.status === 'pending' ? '待处理' : 
+                                     history.status === 'processing' ? '处理中' : 
+                                     history.status === 'failed' ? '失败' : history.status}
+                                  </Tag>
+                                  <Text style={{ marginLeft: 8, fontWeight: 'bold' }}>
+                                    {history.message}
                                   </Text>
                                 </div>
+                                <Text type="secondary">
+                                  {formatDateTime(history.createdAt)}
+                                </Text>
+                              </div>
+                              
+                              {/* 根据状态渲染不同的详情内容 */}
+                              {history.details && (
+                                <div style={{ marginTop: 12, background: '#fafafa', padding: 12, borderRadius: 4 }}>
+                                  {/* pending状态：显示账户和转账基本信息 */}
+                                  {history.status === 'pending' && history.details.accountId && (
+                                    <div>
+                                      {history.details.matchedInternalAccount && (
+                                        <div style={{ marginBottom: 8 }}>
+                                          <Text strong>匹配账户: </Text>
+                                          <Text>{history.details.matchedInternalAccount.email} (UID: {history.details.matchedInternalAccount.uid})</Text>
+                                        </div>
+                                      )}
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        <Tag color="blue">金额: ${history.details.amount}</Tag>
+                                        <Tag color="purple">来源: {getSourceLabel(history.details.source || 'manual')}</Tag>
+                                        {history.details.originalContactType && (
+                                          <Tag color="orange">
+                                            原始类型: {history.details.originalContactType}
+                                          </Tag>
+                                        )}
+                                        {history.details.remarks && (
+                                          <Tag>备注: {history.details.remarks}</Tag>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* processing状态：显示请求数据 */}
+                                  {history.status === 'processing' && history.details.requestData && (
+                                    <div>
+                                      <Text strong>请求数据: </Text>
+                                      <div style={{ marginTop: 4 }}>
+                                        {history.details.requestData.contactType && (
+                                          <Tag color="cyan">类型: {history.details.requestData.contactType}</Tag>
+                                        )}
+                                        {history.details.requestData.user_id && (
+                                          <Tag color="blue">用户ID: {history.details.requestData.user_id}</Tag>
+                                        )}
+                                        {history.details.requestData.amount && (
+                                          <Tag color="green">金额: ${history.details.requestData.amount}</Tag>
+                                        )}
+                                        {history.details.requestData.email_verify_code && (
+                                          <Tag color="purple">验证码: {history.details.requestData.email_verify_code}</Tag>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* processing状态(API响应)：显示API响应数据 */}
+                                  {history.status === 'processing' && history.details.apiResponse && (
+                                    <div>
+                                      <Text strong>API响应: </Text>
+                                      <div style={{ marginTop: 4 }}>
+                                        <Tag color={history.details.apiResponse.code === 0 ? 'success' : 'error'}>
+                                          Code: {history.details.apiResponse.code}
+                                        </Tag>
+                                        {history.details.apiResponse.message && (
+                                          <Tag>{history.details.apiResponse.message || '成功'}</Tag>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* completed状态：显示结果信息 */}
+                                  {history.status === 'completed' && (
+                                    <div>
+                                      <Text strong>转账完成</Text>
+                                      {Object.keys(history.details.result || {}).length > 0 && (
+                                        <div style={{ marginTop: 4 }}>
+                                          <Text type="secondary">{JSON.stringify(history.details.result)}</Text>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* failed状态：显示错误信息 */}
+                                  {history.status === 'failed' && (
+                                    <div>
+                                      <Text type="danger" strong>失败原因: </Text>
+                                      <Text type="danger">{history.message}</Text>
+                                    </div>
+                                  )}
+                                  
+                                  {/* 其他未知状态：保留原始结构但更优雅地显示 */}
+                                  {!(['pending', 'processing', 'completed', 'failed'].includes(history.status)) && (
+                                    <div>
+                                      <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                                        {JSON.stringify(history.details, null, 2)}
+                                      </pre>
+                                    </div>
+                                  )}
+                                </div>
                               )}
+                              
+                              {/* 备注信息 */}
                               {history.memo && (
-                                <div>
+                                <div style={{ marginTop: 8 }}>
                                   <Text type="secondary">备注: {history.memo}</Text>
                                 </div>
                               )}
