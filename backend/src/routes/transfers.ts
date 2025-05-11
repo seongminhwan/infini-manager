@@ -282,6 +282,9 @@ router.post('/internal', transferController.executeInternalTransfer);
  *       500:
  *         description: 服务器错误
  */
-router.post('/continue-with-2fa', transferController.continueTransferWith2FA);
+  // 自动获取2FA验证码并完成转账流程
+  router.post('/auto-2fa', transferController.autoGet2FAAndCompleteTransfer);
 
+  // 提供2FA验证码继续转账流程
+  router.post('/continue-with-2fa', transferController.continueTransferWith2FA);
 export default router;
