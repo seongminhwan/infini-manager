@@ -366,6 +366,9 @@ const AccountTransfer: React.FC = () => {
               // 使用相同参数，但设置isForced为true
               setLoading(true);
               try {
+                // 获取自动2FA验证开关值
+                const useAuto2FA = values.auto2FA || false;
+                
                 const forceResponse = await transferApi.executeInternalTransfer(
                   sourceAccountId,
                   contactType,
@@ -373,7 +376,8 @@ const AccountTransfer: React.FC = () => {
                   amount,
                   source,
                   true, // 强制执行
-                  remarks
+                  remarks,
+                  useAuto2FA // 传递auto2FA参数
                 );
                 
                 if (forceResponse.success) {
