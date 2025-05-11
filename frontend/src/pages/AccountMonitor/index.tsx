@@ -63,12 +63,11 @@ import {
   SettingOutlined,
   UpOutlined, // 添加上箭头图标
 } from '@ant-design/icons';
-import axios from 'axios';
 import { Resizable } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 import { debounce, DebouncedFunc } from 'lodash';
 import { ResizeCallbackData } from 'react-resizable';
-import api, { apiBaseUrl, configApi, infiniAccountApi, randomUserApi, totpToolApi } from '../../services/api';
+import api, { apiBaseUrl, configApi, infiniAccountApi, randomUserApi, totpToolApi, httpService } from '../../services/api';
 import RandomUserRegisterModal from '../../components/RandomUserRegisterModal';
 import TwoFactorAuthModal from '../../components/TwoFactorAuthModal';
 import TwoFaViewModal from '../../components/TwoFaViewModal';
@@ -278,7 +277,7 @@ const AccountDetailModal: React.FC<{
       message.loading('正在刷新卡片信息...');
       
       // 调用同步卡片信息接口
-      const response = await axios.post(`${API_BASE_URL}/api/infini-cards/sync`, {
+      const response = await api.post(`${API_BASE_URL}/api/infini-cards/sync`, {
         accountId: account.id
       });
       
@@ -308,7 +307,7 @@ const AccountDetailModal: React.FC<{
       setLoadingCards(true);
       
       // 调用获取卡片列表接口
-      const response = await axios.get(`${API_BASE_URL}/api/infini-cards/list`, {
+      const response = await api.get(`${API_BASE_URL}/api/infini-cards/list`, {
         params: { accountId: account.id }
       });
       
@@ -347,8 +346,8 @@ const AccountDetailModal: React.FC<{
     setLoadingKycData(true);
     
       try {
-      // 直接使用axios调用API获取KYC信息，避免可能的缓存问题
-      const response = await axios.get(`${API_BASE_URL}/api/infini-accounts/kyc/information/${account.id}`);
+      // 使用统一的api实例获取KYC信息
+      const response = await api.get(`${API_BASE_URL}/api/infini-accounts/kyc/information/${account.id}`);
       console.log('获取KYC信息完整响应:', response);
       
       if (response.data.success && response.data.data.kyc_information && response.data.data.kyc_information.length > 0) {
@@ -542,7 +541,7 @@ const AccountDetailModal: React.FC<{
       if (values.status) updateData.status = values.status;
       if (values.userType !== undefined) updateData.userType = values.userType;
       
-      const response = await axios.put(`${API_BASE_URL}/api/infini-accounts/${account?.id}`, updateData);
+      const response = await api.put(`${API_BASE_URL}/api/infini-accounts/${account?.id}`, updateData);
 
       if (response.data.success) {
         message.success('账户信息更新成功');
@@ -1175,7 +1174,7 @@ const AccountCreateModal: React.FC<{
       setSyncStage('login');
       
       // 第一步：登录
-      const loginResponse = await axios.post(`${API_BASE_URL}/api/infini-accounts/login`, {
+      const loginResponse = await api.post(`${API_BASE_URL}/api/infini-accounts/login`, {
         email: values.email,
         password: values.password,
       });
@@ -1212,7 +1211,7 @@ const AccountCreateModal: React.FC<{
       setLoading(true);
       const values = await form.validateFields();
       
-      const response = await axios.post(`${API_BASE_URL}/api/infini-accounts`, {
+      const response = await api.post(`${API_BASE_URL}/api/infini-accounts`, {
         email: values.email,
         password: values.password,
       });
@@ -2138,7 +2137,7 @@ const AccountMonitor: React.FC = () => {
     try {
       setBatchSyncing(true);
       
-      const response = await axios.post(`${API_BASE_URL}/api/infini-accounts/sync-all`);
+      const response = await api.post(`${API_BASE_URL}/api/infini-accounts/sync-all`);
       
       if (response.data.success) {
         const result = response.data.data as BatchSyncResult;
@@ -2164,7 +2163,7 @@ const AccountMonitor: React.FC = () => {
       message.info('开始批量同步KYC信息...');
       
       // 调用批量同步KYC信息的API
-      const response = await axios.post(`${API_BASE_URL}/api/infini-accounts/sync-all-kyc`);
+      const response = await api.post(`${API_BASE_URL}/api/infini-accounts/sync-all-kyc`);
       
       if (response.data.success) {
         const result = response.data.data as BatchSyncResult;
@@ -2280,8 +2279,8 @@ const AccountMonitor: React.FC = () => {
       setLoading(true);
       console.log('开始获取账户列表数据...');
       
-      // 使用封装的API方法而不是直接axios调用
-      const response = await axios.get(`${API_BASE_URL}/api/infini-accounts`);
+      // 使用统一的api实例获取所有账户
+      const response = await api.get(`${API_BASE_URL}/api/infini-accounts`);
       
       if (response.data.success) {
         const accountsData = response.data.data || [];
@@ -2355,7 +2354,7 @@ const AccountMonitor: React.FC = () => {
     try {
       setSyncingAccount(id);
       
-      const response = await axios.post(`${API_BASE_URL}/api/infini-accounts/${id}/sync`);
+      const response = await api.post(`${API_BASE_URL}/api/infini-accounts/${id}/sync`);
       
       if (response.data.success) {
         message.success('账户信息同步成功');
@@ -2400,7 +2399,7 @@ const AccountMonitor: React.FC = () => {
     try {
       setLoading(true);
       
-      const response = await axios.delete(`${API_BASE_URL}/api/infini-accounts/${id}`);
+      const response = await api.delete(`${API_BASE_URL}/api/infini-accounts/${id}`);
       
       if (response.data.success) {
         message.success('账户删除成功');
@@ -2438,7 +2437,7 @@ const AccountMonitor: React.FC = () => {
       setCardDetailModalVisible(true);
       
       // 获取卡片列表
-      const response = await axios.get(`${API_BASE_URL}/api/infini-cards/list`, {
+      const response = await api.get(`${API_BASE_URL}/api/infini-cards/list`, {
         params: { accountId: account.id }
       });
       
@@ -3496,7 +3495,7 @@ const BatchAddAccountModal: React.FC<{
         if (accountIndex === -1) continue; // 安全检查
         
         try {
-          const response = await axios.post(`${API_BASE_URL}/api/infini-accounts`, {
+          const response = await api.post(`${API_BASE_URL}/api/infini-accounts`, {
             email: account.email,
             password: account.password
           });
