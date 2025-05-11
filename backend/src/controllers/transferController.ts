@@ -70,9 +70,6 @@ export const createTransfer: ControllerMethod = async (req: Request, res: Respon
  * 执行Infini内部转账
  * 支持内部账户ID或外部用户UID/Email作为目标
  */
-  // 执行Infini内部转账
-  // 支持内部账户ID或外部用户UID/Email作为目标
-  */
 export const executeInternalTransfer: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { 
@@ -87,6 +84,9 @@ export const executeInternalTransfer: ControllerMethod = async (req: Request, re
     } = req.body;
 
     // 验证必填参数
+    if (!accountId || !contactType || !targetIdentifier || !amount || !source) {
+      return res.status(400).json({
+        success: false,
         message: '缺少必要参数'
       });
     }
