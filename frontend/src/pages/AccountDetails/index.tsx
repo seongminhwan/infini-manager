@@ -130,21 +130,44 @@ const AccountDetails: React.FC = () => {
         queryParams.keyword = keyword;
       }
       
-      // 调用API获取数据
-      const response = await transferApi.getTransfers(
-        queryParams.accountId,
-        queryParams.status,
-        queryParams.page,
-        queryParams.pageSize
-      );
+      // 创建完整URL查询参数字符串
+      let url = `/api/transfers?page=${queryParams.page}&pageSize=${queryParams.pageSize}`;
       
-      if (response.success && response.data) {
-        setData(response.data.transfers || []);
+      if (queryParams.accountId) {
+        url += `&accountId=${queryParams.accountId}`;
+      }
+      
+      if (queryParams.status) {
+        url += `&status=${queryParams.status}`;
+      }
+      
+      if (queryParams.startDate && queryParams.endDate) {
+        url += `&startDate=${queryParams.startDate}&endDate=${queryParams.endDate}`;
+      }
+      
+      if (queryParams.amountMin) {
+        url += `&amountMin=${queryParams.amountMin}`;
+      }
+      
+      if (queryParams.amountMax) {
+        url += `&amountMax=${queryParams.amountMax}`;
+      }
+      
+      if (queryParams.keyword) {
+        url += `&keyword=${encodeURIComponent(queryParams.keyword)}`;
+      }
+      
+      // 使用fetch API直接请求，确保所有参数都被传递
+      const response = await fetch(`http://localhost:33201${url}`);
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setData(result.data.transfers || []);
         setTableParams({
           ...tableParams,
           pagination: {
             ...tableParams.pagination,
-            total: response.data.pagination.total,
+            total: result.data.pagination?.total || 0,
           },
         });
       } else {
@@ -365,9 +388,16 @@ const AccountDetails: React.FC = () => {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
             <Form.Item name="accountId" label="账户">
               <Select 
-                style={{ width: 220 }}
+                style={{ width: 240 }}
                 placeholder="选择账户" 
                 allowClear
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) => 
+                  (option?.children as unknown as string)
+                    .toLowerCase()
+                    .indexOf(input.toLowerCase()) >= 0
+                }
               >
                 {accounts.map(account => (
                   <Option key={account.id} value={account.id}>{account.email}</Option>
