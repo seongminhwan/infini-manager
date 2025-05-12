@@ -557,31 +557,39 @@ const AffHistory: React.FC = () => {
   };
 
   // 标记AFF返现批次为已完成
-  const handleMarkAsCompleted = async () => {
+  const handleMarkAsCompleted = () => {
     if (!currentCashback) return;
     
-    confirm({
+    Modal.confirm({
       title: '确认标记为已完成',
       content: `确定要将批次"${currentCashback.batchName}"标记为已完成状态吗？`,
-      onOk: async () => {
-        setLoading(true);
-        try {
-          const res = await api.post(`${apiBaseUrl}/api/aff/cashbacks/${currentCashback.id}/mark-completed`);
-          
-          if (res.data.success) {
-            message.success('AFF返现批次已成功标记为已完成');
-            // 刷新批次详情和批次列表
-            fetchCashbackDetail(currentCashback.id);
-            fetchCashbacks();
-          } else {
-            message.error(`操作失败: ${res.data.message}`);
-          }
-        } catch (error) {
-          console.error('标记AFF返现批次为已完成失败', error);
-          message.error('操作失败，请稍后重试');
-        } finally {
-          setLoading(false);
-        }
+      okText: '确认',
+      cancelText: '取消',
+      onOk: () => {
+        return new Promise<void>((resolve, reject) => {
+          setLoading(true);
+          api.post(`${apiBaseUrl}/api/aff/cashbacks/${currentCashback.id}/mark-completed`)
+            .then(res => {
+              if (res.data.success) {
+                message.success('AFF返现批次已成功标记为已完成');
+                // 刷新批次详情和批次列表
+                fetchCashbackDetail(currentCashback.id);
+                fetchCashbacks();
+                resolve();
+              } else {
+                message.error(`操作失败: ${res.data.message}`);
+                reject(new Error(res.data.message));
+              }
+            })
+            .catch(error => {
+              console.error('标记AFF返现批次为已完成失败', error);
+              message.error('操作失败，请稍后重试');
+              reject(error);
+            })
+            .finally(() => {
+              setLoading(false);
+            });
+        });
       }
     });
   };
