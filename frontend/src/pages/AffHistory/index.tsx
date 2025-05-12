@@ -638,6 +638,11 @@ const AffHistory: React.FC = () => {
               关闭批次
             </Button>
           ] : []),
+          ...(currentCashback && currentCashback.status !== 'completed' ? [
+            <Button key="mark_completed" type="primary" onClick={handleMarkAsCompleted} loading={loading}>
+              标记为已完成
+            </Button>
+          ] : []),
           <Button key="close" onClick={() => setDetailModalVisible(false)}>
             关闭
           </Button>
