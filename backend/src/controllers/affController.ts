@@ -648,6 +648,26 @@ export const executeTransfer: ControllerMethod = async (req: Request, res: Respo
           updated_at: new Date()
         });
       
+      // 检查是否所有记录都已处理完毕
+      const remainingCount = await db('infini_aff_cashback_relations')
+        .where('aff_cashback_id', relation.aff_cashback_id)
+        .whereNotIn('status', ['completed', 'ignored'])
+        .count('* as count')
+        .first();
+      
+      const count = parseInt((remainingCount as any).count);
+      
+      // 如果没有未完成的记录，更新批次状态为已完成
+      if (count === 0) {
+        await db('infini_aff_cashbacks')
+          .where('id', relation.aff_cashback_id)
+          .update({
+            status: 'completed',
+            completed_at: new Date(),
+            updated_at: new Date()
+          });
+      }
+      
       return res.json({
         success: true,
         message: '转账执行成功',
