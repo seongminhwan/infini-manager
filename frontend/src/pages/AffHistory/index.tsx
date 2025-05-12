@@ -558,38 +558,44 @@ const AffHistory: React.FC = () => {
 
   // 标记AFF返现批次为已完成
   const handleMarkAsCompleted = () => {
-    if (!currentCashback) return;
+    if (!currentCashback) {
+      console.log('当前批次为空，无法执行操作');
+      return;
+    }
+    
+    console.log('准备标记批次为已完成:', currentCashback.id);
     
     Modal.confirm({
       title: '确认标记为已完成',
       content: `确定要将批次"${currentCashback.batchName}"标记为已完成状态吗？`,
       okText: '确认',
       cancelText: '取消',
-      onOk: () => {
-        return new Promise<void>((resolve, reject) => {
+      onOk: async () => {
+        try {
+          console.log('用户确认，开始发送请求');
           setLoading(true);
-          api.post(`${apiBaseUrl}/api/aff/cashbacks/${currentCashback.id}/mark-completed`)
-            .then(res => {
-              if (res.data.success) {
-                message.success('AFF返现批次已成功标记为已完成');
-                // 刷新批次详情和批次列表
-                fetchCashbackDetail(currentCashback.id);
-                fetchCashbacks();
-                resolve();
-              } else {
-                message.error(`操作失败: ${res.data.message}`);
-                reject(new Error(res.data.message));
-              }
-            })
-            .catch(error => {
-              console.error('标记AFF返现批次为已完成失败', error);
-              message.error('操作失败，请稍后重试');
-              reject(error);
-            })
-            .finally(() => {
-              setLoading(false);
-            });
-        });
+          
+          // 直接发送API请求，不使用Promise包装
+          const url = `${apiBaseUrl}/api/aff/cashbacks/${currentCashback.id}/mark-completed`;
+          console.log('发送POST请求到:', url);
+          
+          const res = await api.post(url);
+          console.log('收到API响应:', res.data);
+          
+          if (res.data.success) {
+            message.success('AFF返现批次已成功标记为已完成');
+            // 刷新批次详情和批次列表
+            await fetchCashbackDetail(currentCashback.id);
+            await fetchCashbacks();
+          } else {
+            message.error(`操作失败: ${res.data.message}`);
+          }
+        } catch (error) {
+          console.error('标记AFF返现批次为已完成失败', error);
+          message.error('操作失败，请稍后重试');
+        } finally {
+          setLoading(false);
+        }
       }
     });
   };
