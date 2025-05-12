@@ -28,6 +28,7 @@ import TransferTimeline from '../../components/TransferTimeline';
 import api, { apiBaseUrl, affApi, transferApi } from '../../services/api';
 
 const { Title, Text } = Typography;
+const { confirm } = Modal;
 const { TabPane } = Tabs;
 
 // 接口类型定义
