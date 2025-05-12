@@ -556,6 +556,9 @@ const AffHistory: React.FC = () => {
     }
   };
 
+  // 确认对话框状态
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+
   // 标记AFF返现批次为已完成
   const handleMarkAsCompleted = () => {
     if (!currentCashback) {
@@ -564,45 +567,61 @@ const AffHistory: React.FC = () => {
     }
     
     console.log('准备标记批次为已完成:', currentCashback.id);
+    setConfirmModalVisible(true);
+  };
+
+  // 执行标记为已完成的操作
+  const executeMarkAsCompleted = async () => {
+    if (!currentCashback) return;
     
-    Modal.confirm({
-      title: '确认标记为已完成',
-      content: `确定要将批次"${currentCashback.batchName}"标记为已完成状态吗？`,
-      okText: '确认',
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          console.log('用户确认，开始发送请求');
-          setLoading(true);
-          
-          // 直接发送API请求，不使用Promise包装
-          const url = `${apiBaseUrl}/api/aff/cashbacks/${currentCashback.id}/mark-completed`;
-          console.log('发送POST请求到:', url);
-          
-          const res = await api.post(url);
-          console.log('收到API响应:', res.data);
-          
-          if (res.data.success) {
-            message.success('AFF返现批次已成功标记为已完成');
-            // 刷新批次详情和批次列表
-            await fetchCashbackDetail(currentCashback.id);
-            await fetchCashbacks();
-          } else {
-            message.error(`操作失败: ${res.data.message}`);
-          }
-        } catch (error) {
-          console.error('标记AFF返现批次为已完成失败', error);
-          message.error('操作失败，请稍后重试');
-        } finally {
-          setLoading(false);
-        }
+    try {
+      console.log('用户确认，开始发送请求');
+      setLoading(true);
+      
+      // 直接发送API请求
+      const url = `${apiBaseUrl}/api/aff/cashbacks/${currentCashback.id}/mark-completed`;
+      console.log('发送POST请求到:', url);
+      
+      const res = await api.post(url);
+      console.log('收到API响应:', res.data);
+      
+      if (res.data.success) {
+        // 使用普通提示而不是静态函数
+        // 刷新批次详情和批次列表
+        await fetchCashbackDetail(currentCashback.id);
+        await fetchCashbacks();
+        
+        // 显示成功提示
+        alert('AFF返现批次已成功标记为已完成');
+      } else {
+        alert(`操作失败: ${res.data.message}`);
       }
-    });
+    } catch (error) {
+      console.error('标记AFF返现批次为已完成失败', error);
+      alert('操作失败，请稍后重试');
+    } finally {
+      setLoading(false);
+      setConfirmModalVisible(false);
+    }
   };
 
   return (
     <div>
       <Title level={3}>AFF历史记录</Title>
+      
+      {/* 自定义确认对话框，替代Modal.confirm */}
+      <Modal
+        title="确认标记为已完成"
+        open={confirmModalVisible}
+        onOk={executeMarkAsCompleted}
+        onCancel={() => setConfirmModalVisible(false)}
+        okText="确认"
+        cancelText="取消"
+      >
+        {currentCashback && (
+          <p>确定要将批次"{currentCashback.batchName}"标记为已完成状态吗？</p>
+        )}
+      </Modal>
       
       <Card>
         <Table
