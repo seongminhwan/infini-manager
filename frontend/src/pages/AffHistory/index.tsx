@@ -401,28 +401,18 @@ const AffHistory: React.FC = () => {
       title: '操作',
       key: 'action',
       fixed: 'right' as const,
-      width: 160,
+      width: 100,
       render: (_: any, record: AffRelation) => (
         <Space>
           {record.transferId && (
-            <>
-              <Button
-                type="link"
-                size="small"
-                icon={<FileSearchOutlined />}
-                onClick={() => showTransferDetail(record.transferId)}
-              >
-                流水
-              </Button>
-              <Button
-                type="link"
-                size="small"
-                icon={<HistoryOutlined />}
-                onClick={() => showTransferHistory(record.transferId)}
-              >
-                历史
-              </Button>
-            </>
+            <Button
+              type="link"
+              size="small"
+              icon={<FileSearchOutlined />}
+              onClick={() => showTransferDetail(record.transferId)}
+            >
+              流水
+            </Button>
           )}
         </Space>
       )
