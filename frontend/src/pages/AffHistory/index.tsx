@@ -566,6 +566,36 @@ const AffHistory: React.FC = () => {
     }
   };
 
+  // 标记AFF返现批次为已完成
+  const handleMarkAsCompleted = async () => {
+    if (!currentCashback) return;
+    
+    confirm({
+      title: '确认标记为已完成',
+      content: `确定要将批次"${currentCashback.batchName}"标记为已完成状态吗？`,
+      onOk: async () => {
+        setLoading(true);
+        try {
+          const res = await api.post(`${apiBaseUrl}/api/aff/cashbacks/${currentCashback.id}/mark-completed`);
+          
+          if (res.data.success) {
+            message.success('AFF返现批次已成功标记为已完成');
+            // 刷新批次详情和批次列表
+            fetchCashbackDetail(currentCashback.id);
+            fetchCashbacks();
+          } else {
+            message.error(`操作失败: ${res.data.message}`);
+          }
+        } catch (error) {
+          console.error('标记AFF返现批次为已完成失败', error);
+          message.error('操作失败，请稍后重试');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
   return (
     <div>
       <Title level={3}>AFF历史记录</Title>
