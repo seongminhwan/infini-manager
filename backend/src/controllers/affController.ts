@@ -1154,50 +1154,54 @@ export const getAffCashbackById: ControllerMethod = async (req: Request, res: Re
       });
     }
     
-    // 统计关联记录状态
+    // 统计每种状态的记录数量
     const statusCounts = await db('infini_aff_cashback_relations')
       .where('aff_cashback_id', id)
       .select('status')
       .count('* as count')
       .groupBy('status');
     
-    // 构建状态计数对象
+    // 构建状态计数对象，确保初始化所有可能的状态
     const statusCountObj: Record<string, number> = {
       pending: 0,
       processing: 0,
       completed: 0,
       failed: 0,
-      ignored: 0
+      ignored: 0,
+      closed: 0
     };
     
+    // 填充实际的计数
     statusCounts.forEach(item => {
       if (item.status) {
-        statusCountObj[item.status] = parseInt(item.count as any);
+        statusCountObj[item.status] = parseInt(item.count as any) || 0;
       }
     });
     
-    // 计算总金额
+    // 计算已完成转账的总金额
     const totalAmountResult = await db('infini_aff_cashback_relations')
       .where('aff_cashback_id', id)
       .where('status', 'completed')
       .sum('amount as total')
       .first();
     
-    const totalAmount = totalAmountResult ? parseFloat(totalAmountResult.total as any) || 0 : 0;
+    const totalAmount = totalAmountResult && totalAmountResult.total ? 
+      parseFloat(totalAmountResult.total as any) : 0;
     
-    // 检查批次状态与记录状态是否一致，如果所有记录都已完成或忽略，但批次状态不是completed，则更新批次状态
+    // 检查批次状态与记录状态是否一致
     const pendingCount = statusCountObj.pending || 0;
     const processingCount = statusCountObj.processing || 0;
     const completedCount = statusCountObj.completed || 0;
     const ignoredCount = statusCountObj.ignored || 0;
     const failedCount = statusCountObj.failed || 0;
+    const closedCount = statusCountObj.closed || 0;
     
-    const totalCount = pendingCount + processingCount + completedCount + ignoredCount + failedCount;
+    const totalCount = pendingCount + processingCount + completedCount + ignoredCount + failedCount + closedCount;
     
+    // 如果所有记录都已处理完毕，但批次状态不是completed，更新批次状态
     if (totalCount > 0 && pendingCount === 0 && processingCount === 0 && 
         (completedCount > 0 || ignoredCount > 0) && 
         cashback.status !== 'completed') {
-      // 所有记录都已处理完毕，但批次状态不是completed，更新批次状态
       await db('infini_aff_cashbacks')
         .where('id', id)
         .update({
@@ -1218,8 +1222,8 @@ export const getAffCashbackById: ControllerMethod = async (req: Request, res: Re
         .first();
     }
     
-    // 更新总金额
-    if (cashback.total_amount === 0 && totalAmount > 0) {
+    // 更新批次总金额，确保始终有最新的总金额
+    if (cashback.total_amount !== totalAmount) {
       await db('infini_aff_cashbacks')
         .where('id', id)
         .update({
