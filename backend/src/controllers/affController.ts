@@ -1162,10 +1162,71 @@ export const getAffCashbackById: ControllerMethod = async (req: Request, res: Re
       .groupBy('status');
     
     // 构建状态计数对象
-    const statusCountObj: Record<string, number> = {};
+    const statusCountObj: Record<string, number> = {
+      pending: 0,
+      processing: 0,
+      completed: 0,
+      failed: 0,
+      ignored: 0
+    };
+    
     statusCounts.forEach(item => {
-      statusCountObj[item.status] = parseInt(item.count as any);
+      if (item.status) {
+        statusCountObj[item.status] = parseInt(item.count as any);
+      }
     });
+    
+    // 计算总金额
+    const totalAmountResult = await db('infini_aff_cashback_relations')
+      .where('aff_cashback_id', id)
+      .where('status', 'completed')
+      .sum('amount as total')
+      .first();
+    
+    const totalAmount = totalAmountResult ? parseFloat(totalAmountResult.total as any) || 0 : 0;
+    
+    // 检查批次状态与记录状态是否一致，如果所有记录都已完成或忽略，但批次状态不是completed，则更新批次状态
+    const pendingCount = statusCountObj.pending || 0;
+    const processingCount = statusCountObj.processing || 0;
+    const completedCount = statusCountObj.completed || 0;
+    const ignoredCount = statusCountObj.ignored || 0;
+    const failedCount = statusCountObj.failed || 0;
+    
+    const totalCount = pendingCount + processingCount + completedCount + ignoredCount + failedCount;
+    
+    if (totalCount > 0 && pendingCount === 0 && processingCount === 0 && 
+        (completedCount > 0 || ignoredCount > 0) && 
+        cashback.status !== 'completed') {
+      // 所有记录都已处理完毕，但批次状态不是completed，更新批次状态
+      await db('infini_aff_cashbacks')
+        .where('id', id)
+        .update({
+          status: 'completed',
+          total_amount: totalAmount,
+          completed_at: new Date(),
+          updated_at: new Date()
+        });
+      
+      // 重新获取更新后的批次信息
+      cashback = await db('infini_aff_cashbacks')
+        .select([
+          'infini_aff_cashbacks.*',
+          'infini_accounts.email as account_email'
+        ])
+        .leftJoin('infini_accounts', 'infini_aff_cashbacks.account_id', 'infini_accounts.id')
+        .where('infini_aff_cashbacks.id', id)
+        .first();
+    }
+    
+    // 更新总金额
+    if (cashback.total_amount === 0 && totalAmount > 0) {
+      await db('infini_aff_cashbacks')
+        .where('id', id)
+        .update({
+          total_amount: totalAmount,
+          updated_at: new Date()
+        });
+    }
     
     // 格式化批次信息
     const formattedCashback = {
