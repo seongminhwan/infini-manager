@@ -1055,6 +1055,56 @@ export const closeCashback: ControllerMethod = async (req: Request, res: Respons
   }
 };
 
+/**
+ * 标记AFF返现批次为已完成
+ * 手动将批次状态更新为已完成
+ */
+export const markCashbackAsCompleted: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { batchId } = req.params;
+    
+    // 验证请求参数
+    if (!batchId) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少批次ID'
+      });
+    }
+    
+    // 查询批次信息
+    const batch = await db('infini_aff_cashbacks')
+      .where('id', batchId)
+      .first();
+    
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        message: '找不到指定的AFF返现批次'
+      });
+    }
+    
+    // 更新批次状态为已完成
+    await db('infini_aff_cashbacks')
+      .where('id', batchId)
+      .update({
+        status: 'completed',
+        completed_at: new Date(),
+        updated_at: new Date()
+      });
+    
+    return res.json({
+      success: true,
+      message: 'AFF返现批次已标记为已完成',
+      data: {
+        batchId,
+        status: 'completed'
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getAffCashbackById: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
