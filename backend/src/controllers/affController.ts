@@ -1138,7 +1138,7 @@ export const getAffCashbackById: ControllerMethod = async (req: Request, res: Re
     }
     
     // 查询批次信息
-    const cashback = await db('infini_aff_cashbacks')
+    let cashback = await db('infini_aff_cashbacks')
       .select([
         'infini_aff_cashbacks.*',
         'infini_accounts.email as account_email'
