@@ -132,7 +132,7 @@ const AffCashback: React.FC = () => {
     const seconds = String(now.getSeconds()).padStart(2, '0');
     
     // 生成批次名称
-    const dateStr = `${year}-${month}-${day}-${hours}:${minutes}:${seconds}`;
+    const dateStr = `${year}-${month}-${day}-${hours}_${minutes}_${seconds}`;
     const batchName = `${dateStr}-${maxBatchId + 1}`;
     
     // 自动填入表单

@@ -6,7 +6,7 @@ import db from '../db/db';
 
 export interface AxiosRequestLog {
   request_url: string;
-  request_method: string;
+  method: string;
   duration_ms: number;
   response_status?: number;
   request_body?: string;
@@ -23,7 +23,7 @@ export class AxiosLoggingService {
    */
   static async logRequest(logData: AxiosRequestLog): Promise<number> {
     try {
-      console.log(`记录API请求日志: ${logData.request_method} ${logData.request_url} - 耗时: ${logData.duration_ms}ms - 状态: ${logData.response_status || 'N/A'}`);
+      console.log(`记录API请求日志: ${logData.method} ${logData.request_url} - 耗时: ${logData.duration_ms}ms - 状态: ${logData.response_status || 'N/A'}`);
       
       // 创建日志记录
       const [logId] = await db('axios_request_logs').insert(logData);

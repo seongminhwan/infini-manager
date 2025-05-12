@@ -52,14 +52,18 @@ export class InfiniCardService {
           .where('card_id', cardDetail.id)
           .first();
 
-        return {
-          success: true,
-          data: {
-            ...cardDetail,
-            ...cd
-          },
-          message: '成功获取卡片详情'
-        };
+        if(cd){
+          return {
+            success: true,
+            data: {
+              ...cardDetail,
+              ...cd
+            },
+            message: '成功获取卡片详情'
+          };
+        }
+
+      
       }
 
       // 获取有效Cookie

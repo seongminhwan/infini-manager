@@ -3784,6 +3784,9 @@ export class InfiniAccountService {
         original_contact_type: contactType,  // 保存原始contactType
         original_target_identifier: targetIdentifier,  // 保存原始targetIdentifier
         verification_code: verificationCode,
+        matched_account_id: matchedInternalAccount ? matchedInternalAccount.id : null,
+        matched_account_email: matchedInternalAccount ? matchedInternalAccount.email : null,
+        matched_account_uid: matchedInternalAccount ? matchedInternalAccount.uid : null,
         amount,
         source,
         is_forced: isForced,

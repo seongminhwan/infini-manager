@@ -74,7 +74,7 @@ httpClient.interceptors.response.use(
       // 将请求和响应信息记录到数据库
       await AxiosLoggingService.logRequest({
         request_url: fullUrl,
-        request_method: (response.config.method || 'GET').toUpperCase(),
+        method: (response.config.method || 'GET').toUpperCase(),
         duration_ms: duration,
         response_status: response.status,
         request_body: requestBody,
@@ -127,7 +127,7 @@ httpClient.interceptors.response.use(
       // 将请求和错误信息记录到数据库
       await AxiosLoggingService.logRequest({
         request_url: fullUrl,
-        request_method: (config.method || 'GET').toUpperCase(),
+        method: (config.method || 'GET').toUpperCase(),
         duration_ms: duration,
         response_status: error.response ? error.response.status : 0,
         request_body: requestBody,
