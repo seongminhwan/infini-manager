@@ -586,19 +586,17 @@ const AffHistory: React.FC = () => {
       console.log('收到API响应:', res.data);
       
       if (res.data.success) {
-        // 使用普通提示而不是静态函数
         // 刷新批次详情和批次列表
         await fetchCashbackDetail(currentCashback.id);
         await fetchCashbacks();
         
-        // 显示成功提示
-        alert('AFF返现批次已成功标记为已完成');
+        // 在页面上显示成功状态，而不使用弹出提示
+        console.log('操作成功: AFF返现批次已成功标记为已完成');
       } else {
-        alert(`操作失败: ${res.data.message}`);
+        console.error(`操作失败: ${res.data.message}`);
       }
     } catch (error) {
       console.error('标记AFF返现批次为已完成失败', error);
-      alert('操作失败，请稍后重试');
     } finally {
       setLoading(false);
       setConfirmModalVisible(false);
