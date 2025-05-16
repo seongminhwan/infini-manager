@@ -2070,7 +2070,7 @@ const AccountMonitor: React.FC = () => {
   // 表格列控制状态和表格列宽、顺序状态
   const [columnsToShow, setColumnsToShow] = useState<string[]>([
     'index', 'email', 'userId', 'groups', 'verification_level', 'availableBalance', 
-    'status', 'security', 'lastSyncAt', 'action'
+    'redPacketBalance', 'status', 'security', 'lastSyncAt', 'action'
   ]);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
@@ -2633,6 +2633,21 @@ const AccountMonitor: React.FC = () => {
         <BalanceTag 
           color={amount === 0 ? "default" : "green"}
           style={amount > 0 ? { backgroundColor: '#52c41a', color: 'white' } : {}}
+        >
+          {amount.toFixed(6)}
+        </BalanceTag>
+      ),
+    },
+    {
+      title: '红包余额',
+      dataIndex: 'redPacketBalance',
+      key: 'redPacketBalance',
+      width: 140,
+      sorter: (a: InfiniAccount, b: InfiniAccount) => a.redPacketBalance - b.redPacketBalance,
+      render: (amount: number) => (
+        <BalanceTag 
+          color={amount === 0 ? "default" : "red"}
+          style={amount > 0 ? { backgroundColor: '#ff4d4f', color: 'white' } : {}}
         >
           {amount.toFixed(6)}
         </BalanceTag>
