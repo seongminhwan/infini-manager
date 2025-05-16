@@ -431,6 +431,28 @@ export const infiniAccountApi = {
     }
   },
   
+  // 一键式账户设置
+  oneClickAccountSetup: async (setupOptions: {
+    enable2fa: boolean;
+    enableKyc: boolean;
+    enableCard: boolean;
+    cardType?: number;
+  }, userData: {
+    email_suffix: string;
+  }) => {
+    try {
+      console.log(`执行一键式账户设置，配置选项:`, setupOptions, userData);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/one-click-setup`, {
+        setupOptions,
+        userData
+      });
+      return response.data;
+    } catch (error) {
+      console.error('一键式账户设置失败:', error);
+      throw error;
+    }
+  },
+  
   // 获取所有账户分组
   getAllAccountGroups: async () => {
     try {
