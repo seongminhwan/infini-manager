@@ -248,6 +248,12 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
     }
   };
   
+  // 处理主邮箱改变事件
+  const handleMainEmailChange = (value: string) => {
+    setMainEmail(value);
+    console.log('已选择主邮箱:', value);
+  };
+  
   // 渲染表单
   const renderForm = () => (
     <Form
@@ -257,9 +263,32 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
       initialValues={{
         enable2fa: true,
         enableKyc: true,
-        enableCard: true
+        enableCard: true,
+        mainEmail: mainEmail
       }}
     >
+      <Divider orientation="left">主邮箱选择</Divider>
+      
+      <Form.Item 
+        name="mainEmail" 
+        label="选择主邮箱 (用于接收验证码)" 
+        rules={[{ required: true, message: '请选择一个主邮箱' }]}
+      >
+        <Select
+          placeholder="请选择主邮箱"
+          loading={loadingEmails}
+          onChange={handleMainEmailChange}
+          showSearch
+          optionFilterProp="children"
+          filterOption={(input, option) =>
+            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+          }
+          options={emailAccounts.map(account => ({
+            value: account.email,
+            label: `${account.email}${account.isDefault ? ' (默认)' : ''}`,
+          }))}
+        />
+      </Form.Item>
       
       <Divider orientation="left">自动化步骤选择</Divider>
       
