@@ -2,7 +2,7 @@
  * 一键式账户设置模态框
  * 用于一键完成随机用户注册、自动2FA、自动KYC和一键开卡的功能
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   Form,
@@ -28,7 +28,7 @@ import {
   IdcardOutlined,
   CreditCardOutlined
 } from '@ant-design/icons';
-import api, { infiniAccountApi, randomUserApi, totpToolApi, kycImageApi, apiBaseUrl } from '../services/api';
+import api, { infiniAccountApi, randomUserApi, totpToolApi, kycImageApi, apiBaseUrl, configApi } from '../services/api';
 
 const { Text } = Typography;
 
@@ -107,6 +107,40 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [setupResult, setSetupResult] = useState<SetupResult | null>(null);
+  const [mainEmail, setMainEmail] = useState<string>(''); // 存储主邮箱信息
+  
+  // 获取系统配置的主邮箱信息
+  useEffect(() => {
+    const fetchMainEmail = async () => {
+      try {
+        // 尝试获取所有配置
+        const response = await configApi.getAllConfigs();
+        if (response.success && response.data) {
+          // 查找主邮箱配置
+          const emailConfig = response.data.find(
+            (config: any) => 
+              config.key === 'main_email' || 
+              config.key === 'primary_email' ||
+              config.key === 'email_main'
+          );
+          
+          if (emailConfig) {
+            console.log('找到主邮箱配置:', emailConfig.value);
+            setMainEmail(emailConfig.value);
+          } else {
+            console.log('未找到主邮箱配置，使用默认值');
+            setMainEmail('');
+          }
+        }
+      } catch (error) {
+        console.error('获取主邮箱配置失败:', error);
+      }
+    };
+    
+    if (visible) {
+      fetchMainEmail();
+    }
+  }, [visible]);
   
   // 重置状态
   const resetState = () => {
@@ -146,7 +180,7 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
       };
       
       const userData = {
-        email_suffix: "protonmail.com" // 默认使用protonmail作为随机邮箱后缀
+        main_email: mainEmail // 传递主邮箱信息
       };
       
       console.log('发送一键式账户设置请求，参数:', { setupOptions, userData });
