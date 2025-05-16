@@ -2185,6 +2185,8 @@ const AccountMonitor: React.FC = () => {
 
   // 红包领取状态
   const [redPacketModalVisible, setRedPacketModalVisible] = useState(false);
+  // 一键注册级用户模态框状态
+  const [oneClickSetupModalVisible, setOneClickSetupModalVisible] = useState(false);
 
   // 打开红包领取模态框
   const openRedPacketModal = () => {
