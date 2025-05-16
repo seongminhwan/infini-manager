@@ -29,7 +29,7 @@ import {
   IdcardOutlined,
   CreditCardOutlined
 } from '@ant-design/icons';
-import api, { infiniAccountApi, randomUserApi, totpToolApi, kycImageApi, apiBaseUrl, configApi } from '../services/api';
+import api, { infiniAccountApi, randomUserApi, totpToolApi, kycImageApi, apiBaseUrl, configApi, emailAccountApi } from '../services/api';
 
 const { Text } = Typography;
 
