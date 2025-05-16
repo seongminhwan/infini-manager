@@ -16,7 +16,8 @@ import {
   Result,
   Divider,
   Descriptions,
-  Select
+  Select,
+  Tooltip
 } from 'antd';
 import {
   UserOutlined,
@@ -27,7 +28,9 @@ import {
   CheckCircleOutlined,
   SafetyCertificateOutlined,
   IdcardOutlined,
-  CreditCardOutlined
+  CreditCardOutlined,
+  TeamOutlined,
+  PlusOutlined
 } from '@ant-design/icons';
 import api, { infiniAccountApi, randomUserApi, totpToolApi, kycImageApi, apiBaseUrl, configApi, emailAccountApi } from '../services/api';
 
@@ -113,20 +116,27 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
   const [invitationCode, setInvitationCode] = useState<string>('TC7MLI9'); // 邀请码，默认值TC7MLI9
   const [emailAccounts, setEmailAccounts] = useState<any[]>([]); // 邮箱账户列表
   const [loadingEmails, setLoadingEmails] = useState(false); // 邮箱列表加载状态
+  const [accountGroups, setAccountGroups] = useState<any[]>([]); // 账户分组列表
+  const [loadingGroups, setLoadingGroups] = useState(false); // 分组列表加载状态
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(''); // 存储选中分组的ID
+  const [newGroupName, setNewGroupName] = useState<string>(''); // 新建分组名称
+  const [creatingGroup, setCreatingGroup] = useState(false); // 创建分组状态
   
-  // 获取邮箱账户列表
+  // 获取邮箱账户列表和账户分组列表
   useEffect(() => {
-    const fetchEmailAccounts = async () => {
+    const fetchData = async () => {
       try {
         setLoadingEmails(true);
+        setLoadingGroups(true);
+        
         // 获取所有邮箱账户
-        const response = await emailAccountApi.getAllEmailAccounts();
-        if (response.success && response.data) {
-          console.log('获取到邮箱账户列表:', response.data);
-          setEmailAccounts(response.data);
+        const emailResponse = await emailAccountApi.getAllEmailAccounts();
+        if (emailResponse.success && emailResponse.data) {
+          console.log('获取到邮箱账户列表:', emailResponse.data);
+          setEmailAccounts(emailResponse.data);
           
           // 如果有默认邮箱账户，自动选中
-          const defaultAccount = response.data.find((account: any) => account.isDefault);
+          const defaultAccount = emailResponse.data.find((account: any) => account.isDefault);
           if (defaultAccount) {
             setMainEmail(defaultAccount.email);
             setSelectedEmailId(defaultAccount.id);
@@ -134,16 +144,32 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
             console.log('自动选择默认邮箱:', defaultAccount.email, '邮箱ID:', defaultAccount.id);
           }
         }
+        
+        // 获取所有账户分组
+        const groupResponse = await infiniAccountApi.getAllAccountGroups();
+        if (groupResponse.success && groupResponse.data) {
+          console.log('获取到账户分组列表:', groupResponse.data);
+          setAccountGroups(groupResponse.data);
+          
+          // 如果有默认分组，自动选中
+          const defaultGroup = groupResponse.data.find((group: any) => group.name === '默认分组');
+          if (defaultGroup) {
+            setSelectedGroupId(defaultGroup.id);
+            form.setFieldsValue({ groupId: defaultGroup.id });
+            console.log('自动选择默认分组:', defaultGroup.name, '分组ID:', defaultGroup.id);
+          }
+        }
       } catch (error) {
-        console.error('获取邮箱账户列表失败:', error);
-        message.error('获取邮箱列表失败，请稍后重试');
+        console.error('获取初始数据失败:', error);
+        message.error('获取初始数据失败，请稍后重试');
       } finally {
         setLoadingEmails(false);
+        setLoadingGroups(false);
       }
     };
     
     if (visible) {
-      fetchEmailAccounts();
+      fetchData();
     }
   }, [visible, form]);
   
@@ -166,6 +192,60 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
       password: generateStrongPassword()
     });
     message.success('已生成随机账户信息');
+  };
+  
+  // 处理主邮箱改变事件
+  const handleMainEmailChange = (value: string) => {
+    // 根据选中的ID找到对应的邮箱对象
+    const selectedEmail = emailAccounts.find(account => account.id === value);
+    if (selectedEmail) {
+      setMainEmail(selectedEmail.email); // 保存邮箱地址用于显示
+      setSelectedEmailId(value); // 保存邮箱ID用于API调用
+      console.log('已选择主邮箱:', selectedEmail.email, '邮箱ID:', value);
+    }
+  };
+  
+  // 处理分组改变事件
+  const handleGroupChange = (value: string) => {
+    setSelectedGroupId(value);
+    console.log('已选择分组ID:', value);
+  };
+  
+  // 创建新分组
+  const handleCreateGroup = async () => {
+    if (!newGroupName || newGroupName.trim() === '') {
+      message.error('分组名称不能为空');
+      return;
+    }
+    
+    try {
+      setCreatingGroup(true);
+      const response = await infiniAccountApi.createAccountGroup({
+        name: newGroupName.trim()
+      });
+      
+      if (response.success && response.data) {
+        message.success('创建分组成功');
+        console.log('创建分组成功:', response.data);
+        
+        // 添加新分组到列表
+        setAccountGroups([...accountGroups, response.data]);
+        
+        // 自动选中新创建的分组
+        setSelectedGroupId(response.data.id);
+        form.setFieldsValue({ groupId: response.data.id });
+        
+        // 清空输入框
+        setNewGroupName('');
+      } else {
+        message.error(response.message || '创建分组失败');
+      }
+    } catch (error) {
+      console.error('创建分组失败:', error);
+      message.error('创建分组失败，请稍后重试');
+    } finally {
+      setCreatingGroup(false);
+    }
   };
   
   // 提交表单
@@ -202,7 +282,8 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
       const userData = {
         email_suffix: emailSuffix, // 为了满足API类型要求
         main_email: selectedEmailId, // 使用邮箱ID作为主邮箱标识
-        invitation_code: values.invitationCode || invitationCode // 使用表单中的邀请码，如果没有则使用默认值
+        invitation_code: values.invitationCode || invitationCode, // 使用表单中的邀请码，如果没有则使用默认值
+        group_id: values.groupId || selectedGroupId // 使用选中的分组ID
       };
       
       console.log('发送一键式账户设置请求，参数:', { setupOptions, userData });
@@ -252,17 +333,6 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
     }
   };
   
-  // 处理主邮箱改变事件
-  const handleMainEmailChange = (value: string) => {
-    // 根据选中的ID找到对应的邮箱对象
-    const selectedEmail = emailAccounts.find(account => account.id === value);
-    if (selectedEmail) {
-      setMainEmail(selectedEmail.email); // 保存邮箱地址用于显示
-      setSelectedEmailId(value); // 保存邮箱ID用于API调用
-      console.log('已选择主邮箱:', selectedEmail.email, '邮箱ID:', value);
-    }
-  };
-  
   // 渲染表单
   const renderForm = () => (
     <Form
@@ -296,6 +366,57 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
           options={emailAccounts.map(account => ({
             value: account.id,
             label: `${account.email}${account.isDefault ? ' (默认)' : ''}`,
+          }))}
+        />
+      </Form.Item>
+      
+      <Form.Item 
+        name="groupId" 
+        label={
+          <Space>
+            <TeamOutlined />
+            <span>账户分组</span>
+            <Tooltip title="选择要将新账户添加到的分组，可以创建新分组">
+              <InfoCircleOutlined style={{ color: '#1890ff' }} />
+            </Tooltip>
+          </Space>
+        }
+        rules={[{ required: true, message: '请选择一个账户分组' }]}
+      >
+        <Select
+          placeholder="请选择账户分组"
+          loading={loadingGroups}
+          onChange={handleGroupChange}
+          showSearch
+          optionFilterProp="children"
+          filterOption={(input, option) =>
+            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+          }
+          dropdownRender={(menu) => (
+            <>
+              {menu}
+              <Divider style={{ margin: '8px 0' }} />
+              <Space style={{ padding: '0 8px 4px' }}>
+                <Input
+                  placeholder="输入新分组名称"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
+                />
+                <Button
+                  type="text"
+                  icon={<PlusOutlined />}
+                  loading={creatingGroup}
+                  onClick={handleCreateGroup}
+                >
+                  创建分组
+                </Button>
+              </Space>
+            </>
+          )}
+          options={accountGroups.map(group => ({
+            value: group.id,
+            label: group.name,
           }))}
         />
       </Form.Item>
