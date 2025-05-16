@@ -179,8 +179,24 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
         cardType: 3 // 默认使用Card 3
       };
       
+      // 提取后缀，并准备数据
+      let emailSuffix = '';
+      if (mainEmail) {
+        // 尝试从主邮箱中提取后缀
+        const atIndex = mainEmail.indexOf('@');
+        if (atIndex !== -1) {
+          emailSuffix = mainEmail.substring(atIndex + 1);
+        }
+      }
+      
+      // 如果无法从主邮箱提取后缀，使用默认值
+      if (!emailSuffix) {
+        emailSuffix = 'protonmail.com';
+      }
+      
       const userData = {
-        main_email: mainEmail // 传递主邮箱信息
+        email_suffix: emailSuffix, // 为了满足API类型要求
+        main_email: mainEmail // 附加主邮箱信息，让后端可以使用
       };
       
       console.log('发送一键式账户设置请求，参数:', { setupOptions, userData });
