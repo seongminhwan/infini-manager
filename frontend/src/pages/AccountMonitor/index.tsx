@@ -77,6 +77,7 @@ import CardApplyModal from '../../components/CardApplyModal';
 import CardDetailModal from '../../components/CardDetailModal';
 import RedPacketModal from '../../components/RedPacketModal';
 import OneClickSetupModal from '../../components/OneClickSetupModal';
+import BatchRegisterModal from '../../components/BatchRegisterModal';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
 
@@ -2188,6 +2189,7 @@ const AccountMonitor: React.FC = () => {
   const [redPacketModalVisible, setRedPacketModalVisible] = useState(false);
   // 一键注册级用户模态框状态
   const [oneClickSetupModalVisible, setOneClickSetupModalVisible] = useState(false);
+  const [batchRegisterModalVisible, setBatchRegisterModalVisible] = useState(false);
 
   // 打开红包领取模态框
   const openRedPacketModal = () => {
@@ -3203,30 +3205,33 @@ const AccountMonitor: React.FC = () => {
                 批量同步 <DownOutlined />
               </Button>
             </Dropdown>
-            <Dropdown
-              overlay={
-                <Menu>
-                  <Menu.Item key="register" onClick={() => setRegisterModalVisible(true)}>
-                    注册账户
-                  </Menu.Item>
-                  <Menu.Item key="randomRegister" onClick={() => setRandomUserRegisterModalVisible(true)}>
-                    注册随机用户
-                  </Menu.Item>
-                  <Menu.Item key="oneClickSetup" onClick={() => setOneClickSetupModalVisible(true)}>
-                    一键注册随机用户
-                  </Menu.Item>
-                </Menu>
-              }
-              trigger={['click']}
-            >
-              <Button 
-                type="primary" 
-                icon={<UserAddOutlined />}
-                style={{ marginRight: 8 }}
+              <Dropdown
+                overlay={
+                  <Menu>
+                    <Menu.Item key="register" onClick={() => setRegisterModalVisible(true)}>
+                      注册账户
+                    </Menu.Item>
+                    <Menu.Item key="randomRegister" onClick={() => setRandomUserRegisterModalVisible(true)}>
+                      注册随机用户
+                    </Menu.Item>
+                    <Menu.Item key="oneClickSetup" onClick={() => setOneClickSetupModalVisible(true)}>
+                      一键注册随机用户
+                    </Menu.Item>
+                    <Menu.Item key="batchRegister" onClick={() => setBatchRegisterModalVisible(true)}>
+                      批量注册随机用户
+                    </Menu.Item>
+                  </Menu>
+                }
+                trigger={['click']}
               >
-                注册账户 <DownOutlined />
-              </Button>
-            </Dropdown>
+                <Button 
+                  type="primary" 
+                  icon={<UserAddOutlined />}
+                  style={{ marginRight: 8 }}
+                >
+                  注册账户 <DownOutlined />
+                </Button>
+              </Dropdown>
             <Dropdown
               overlay={
                 <Menu>
@@ -3353,6 +3358,39 @@ const AccountMonitor: React.FC = () => {
         visible={oneClickSetupModalVisible}
         onClose={() => setOneClickSetupModalVisible(false)}
         onSuccess={fetchAccounts}
+      />
+      
+      {/* 批量注册随机用户模态框 */}
+      <BatchRegisterModal
+        visible={batchRegisterModalVisible}
+        onClose={() => setBatchRegisterModalVisible(false)}
+        onSuccess={fetchAccounts}
+        onRegisterSuccess={(newAccount) => {
+          // 每注册成功一个新账户，就更新账户列表
+          setAccounts(prevAccounts => {
+            // 创建一个新账户对象，确保它有基本的字段结构
+            const account = {
+              id: newAccount.accountId,
+              userId: newAccount.userId,
+              email: newAccount.email,
+              availableBalance: 0,
+              withdrawingAmount: 0,
+              redPacketBalance: 0,
+              totalConsumptionAmount: 0,
+              totalEarnBalance: 0,
+              dailyConsumption: 0,
+              google2faIsBound: newAccount.is2faEnabled || false,
+              googlePasswordIsSet: false,
+              isKol: false,
+              isProtected: false,
+              lastSyncAt: new Date().toISOString(),
+              verification_level: newAccount.isKycEnabled ? 2 : 0
+            };
+            
+            // 返回包含新账户的列表
+            return [account, ...prevAccounts];
+          });
+        }}
       />
     </div>
   );
