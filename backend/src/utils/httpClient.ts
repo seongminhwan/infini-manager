@@ -73,12 +73,12 @@ httpClient.interceptors.response.use(
       
       // 将请求和响应信息记录到数据库
       await AxiosLoggingService.logRequest({
-        request_url: fullUrl,
+        url: fullUrl,
         method: (response.config.method || 'GET').toUpperCase(),
         duration_ms: duration,
-        response_status: response.status,
+        status_code: response.status,
         request_body: requestBody,
-        response_data: responseBody,
+        response_body: responseBody,
         success: true // 修改字段名，与数据库列名保持一致
       });
     } catch (loggingError) {
@@ -126,12 +126,12 @@ httpClient.interceptors.response.use(
       
       // 将请求和错误信息记录到数据库
       await AxiosLoggingService.logRequest({
-        request_url: fullUrl,
+        url: fullUrl,
         method: (config.method || 'GET').toUpperCase(),
         duration_ms: duration,
-        response_status: error.response ? error.response.status : 0,
+        status_code: error.response ? error.response.status : 0,
         request_body: requestBody,
-        response_data: responseBody,
+        response_body: responseBody,
         error_message: error.message,
         success: false // 修改字段名，与数据库列名保持一致
       });

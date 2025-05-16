@@ -11,7 +11,7 @@ import { showGlobalError } from '../context/ErrorContext';
 
 // 创建axios实例
 const api: AxiosInstance = axios.create({
-  timeout: 60000, // 默认60秒超时时间，长时间运行的请求可在调用时覆盖
+  timeout: 600000, // 默认60秒超时时间，长时间运行的请求可在调用时覆盖
   headers: {
     'Content-Type': 'application/json',
   },

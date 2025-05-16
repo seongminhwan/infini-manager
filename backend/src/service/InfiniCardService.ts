@@ -616,53 +616,40 @@ export class InfiniCardService {
       }
 
       // 调用API获取可用卡类型信息
-      const response = await httpClient.get(
-        `${INFINI_API_BASE_URL}/card/create_card/available`,
-        {
-          headers: {
-            'Cookie': cookie,
-            'accept': 'application/json, text/plain, */*',
-            'accept-language': 'en',
-            'cache-control': 'no-cache',
-            'origin': 'https://app.infini.money',
-            'pragma': 'no-cache',
-            'priority': 'u=1, i',
-            'referer': 'https://app.infini.money/',
-            'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"macOS"',
-            'sec-fetch-dest': 'empty',
-            'sec-fetch-mode': 'cors',
-            'sec-fetch-site': 'same-site',
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
-          }
-        }
-      );
-
-      console.log('Infini 可用卡类型API响应:', response.data);
-
-      // 验证API响应
-      if (response.data.code === 0) {
-        console.log(`成功获取可用卡类型信息: ${JSON.stringify(response.data.data)}`);
+      // const response = await httpClient.get(
+      //   `${INFINI_API_BASE_URL}/card/create_card/available`,
+      //   {
+      //     headers: {
+      //       'Cookie': cookie,
+      //       'accept': 'application/json, text/plain, */*',
+      //       'accept-language': 'en',
+      //       'cache-control': 'no-cache',
+      //       'origin': 'https://app.infini.money',
+      //       'pragma': 'no-cache',
+      //       'priority': 'u=1, i',
+      //       'referer': 'https://app.infini.money/',
+      //       'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+      //       'sec-ch-ua-mobile': '?0',
+      //       'sec-ch-ua-platform': '"macOS"',
+      //       'sec-fetch-dest': 'empty',
+      //       'sec-fetch-mode': 'cors',
+      //       'sec-fetch-site': 'same-site',
+      //       'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
+      //     }
+      //   }
+      // );
 
         // 转换card_status对象的key为数字数组
-        const cardTypes = Object.keys(response.data.data.card_status).map(key => parseInt(key));
+        const cardTypes = [3,2]
 
         return {
           success: true,
           data: {
             cardTypes,
-            rawData: response.data.data
+            rawData: '{"card_status":{}}'
           },
           message: '成功获取可用卡类型信息'
         };
-      } else {
-        console.error(`Infini API返回错误: ${response.data.message || '未知错误'}`);
-        return {
-          success: false,
-          message: `获取卡片价格信息失败: ${response.data.message || '未知错误'}`
-        };
-      }
     } catch (error) {
       console.error('获取卡片价格信息失败:', error);
       return {

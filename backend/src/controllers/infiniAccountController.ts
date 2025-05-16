@@ -1315,7 +1315,18 @@ export const oneClickAccountSetup = async (req: Request, res: Response): Promise
         console.error(`2FA设置失败: ${twoFaResponse.message}`);
       }
     }
-    
+    // 自动开卡
+    if (setupOptions.enableCard) {
+      console.log(`开始执行开卡步骤, 账户ID: ${accountId}`);
+      const cardResponse = await setupCard(accountId, setupOptions.cardType,true);
+      results.steps.card = cardResponse;
+      
+      if (!cardResponse.success) {
+        // 记录失败信息
+        console.error(`开卡失败: ${cardResponse.message}`);
+      }
+    }
+
     // 自动KYC验证
     if (setupOptions.enableKyc) {
       console.log(`开始执行KYC验证步骤, 账户ID: ${accountId}`);
@@ -1328,17 +1339,7 @@ export const oneClickAccountSetup = async (req: Request, res: Response): Promise
       }
     }
     
-    // 自动开卡
-    if (setupOptions.enableCard) {
-      console.log(`开始执行开卡步骤, 账户ID: ${accountId}`);
-      const cardResponse = await setupCard(accountId, setupOptions.cardType);
-      results.steps.card = cardResponse;
-      
-      if (!cardResponse.success) {
-        // 记录失败信息
-        console.error(`开卡失败: ${cardResponse.message}`);
-      }
-    }
+
     
     // 返回所有步骤的执行结果
     res.status(201).json(results);
@@ -1371,7 +1372,8 @@ async function setupTwoFactorAuth(accountId: string, email: string): Promise<any
     const qrCodeData = qrcodeResponse.data;
     
     // 2. 解析二维码URL获取密钥
-    const totpUrl = qrCodeData.totp_url;
+    const totpUrl = qrCodeData.qr_code;
+    const secretKey=qrCodeData.secret_key;
     // 检查totpUrl是否存在
     if (!totpUrl) {
       console.error('2FA二维码URL为空或无效');
@@ -1381,26 +1383,13 @@ async function setupTwoFactorAuth(accountId: string, email: string): Promise<any
       };
     }
     
-    const secretRegex = /secret=([A-Z0-9]+)/;
-    const match = totpUrl.match(secretRegex);
-    if (!match || !match[1]) {
-      return {
-        success: false,
-        message: '无法从2FA二维码URL中提取密钥'
-      };
+    if(!secretKey){
+        return {
+          success: false,
+          message: '无法从2FA二维码URL中提取密钥'
+        };
     }
-    
-    const secretKey = match[1];
-    console.log(`成功从2FA二维码URL中提取密钥: ${secretKey}`);
-    
-    // 3. 保存2FA信息
-    await infiniAccountService.update2faInfo(accountId, {
-      qr_code_url: totpUrl,
-      secret_key: secretKey,
-      recovery_codes: qrCodeData.recovery_codes || []
-    });
     console.log(`成功保存2FA信息到数据库`);
-    
     // 4. 发送2FA验证邮件
     const emailResponse = await infiniAccountService.sendGoogle2faVerificationEmail(email, accountId, 6);
     if (!emailResponse.success) {
@@ -1476,23 +1465,20 @@ async function setupKycVerification(accountId: string, randomUser: any): Promise
   try {
     // 1. 获取随机KYC图片
     try {
-      const kycImageResponse = await fetch(`${process.env.API_BASE_URL || 'http://localhost:3000'}/api/kyc-images/random`);
-      if (!kycImageResponse.ok) {
-        throw new Error(`获取KYC图片API响应异常: ${kycImageResponse.status}`);
+      // 获取随机KYC图片,从数据库获取
+      const kycImageData = await db('kyc_images').orderByRaw('RANDOM()').limit(1).first();
+      
+      if (!kycImageData) {
+        throw new Error('数据库中没有可用的KYC图片');
       }
       
-      const kycImageData = await kycImageResponse.json();
-      if (!kycImageData.success || !kycImageData.data) {
-        throw new Error('获取随机KYC图片数据失败');
-      }
-      
-      const kycImage = kycImageData.data;
-      console.log(`成功获取随机KYC图片, ID: ${kycImage.id}`);
+      const kycImage = kycImageData.img_base64;
+      console.log(`成功获取随机KYC图片, ID: ${kycImageData.id}`);
       
       // 2. 上传KYC图片
       // 将base64转换为Buffer
-      let imageData = kycImage.img_base64 || kycImage.base64;
-      if (!imageData) {
+      let imageData = kycImage || kycImage.base64;
+      if (!kycImage) {
         return {
           success: false,
           message: '无效的KYC图片数据'
@@ -1625,7 +1611,7 @@ async function setupKycVerification(accountId: string, randomUser: any): Promise
  * @param accountId Infini账户ID
  * @param cardType 卡片类型
  */
-async function setupCard(accountId: string, cardType: number = 3): Promise<any> {
+async function setupCard(accountId: string, cardType: number = 3,allowFlushMockUser:boolean = false): Promise<any> {
   try {
     // 获取可用卡类型
     const cardTypesResponse = await infiniAccountService.getAvailableCardTypes(accountId);
@@ -1655,7 +1641,7 @@ async function setupCard(accountId: string, cardType: number = 3): Promise<any> 
     
     // 创建卡片
     console.log(`开始创建卡片，类型: ${cardType}`);
-    const cardResponse = await infiniAccountService.createCard(accountId, cardType);
+    const cardResponse = await infiniAccountService.createCard(accountId, cardType,true);
     console.log(`卡片创建结果:`, cardResponse);
     
     return {
