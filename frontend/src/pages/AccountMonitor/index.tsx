@@ -76,6 +76,7 @@ import KycViewModal from '../../components/KycViewModal';
 import CardApplyModal from '../../components/CardApplyModal';
 import CardDetailModal from '../../components/CardDetailModal';
 import RedPacketModal from '../../components/RedPacketModal';
+import OneClickSetupModal from '../../components/OneClickSetupModal';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
 
