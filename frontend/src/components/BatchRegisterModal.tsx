@@ -94,6 +94,7 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
   const [totalCount, setTotalCount] = useState(0); // 计划注册总数
   const [batchRunning, setBatchRunning] = useState(false); // 批量注册是否正在进行
   const [batchProgress, setBatchProgress] = useState(0); // 批量注册进度
+  const [registrationComplete, setRegistrationComplete] = useState(false); // 注册是否已完成
   
   // 引用类型，用于在组件内部跟踪注册状态，避免依赖React状态更新
   const registeringRef = React.useRef(false);
@@ -157,6 +158,7 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
     setTotalCount(0);
     setBatchRunning(false);
     setBatchProgress(0);
+    setRegistrationComplete(false);
     registeringRef.current = false;
   };
   
@@ -328,6 +330,7 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
   const handleSubmit = async (values: any) => {
     try {
       setLoading(true);
+      setRegistrationComplete(false);
       
       // 设置批量注册状态
       const batchCount = values.batchCount || 1;
@@ -338,7 +341,12 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
       
       // 使用useRef引用变量控制循环，避免依赖React状态
       registeringRef.current = true;
+      
+      // 立即设置批量注册状态，让UI立即显示进度和状态
       setBatchRunning(true);
+      
+      // 给UI一点时间更新，显示进度条
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       console.log('开始批量注册，计划注册数量:', batchCount, '注册状态:', registeringRef.current);
       
@@ -388,6 +396,9 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
       const failedCount = totalResults - successCount;
       
       if (totalResults > 0) {
+        // 设置注册完成状态，显示完成信息
+        setRegistrationComplete(true);
+        
         message.success(`批量注册完成，成功: ${successCount}，失败: ${failedCount}`);
         console.log(`批量注册完成，总计: ${totalResults}，成功: ${successCount}，失败: ${failedCount}`);
         
@@ -573,49 +584,74 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
   
   // 渲染注册结果列表
   const renderResultList = () => (
-    <List
-      dataSource={registerResults}
-      renderItem={(result, index) => (
-        <List.Item>
-          <Card 
-            size="small" 
-            title={`账户 #${index + 1}`}
-            extra={
-              <Tag color={result.success ? "green" : "red"}>
-                {result.success ? "注册成功" : "注册失败"}
-              </Tag>
-            }
-            style={{ width: '100%' }}
-          >
-            {result.success ? (
-              <Descriptions column={1} size="small">
-                <Descriptions.Item label="账户ID">{result.accountId}</Descriptions.Item>
-                <Descriptions.Item label="邮箱">{result.email}</Descriptions.Item>
-                <Descriptions.Item label="用户ID">{result.userId}</Descriptions.Item>
-                <Descriptions.Item label="2FA状态">
-                  {result.is2faEnabled ? '已开启' : '未开启'}
-                </Descriptions.Item>
-                <Descriptions.Item label="KYC状态">
-                  {result.isKycEnabled ? '已认证' : '未认证'}
-                </Descriptions.Item>
-                <Descriptions.Item label="卡片状态">
-                  {result.isCardEnabled ? '已开通' : '未开通'}
-                </Descriptions.Item>
-              </Descriptions>
-            ) : (
-              <div>
-                <Text type="danger">{result.message}</Text>
-              </div>
-            )}
-          </Card>
-        </List.Item>
-      )}
-    />
+    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+      <List
+        dataSource={registerResults}
+        renderItem={(result, index) => (
+          <List.Item>
+            <Card 
+              size="small" 
+              title={`账户 #${index + 1}`}
+              extra={
+                <Tag color={result.success ? "green" : "red"}>
+                  {result.success ? "注册成功" : "注册失败"}
+                </Tag>
+              }
+              style={{ width: '100%' }}
+            >
+              {result.success ? (
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="账户ID">{result.accountId}</Descriptions.Item>
+                  <Descriptions.Item label="邮箱">{result.email}</Descriptions.Item>
+                  <Descriptions.Item label="用户ID">{result.userId}</Descriptions.Item>
+                  <Descriptions.Item label="2FA状态">
+                    {result.is2faEnabled ? '已开启' : '未开启'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="KYC状态">
+                    {result.isKycEnabled ? '已认证' : '未认证'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="卡片状态">
+                    {result.isCardEnabled ? '已开通' : '未开通'}
+                  </Descriptions.Item>
+                </Descriptions>
+              ) : (
+                <div>
+                  <Text type="danger">{result.message}</Text>
+                </div>
+              )}
+            </Card>
+          </List.Item>
+        )}
+      />
+    </div>
   );
+
+  // 渲染完成状态
+  const renderCompletionStatus = () => {
+    if (!registrationComplete) return null;
+    
+    const successCount = registerResults.filter(r => r.success).length;
+    const failedCount = registerResults.filter(r => !r.success).length;
+    
+    return (
+      <Result
+        status="success"
+        title={`批量注册完成 ${successCount}/${totalCount}`}
+        subTitle={`成功: ${successCount} 个, 失败: ${failedCount} 个`}
+        style={{ marginBottom: 16 }}
+      />
+    );
+  };
   
   return (
     <Modal
-      title="批量注册随机用户"
+      title={
+        <div>
+          <span>批量注册随机用户</span>
+          {batchRunning && <span style={{ marginLeft: 8, fontSize: '0.9em', color: '#1890ff' }}>(进行中...)</span>}
+          {registrationComplete && <span style={{ marginLeft: 8, fontSize: '0.9em', color: '#52c41a' }}>(已完成)</span>}
+        </div>
+      }
       open={visible}
       onCancel={handleClose}
       footer={
@@ -642,13 +678,19 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
       width={700}
     >
       <Spin spinning={loading && !batchRunning}>
-        {registerResults.length === 0 ? (
+        {!batchRunning && registerResults.length === 0 ? (
           // 如果还没有开始注册，显示表单
           renderForm()
         ) : (
-          // 如果已经开始注册，显示进度和结果
+          // 如果正在注册或已有结果，显示进度和结果
           <div>
+            {/* 进度显示区域 */}
             {renderBatchProgress()}
+            
+            {/* 完成状态显示 */}
+            {renderCompletionStatus()}
+            
+            {/* 结果列表区域 */}
             <Divider>注册结果</Divider>
             {renderResultList()}
           </div>
