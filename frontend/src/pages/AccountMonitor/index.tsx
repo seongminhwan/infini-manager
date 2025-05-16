@@ -3019,6 +3019,28 @@ const AccountMonitor: React.FC = () => {
             console.error('解析显示列配置失败:', e);
           }
         }
+        
+        // 加载红包余额颜色区间配置
+        const redPacketColorResponse = await configApi.getConfigByKey('red_packet_balance_color_ranges');
+        if (redPacketColorResponse.success && redPacketColorResponse.data && redPacketColorResponse.data.value) {
+          try {
+            const colorRanges = JSON.parse(redPacketColorResponse.data.value);
+            setRedPacketBalanceColorRanges(colorRanges);
+          } catch (e) {
+            console.error('解析红包余额颜色区间配置失败:', e);
+          }
+        }
+        
+        // 加载用户余额颜色区间配置
+        const availableColorResponse = await configApi.getConfigByKey('available_balance_color_ranges');
+        if (availableColorResponse.success && availableColorResponse.data && availableColorResponse.data.value) {
+          try {
+            const colorRanges = JSON.parse(availableColorResponse.data.value);
+            setAvailableBalanceColorRanges(colorRanges);
+          } catch (e) {
+            console.error('解析用户余额颜色区间配置失败:', e);
+          }
+        }
       } catch (error) {
         console.error('加载配置失败:', error);
       }
