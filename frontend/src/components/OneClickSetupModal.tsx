@@ -136,14 +136,23 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
     try {
       setLoading(true);
       
-      // 调用一键式账户设置API
-      const response = await infiniAccountApi.oneClickAccountSetup({
-        email: values.email,
-        password: values.password,
-        enable2fa: values.enable2fa,
-        enableKyc: values.enableKyc,
-        enableCard: values.enableCard
-      });
+      // 从邮箱中提取后缀
+      const emailParts = values.email.split('@');
+      const emailSuffix = emailParts.length > 1 ? emailParts[1] : '';
+      
+      // 调用一键式账户设置API，传递两个所需参数
+      const response = await infiniAccountApi.oneClickAccountSetup(
+        {
+          email: values.email,
+          password: values.password,
+          enable2fa: values.enable2fa,
+          enableKyc: values.enableKyc,
+          enableCard: values.enableCard
+        },
+        {
+          email_suffix: emailSuffix
+        }
+      );
       
       if (response.success) {
         message.success('一键式账户设置成功');
