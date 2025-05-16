@@ -322,6 +322,32 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
     }
   };
   
+  // 生成随机用户数据并填充表单（不关联到账户）
+  const generateAndFillRandomUser = async () => {
+    try {
+      console.log('自动生成随机用户数据用于KYC表单填充，账户ID:', accountId);
+      
+      // 调用后端API生成随机用户
+      const response = await randomUserApi.generateRandomUsers({ count: 1 });
+      console.log('生成随机用户API响应:', response);
+      
+      if (response.success && response.data && response.data.length > 0) {
+        const userData = response.data[0];
+        console.log('成功生成随机用户数据:', userData);
+        setRandomUserData(userData);
+        
+        // 填充表单
+        fillFormWithRandomUserData(userData);
+        message.success('已自动生成随机用户信息并填充表单');
+      } else {
+        console.warn('生成随机用户信息失败，API返回:', response);
+        message.error('生成随机用户信息失败');
+      }
+    } catch (error) {
+      console.error('生成随机用户数据失败:', error);
+    }
+  };
+  
   // 生成随机用户信息并填充表单
   const generateRandomUserData = async () => {
     try {
