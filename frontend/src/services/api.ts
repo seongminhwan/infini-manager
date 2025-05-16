@@ -111,6 +111,97 @@ export const transferApi = {
     }
   },
   
+  // 领取红包
+  grabRedPacket: async (accountId: string, code: string) => {
+    try {
+      console.log(`领取红包，账户ID: ${accountId}, 红包码: ${code}`);
+      const response = await api.post(`${apiBaseUrl}/api/transfers/red-packet`, {
+        accountId,
+        code
+      });
+      return response.data;
+    } catch (error) {
+      console.error('领取红包失败:', error);
+      throw error;
+    }
+  },
+  
+  // 批量领取红包 - 为多个账户领取同一个红包码
+  batchGrabRedPacket: async (accountIds: string[], code: string, onProgress?: (current: number, total: number, result: any) => void) => {
+    try {
+      console.log(`批量领取红包，账户数量: ${accountIds.length}, 红包码: ${code}`);
+      const results = [];
+      let successCount = 0;
+      let failedCount = 0;
+      let totalAmount = 0;
+      
+      // 逐个账户领取红包
+      for (let i = 0; i < accountIds.length; i++) {
+        const accountId = accountIds[i];
+        try {
+          const response = await api.post(`${apiBaseUrl}/api/transfers/red-packet`, {
+            accountId,
+            code
+          });
+          
+          const result = {
+            accountId,
+            success: response.data.success,
+            amount: response.data.data?.amount || '0',
+            message: response.data.message
+          };
+          
+          results.push(result);
+          
+          if (response.data.success) {
+            successCount++;
+            // 累加领取到的金额
+            totalAmount += parseFloat(response.data.data?.amount || '0');
+          } else {
+            failedCount++;
+          }
+          
+          // 回调进度函数
+          if (onProgress) {
+            onProgress(i + 1, accountIds.length, result);
+          }
+        } catch (error: any) {
+          const result = {
+            accountId,
+            success: false,
+            amount: '0',
+            message: error.message || '领取失败'
+          };
+          
+          results.push(result);
+          failedCount++;
+          
+          // 回调进度函数
+          if (onProgress) {
+            onProgress(i + 1, accountIds.length, result);
+          }
+        }
+      }
+      
+      return {
+        success: true,
+        data: {
+          results,
+          summary: {
+            total: accountIds.length,
+            success: successCount,
+            failed: failedCount,
+            totalAmount: totalAmount.toFixed(6)
+          }
+        },
+        message: `批量领取红包完成: 总计${accountIds.length}个账户, 成功${successCount}个, 失败${failedCount}个, 总金额: ${totalAmount.toFixed(6)}`
+      };
+    } catch (error) {
+      console.error('批量领取红包失败:', error);
+      throw error;
+    }
+  },
+  
   // 获取转账记录列表
   getTransfers: async (accountId?: string, status?: string, page: number = 1, pageSize: number = 20) => {
     try {
