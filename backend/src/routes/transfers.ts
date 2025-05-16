@@ -282,6 +282,57 @@ router.get('/:id/history', transferController.getTransferHistory);
  */
 router.post('/internal', transferController.executeInternalTransfer);
 
+/**
+ * @swagger
+ * /api/transfers/red-packet:
+ *   post:
+ *     summary: 领取Infini红包
+ *     tags: [Transfers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - accountId
+ *               - code
+ *             properties:
+ *               accountId:
+ *                 type: string
+ *                 description: Infini账户ID
+ *               code:
+ *                 type: string
+ *                 description: 红包码
+ *     responses:
+ *       200:
+ *         description: 红包领取结果
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     amount:
+ *                       type: string
+ *                       description: 领取到的红包金额
+ *       400:
+ *         description: 请求参数无效
+ *       401:
+ *         description: 无法获取有效的登录凭证
+ *       404:
+ *         description: 找不到指定的账户
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/red-packet', transferController.grabRedPacket);
+
 // 移除了自动获取2FA验证码和继续转账的路由
 // 现在使用带有auto2FA和verificationCode参数的executeInternalTransfer方法处理所有转账场景
 export default router;
