@@ -2181,6 +2181,96 @@ const AccountMonitor: React.FC = () => {
       setBatchSyncing(false);
     }
   };
+
+  // 红包领取模态框可见状态和加载状态
+  const [redPacketModalVisible, setRedPacketModalVisible] = useState(false);
+  const [redPacketLoading, setRedPacketLoading] = useState(false);
+  const [redPacketCode, setRedPacketCode] = useState('7aEh9cfqfWxmaJmEWTSCWe'); // 默认红包码
+  const [redPacketProgress, setRedPacketProgress] = useState<{
+    current: number;
+    total: number;
+    success: number;
+    failed: number;
+    totalAmount: string;
+    results: Array<{
+      accountId: string;
+      success: boolean;
+      amount: string;
+      message?: string;
+    }>;
+  }>({
+    current: 0,
+    total: 0,
+    success: 0,
+    failed: 0,
+    totalAmount: '0',
+    results: []
+  });
+
+  // 打开红包领取模态框
+  const openRedPacketModal = () => {
+    // 重置进度状态
+    setRedPacketProgress({
+      current: 0,
+      total: 0,
+      success: 0,
+      failed: 0,
+      totalAmount: '0',
+      results: []
+    });
+    setRedPacketCode('7aEh9cfqfWxmaJmEWTSCWe'); // 设置默认红包码
+    setRedPacketModalVisible(true);
+  };
+
+  // 批量领取红包
+  const batchGrabRedPacket = async () => {
+    if (!redPacketCode) {
+      message.error('请输入红包码');
+      return;
+    }
+
+    if (accounts.length === 0) {
+      message.error('没有可用的账户');
+      return;
+    }
+
+    try {
+      setRedPacketLoading(true);
+      message.loading('正在批量领取红包...');
+
+      // 获取所有账户ID
+      const accountIds = accounts.map(account => account.id.toString());
+      
+      // 定义进度回调函数
+      const onProgress = (current: number, total: number, result: any) => {
+        // 更新进度状态
+        setRedPacketProgress(prev => ({
+          current,
+          total,
+          success: result.success ? prev.success + 1 : prev.success,
+          failed: !result.success ? prev.failed + 1 : prev.failed,
+          totalAmount: result.success ? 
+            (parseFloat(prev.totalAmount) + parseFloat(result.amount)).toFixed(6) : 
+            prev.totalAmount,
+          results: [...prev.results, result]
+        }));
+      };
+
+      // 调用批量领取红包API
+      const response = await transferApi.batchGrabRedPacket(accountIds, redPacketCode, onProgress);
+      
+      if (response.success) {
+        message.success(response.message || '批量领取红包完成');
+      } else {
+        message.error(response.message || '批量领取红包失败');
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || error.message || '批量领取红包失败');
+      console.error('批量领取红包失败:', error);
+    } finally {
+      setRedPacketLoading(false);
+    }
+  };
   // 获取所有账户分组并构建账户-分组的映射关系
   const fetchGroups = async () => {
     try {
