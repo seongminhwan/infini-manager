@@ -1607,84 +1607,10 @@ async function setupKycVerification(accountId: string, randomUser: any): Promise
         console.error('使用默认KYC信息也失败:', kycError);
         return {
           success: false,
-          message: `设置KYC验证失败: ${fetchError.message}, 使用默认信息也失败: ${(kycError as Error).message}`
+          message: `设置KYC验证失败: ${(fetchError as Error).message}, 使用默认信息也失败: ${(kycError as Error).message}`
         };
       }
     }
-    
-    const kycImage = kycImageData.data;
-    console.log(`成功获取随机KYC图片, ID: ${kycImage.id}`);
-    
-    // 2. 上传KYC图片
-    // 将base64转换为Buffer
-    let imageData = kycImage.img_base64 || kycImage.base64;
-    if (!imageData) {
-      return {
-        success: false,
-        message: '无效的KYC图片数据'
-      };
-    }
-    
-    // 如果base64字符串包含前缀，需要移除
-    if (imageData.includes('base64,')) {
-      imageData = imageData.split('base64,')[1];
-    }
-    
-    const imageBuffer = Buffer.from(imageData, 'base64');
-    
-    // 上传图片
-    const uploadResponse = await infiniAccountService.uploadKycImage(
-      accountId,
-      imageBuffer,
-      `kyc_image_${kycImage.id || Date.now()}.jpg`
-    );
-    
-    if (!uploadResponse.success) {
-      return {
-        success: false,
-        message: `上传KYC图片失败: ${uploadResponse.message}`
-      };
-    }
-    
-    const fileName = uploadResponse.data.file_name;
-    console.log(`成功上传KYC图片, 文件名: ${fileName}`);
-    
-    // 提取电话号码信息
-    let phoneCode = '+1';
-    let phoneNumber = '';
-    
-    if (randomUser.phone) {
-      const phoneRegex = /^(\+\d+)\s+(.+)$/;
-      const match = randomUser.phone.match(phoneRegex);
-      
-      if (match) {
-        phoneCode = match[1];
-        phoneNumber = match[2];
-      } else {
-        phoneNumber = randomUser.phone;
-      }
-    }
-    
-    // 3. 提交护照KYC信息
-    const kycData = {
-      phoneNumber: phoneNumber,
-      phoneCode: phoneCode,
-      firstName: randomUser.first_name,
-      lastName: randomUser.last_name,
-      country: 'CHN', // 默认值
-      passportNumber: randomUser.passport_no,
-      fileName: fileName
-    };
-    
-    console.log(`提交护照KYC信息:`, kycData);
-    const kycResponse = await infiniAccountService.submitPassportKyc(accountId, kycData);
-    console.log(`KYC提交结果:`, kycResponse);
-    
-    return {
-      success: kycResponse.success,
-      message: kycResponse.message || 'KYC验证完成',
-      data: kycResponse.data
-    };
   } catch (error) {
     console.error('设置KYC验证失败:', error);
     return {
