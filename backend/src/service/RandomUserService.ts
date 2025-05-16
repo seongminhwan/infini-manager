@@ -205,7 +205,7 @@ export class RandomUserService {
     // 如果尝试多次后仍无法生成不重复的手机号，则使用时间戳
     const timestamp = Date.now().toString();
     const unique = timestamp.substring(timestamp.length - 8);
-    return `144${unique}`;
+    return `+86 144${unique}`;
   }
 
   /**
