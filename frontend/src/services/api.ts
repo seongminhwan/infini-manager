@@ -587,6 +587,96 @@ export const infiniAccountApi = {
 };
 
 /**
+ * 邮箱账户API
+ * 处理与邮箱账户相关的API请求
+ */
+export const emailAccountApi = {
+  // 获取所有邮箱账户
+  getAllEmailAccounts: async () => {
+    try {
+      console.log('获取所有邮箱账户');
+      const response = await api.get(`${apiBaseUrl}/api/email-accounts`);
+      return response.data;
+    } catch (error) {
+      console.error('获取所有邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取单个邮箱账户
+  getEmailAccountById: async (id: string) => {
+    try {
+      console.log(`获取邮箱账户详情，账户ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/email-accounts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 创建邮箱账户
+  createEmailAccount: async (data: any) => {
+    try {
+      console.log(`创建邮箱账户: ${data.email}`);
+      const response = await api.post(`${apiBaseUrl}/api/email-accounts`, data);
+      return response.data;
+    } catch (error) {
+      console.error('创建邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 更新邮箱账户
+  updateEmailAccount: async (id: string, data: any) => {
+    try {
+      console.log(`更新邮箱账户: ${id}`);
+      const response = await api.put(`${apiBaseUrl}/api/email-accounts/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('更新邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 删除邮箱账户
+  deleteEmailAccount: async (id: string) => {
+    try {
+      console.log(`删除邮箱账户: ${id}`);
+      const response = await api.delete(`${apiBaseUrl}/api/email-accounts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 测试邮箱账户
+  testEmailAccount: async (id: string) => {
+    try {
+      console.log(`测试邮箱账户: ${id}`);
+      const response = await api.post(`${apiBaseUrl}/api/email-accounts/${id}/test`);
+      return response.data;
+    } catch (error) {
+      console.error('测试邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取测试结果
+  getTestResult: async (testId: string) => {
+    try {
+      console.log(`获取邮箱测试结果: ${testId}`);
+      const response = await api.get(`${apiBaseUrl}/api/email-accounts/test/${testId}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取邮箱测试结果失败:', error);
+      throw error;
+    }
+  }
+};
+
+/**
  * 随机用户信息生成API
  */
 export const randomUserApi = {
