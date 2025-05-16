@@ -166,9 +166,12 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
   };
   
   // 提交表单
-  const handleSubmit = async (values: OneClickSetupFormData) => {
+  const handleSubmit = async (values: any) => {
     try {
       setLoading(true);
+      
+      // 从表单中获取主邮箱
+      const selectedMainEmail = values.mainEmail;
       
       // 调用后端一键式账户设置API
       message.loading('正在执行一键式账户设置...');
@@ -183,11 +186,11 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
       
       // 提取后缀，并准备数据
       let emailSuffix = '';
-      if (mainEmail) {
+      if (selectedMainEmail) {
         // 尝试从主邮箱中提取后缀
-        const atIndex = mainEmail.indexOf('@');
+        const atIndex = selectedMainEmail.indexOf('@');
         if (atIndex !== -1) {
-          emailSuffix = mainEmail.substring(atIndex + 1);
+          emailSuffix = selectedMainEmail.substring(atIndex + 1);
         }
       }
       
