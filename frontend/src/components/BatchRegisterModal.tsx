@@ -94,6 +94,9 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
   const [totalCount, setTotalCount] = useState(0); // 计划注册总数
   const [batchRunning, setBatchRunning] = useState(false); // 批量注册是否正在进行
   const [batchProgress, setBatchProgress] = useState(0); // 批量注册进度
+  
+  // 引用类型，用于在组件内部跟踪注册状态，避免依赖React状态更新
+  const registeringRef = React.useRef(false);
 
   // 获取邮箱账户列表和账户分组列表
   useEffect(() => {
@@ -154,6 +157,7 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
     setTotalCount(0);
     setBatchRunning(false);
     setBatchProgress(0);
+    registeringRef.current = false;
   };
   
   // 处理关闭
@@ -166,6 +170,11 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
         okText: '确定',
         cancelText: '取消',
         onOk: () => {
+          console.log('用户确认取消批量注册');
+          // 先停止注册过程
+          registeringRef.current = false;
+          setBatchRunning(false);
+          // 再重置状态
           resetState();
           onClose();
         }
@@ -325,20 +334,28 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
       setTotalCount(batchCount);
       setCurrentCount(0);
       setBatchProgress(0);
-      setBatchRunning(true);
       setRegisterResults([]);
       
-      console.log('开始批量注册，计划注册数量:', batchCount);
+      // 使用useRef引用变量控制循环，避免依赖React状态
+      registeringRef.current = true;
+      setBatchRunning(true);
+      
+      console.log('开始批量注册，计划注册数量:', batchCount, '注册状态:', registeringRef.current);
       
       // 循环执行注册
-      for (let i = 0; i < batchCount; i++) {
-        if (!batchRunning) {
-          console.log('批量注册被用户取消');
-          break;
-        }
+      for (let i = 0; i < batchCount && registeringRef.current; i++) {
+        console.log(`开始第 ${i+1}/${batchCount} 次注册...`);
         
         // 执行单次注册
         const result = await executeSingleRegister(values, i);
+        
+        // 检查是否取消了注册过程
+        if (!registeringRef.current) {
+          console.log('批量注册已被中断');
+          break;
+        }
+        
+        console.log(`第 ${i+1}/${batchCount} 次注册完成，结果:`, result.success ? '成功' : '失败');
         
         // 更新进度
         setCurrentCount(i + 1);
@@ -349,24 +366,40 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
         
         // 如果注册成功，调用回调通知父组件更新列表
         if (result.success && result.accountId) {
+          console.log(`通知父组件更新UI，新增账户ID: ${result.accountId}`);
           onRegisterSuccess(result);
         }
         
-        // 如果不是最后一次，添加一些延迟避免API限流
-        if (i < batchCount - 1) {
+        // 如果不是最后一次且未取消，添加一些延迟避免API限流
+        if (i < batchCount - 1 && registeringRef.current) {
+          console.log(`等待500ms后继续下一次注册...`);
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
       
-      // 完成批量注册
+      // 完成批量注册或已取消
+      console.log('批量注册流程结束');
+      registeringRef.current = false;
       setBatchRunning(false);
-      message.success(`批量注册完成，成功: ${registerResults.filter(r => r.success).length}，失败: ${registerResults.filter(r => !r.success).length}`);
       
-      // 刷新账户列表
-      onSuccess();
+      // 获取最终结果统计
+      const totalResults = registerResults.length;
+      const successCount = registerResults.filter(r => r.success).length;
+      const failedCount = totalResults - successCount;
+      
+      if (totalResults > 0) {
+        message.success(`批量注册完成，成功: ${successCount}，失败: ${failedCount}`);
+        console.log(`批量注册完成，总计: ${totalResults}，成功: ${successCount}，失败: ${failedCount}`);
+        
+        // 刷新账户列表
+        onSuccess();
+      } else {
+        console.log('批量注册被取消，未完成任何注册');
+      }
     } catch (error: any) {
       console.error('批量注册出错:', error);
       message.error('批量注册失败: ' + error.message);
+      registeringRef.current = false;
       setBatchRunning(false);
     } finally {
       setLoading(false);
