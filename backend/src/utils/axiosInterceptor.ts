@@ -80,12 +80,12 @@ export function setupAxiosInterceptors() {
         
         // 将请求和响应信息记录到数据库
         await AxiosLoggingService.logRequest({
-          url: fullUrl,
+          request_url: fullUrl,
           method: (response.config.method || 'GET').toUpperCase(),
           duration_ms: duration,
-          status_code: response.status,
+          response_status: response.status,
           request_body: requestBody,
-          response_body: responseBody,
+          response_data: responseBody,
           request_headers: requestHeaders,
           response_headers: responseHeaders,
           success: true
