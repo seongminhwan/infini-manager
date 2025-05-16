@@ -67,7 +67,7 @@ import { Resizable } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 import { debounce, DebouncedFunc } from 'lodash';
 import { ResizeCallbackData } from 'react-resizable';
-import api, { apiBaseUrl, configApi, infiniAccountApi, randomUserApi, totpToolApi, httpService } from '../../services/api';
+import api, { apiBaseUrl, configApi, infiniAccountApi, randomUserApi, totpToolApi, httpService, transferApi } from '../../services/api';
 import RandomUserRegisterModal from '../../components/RandomUserRegisterModal';
 import TwoFactorAuthModal from '../../components/TwoFactorAuthModal';
 import TwoFaViewModal from '../../components/TwoFaViewModal';
@@ -3265,6 +3265,9 @@ const AccountMonitor: React.FC = () => {
                   <Menu.Item key="syncAllKyc" onClick={batchSyncAllKyc}>
                     批量同步KYC信息
                   </Menu.Item>
+                  <Menu.Item key="redPacket" onClick={openRedPacketModal}>
+                    批量领取红包
+                  </Menu.Item>
                 </Menu>
               }
               trigger={['click']}
@@ -3411,6 +3414,109 @@ const AccountMonitor: React.FC = () => {
           onRefresh={() => fetchAccounts()}
         />
       )}
+      
+      {/* 红包领取模态框 */}
+      <Modal
+        title="批量领取红包"
+        open={redPacketModalVisible}
+        onCancel={() => setRedPacketModalVisible(false)}
+        width={600}
+        footer={[
+          <Button key="cancel" onClick={() => setRedPacketModalVisible(false)}>
+            关闭
+          </Button>,
+          <Button
+            key="start"
+            type="primary"
+            loading={redPacketLoading}
+            onClick={batchGrabRedPacket}
+            disabled={redPacketLoading || accounts.length === 0}
+          >
+            开始领取
+          </Button>
+        ]}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Form.Item label="红包码">
+            <Input 
+              value={redPacketCode}
+              onChange={(e) => setRedPacketCode(e.target.value)}
+              placeholder="请输入红包码"
+              disabled={redPacketLoading}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+          
+          <Alert
+            message="提示"
+            description="系统将使用所有账户依次领取红包，请确保账户已经登录并且红包码有效。"
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        </div>
+        
+        {/* 进度显示 */}
+        {redPacketLoading && (
+          <>
+            <div style={{ marginBottom: 16 }}>
+              <Progress 
+                percent={redPacketProgress.total ? Math.round((redPacketProgress.current / redPacketProgress.total) * 100) : 0} 
+                status="active"
+              />
+              <div style={{ textAlign: 'center', marginTop: 8 }}>
+                {redPacketProgress.current} / {redPacketProgress.total}
+              </div>
+            </div>
+            
+            <Descriptions bordered size="small" column={2}>
+              <Descriptions.Item label="已完成">
+                {redPacketProgress.current} / {redPacketProgress.total}
+              </Descriptions.Item>
+              <Descriptions.Item label="成功领取">
+                <Tag color="green">{redPacketProgress.success}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="领取失败">
+                <Tag color="red">{redPacketProgress.failed}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="累计金额">
+                <Tag color="blue">{redPacketProgress.totalAmount}</Tag>
+              </Descriptions.Item>
+            </Descriptions>
+          </>
+        )}
+        
+        {/* 结果列表 */}
+        {redPacketProgress.results.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <Divider>领取结果</Divider>
+            <List
+              size="small"
+              bordered
+              dataSource={redPacketProgress.results}
+              renderItem={(item) => (
+                <List.Item>
+                  <List.Item.Meta
+                    title={
+                      <Space>
+                        <span>账户ID: {item.accountId}</span>
+                        <Tag color={item.success ? 'green' : 'red'}>
+                          {item.success ? '成功' : '失败'}
+                        </Tag>
+                      </Space>
+                    }
+                    description={
+                      item.success ? 
+                      `领取金额: ${item.amount}` : 
+                      `失败原因: ${item.message || '未知错误'}`
+                    }
+                  />
+                </List.Item>
+              )}
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
