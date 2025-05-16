@@ -28,7 +28,7 @@ import {
   IdcardOutlined,
   CreditCardOutlined
 } from '@ant-design/icons';
-import { infiniAccountApi, randomUserApi, totpToolApi, kycImageApi, apiBaseUrl, api } from '../services/api';
+import api, { infiniAccountApi, randomUserApi, totpToolApi, kycImageApi, apiBaseUrl } from '../services/api';
 
 const { Text } = Typography;
 
