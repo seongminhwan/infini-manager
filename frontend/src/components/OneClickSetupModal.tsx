@@ -41,8 +41,6 @@ interface OneClickSetupProps {
 
 // 表单数据接口
 interface OneClickSetupFormData {
-  email: string;
-  password: string;
   enable2fa: boolean;
   enableKyc: boolean;
   enableCard: boolean;
@@ -136,22 +134,16 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
     try {
       setLoading(true);
       
-      // 从邮箱中提取后缀（域名部分）用于生成随机用户
-      const emailParts = values.email.split('@');
-      const emailSuffix = emailParts.length > 1 ? emailParts[1] : '';
-      
       // 调用一键式账户设置API，传递两个所需参数
       // setupOptions：仅包含自动化选项（2FA、KYC、开卡）
-      // userData：仅包含email_suffix，用于生成随机用户
+      // userData：传递空对象，由后端自动生成随机用户信息
       const response = await infiniAccountApi.oneClickAccountSetup(
         {
           enable2fa: values.enable2fa,
           enableKyc: values.enableKyc,
           enableCard: values.enableCard
         },
-        {
-          email_suffix: emailSuffix
-        }
+        {}
       );
       
       if (response.success) {
@@ -200,38 +192,6 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
         enableCard: true
       }}
     >
-      <Form.Item
-        name="email"
-        label="邮箱"
-        rules={[
-          { required: true, message: '请输入邮箱' },
-          { type: 'email', message: '请输入有效的邮箱地址' }
-        ]}
-      >
-        <Input prefix={<MailOutlined />} placeholder="请输入邮箱" />
-      </Form.Item>
-      
-      <Form.Item
-        name="password"
-        label="密码"
-        rules={[{ required: true, message: '请输入密码' }]}
-      >
-        <Input.Password 
-          prefix={<LockOutlined />} 
-          placeholder="请输入密码" 
-          addonAfter={
-            <Button 
-              type="text" 
-              icon={<ReloadOutlined />} 
-              onClick={(e) => {
-                e.preventDefault();
-                form.setFieldsValue({ password: generateStrongPassword() });
-              }}
-              style={{ border: 'none', padding: 0 }}
-            />
-          }
-        />
-      </Form.Item>
       
       <Divider orientation="left">自动化步骤选择</Divider>
       
@@ -262,11 +222,6 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
         </Checkbox>
       </Form.Item>
       
-      <Form.Item>
-        <Button block type="dashed" icon={<ReloadOutlined />} onClick={generateRandomInfo}>
-          生成随机账户信息
-        </Button>
-      </Form.Item>
       
       <Form.Item>
         <Text type="secondary">
@@ -330,7 +285,7 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
   
   return (
     <Modal
-      title="一键注册级用户"
+      title="一键注册随机用户"
       open={visible}
       onCancel={handleClose}
       footer={null}
