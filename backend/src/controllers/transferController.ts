@@ -6,6 +6,7 @@ import { Request, Response, NextFunction } from 'express';
 import { Transfer, TransferStatus, ApiResponse, ControllerMethod } from '../types';
 import { InfiniAccountService } from '../service/InfiniAccountService';
 import db from '../db/db'; // 导入数据库实例
+import axios from 'axios';
 
 // 创建InfiniAccountService实例
 // 创建InfiniAccountService实例
@@ -311,5 +312,83 @@ export const getTransferHistory: ControllerMethod = async (req: Request, res: Re
     res.json(response);
   } catch (error) {
     next(error);
+  }
+};
+
+/**
+ * 领取红包
+ * 调用Infini API领取红包
+ */
+export const grabRedPacket: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { accountId, code } = req.body;
+    
+    // 验证必填参数
+    if (!accountId || !code) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数：accountId和code'
+      });
+    }
+    
+    // 查找账户
+    const account = await db('infini_accounts')
+      .where('id', accountId)
+      .first();
+    
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        message: '找不到指定的Infini账户'
+      });
+    }
+    
+    // 获取有效Cookie
+    const cookie = await infiniAccountService.getAccountCookie(accountId, '领取红包失败，');
+    
+    if (!cookie.cookie) {
+      return res.status(401).json({
+        success: false,
+        message: '领取红包失败，无法获取有效的登录凭证'
+      });
+    }
+    
+    // 调用Infini API领取红包
+    const response = await axios.post(
+      'https://api-card.infini.money/account/grab_red_packet',
+      { code },
+      {
+        headers: {
+          'Cookie': cookie.cookie,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+          'Referer': 'https://app.infini.money/',
+          'Origin': 'https://app.infini.money',
+          'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"macOS"',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      }
+    );
+    
+    // 返回API响应结果
+    res.json({
+      success: response.data.code === 0,
+      data: response.data.data,
+      message: response.data.message || (response.data.code === 0 ? '成功领取红包' : '领取红包失败')
+    });
+  } catch (error: any) {
+    console.error('领取红包失败:', error);
+    
+    // 返回错误信息
+    res.status(500).json({
+      success: false,
+      message: `领取红包失败: ${error.message}`,
+      error: error.response?.data || error.message
+    });
   }
 };
