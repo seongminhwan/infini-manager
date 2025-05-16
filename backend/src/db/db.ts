@@ -56,8 +56,16 @@ export async function initializeDatabase(): Promise<void> {
     
     console.log('数据库初始化成功');
   } catch (error) {
-    console.error('数据库初始化失败:', error);
-    throw error;
+    // 检查错误是否与迁移文件缺失有关
+    const errorMessage = String(error);
+    if (errorMessage.includes('migration directory is corrupt') || 
+        errorMessage.includes('files are missing')) {
+      console.warn('数据库迁移文件缺失警告:', error);
+      console.warn('继续运行服务，但某些功能可能不可用');
+    } else {
+      console.error('数据库初始化失败:', error);
+      throw error;
+    }
   }
 }
 
