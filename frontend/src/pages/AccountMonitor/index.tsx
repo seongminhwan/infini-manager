@@ -2075,6 +2075,21 @@ const AccountMonitor: React.FC = () => {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
   
+  // 余额颜色区间配置
+  const [redPacketBalanceColorRanges, setRedPacketBalanceColorRanges] = useState<any[]>([
+    { threshold: 1.4, color: 'green', backgroundColor: '#52c41a', textColor: 'white' },
+    { threshold: 1, color: 'blue', backgroundColor: '#1890ff', textColor: 'white' },
+    { threshold: 0.5, color: 'orange', backgroundColor: '#fa8c16', textColor: 'white' },
+    { threshold: 0, color: 'brown', backgroundColor: '#8B4513', textColor: 'white' },
+    { threshold: -Infinity, color: 'default', backgroundColor: '', textColor: '' }
+  ]);
+  const [availableBalanceColorRanges, setAvailableBalanceColorRanges] = useState<any[]>([
+    { threshold: 10, color: 'green', backgroundColor: '#52c41a', textColor: 'white' },
+    { threshold: 5, color: 'blue', backgroundColor: '#1890ff', textColor: 'white' },
+    { threshold: 1, color: 'orange', backgroundColor: '#fa8c16', textColor: 'white' },
+    { threshold: 0, color: 'default', backgroundColor: '', textColor: '' }
+  ]);
+  
   // 为保存配置创建防抖函数
   const debouncedSaveColumnWidths = useRef<DebouncedFunc<(widths: Record<string, number>) => void>>(
     debounce((widths: Record<string, number>) => {
