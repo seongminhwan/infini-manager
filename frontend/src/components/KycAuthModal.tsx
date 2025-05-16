@@ -342,20 +342,34 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
     
     console.log('填充表单，随机用户数据:', userData);
     
-    // 从电话号码中提取国际区号，如果没有提供则使用默认值
-    let phoneCode = userData.phone_code || '+1';
-    if (!phoneCode.startsWith('+')) {
-      phoneCode = '+' + phoneCode;
-    }
+    // 从电话号码中提取国际区号，优先使用phone字段
+    let phoneCode = '+1'; // 默认值
+    let phoneNumber = '';
     
-    // 电话号码可能需要处理，确保没有区号部分
-    let phoneNumber = userData.phone || '';
-    // 如果电话号码包含区号，去除区号部分
-    if (phoneNumber.startsWith('+')) {
-      const parts = phoneNumber.split(' ');
-      if (parts.length > 1) {
-        phoneNumber = parts.slice(1).join('');
+    if (userData.phone) {
+      // 例如："+86 16479668332"
+      const phoneRegex = /^(\+\d+)\s+(.+)$/;
+      const match = userData.phone.match(phoneRegex);
+      
+      if (match) {
+        // 如果匹配成功，提取区号和电话号码
+        phoneCode = match[1]; // 例如："+86"
+        phoneNumber = match[2]; // 例如："16479668332"
+        console.log(`从phone字段中提取区号: ${phoneCode}, 电话号码: ${phoneNumber}`);
+      } else {
+        // 如果匹配失败，可能没有区号格式，使用整个值作为电话号码
+        phoneNumber = userData.phone;
+        console.log(`无法从phone字段中提取区号，使用整个值作为电话号码: ${phoneNumber}`);
       }
+    } else if (userData.phone_code) {
+      // 备用：使用显式提供的phone_code字段
+      phoneCode = userData.phone_code;
+      if (!phoneCode.startsWith('+')) {
+        phoneCode = '+' + phoneCode;
+      }
+      
+      phoneNumber = userData.phone_number || '';
+      console.log(`使用phone_code字段: ${phoneCode}, phone_number字段: ${phoneNumber}`);
     }
     
     const formValues = {
