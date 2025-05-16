@@ -189,8 +189,8 @@ export class RandomUserService {
         remainingDigits += this.numbers.charAt(Math.floor(Math.random() * this.numbers.length));
       }
       
-      // 中国格式手机号：1xx xxxx xxxx
-      const phone = `${prefix}${remainingDigits}`;
+      // 中国格式手机号：+86 1xx xxxx xxxx
+      const phone = `+86 ${prefix}${remainingDigits}`;
       
       // 检查是否已存在
       const exists = await db('random_users')
