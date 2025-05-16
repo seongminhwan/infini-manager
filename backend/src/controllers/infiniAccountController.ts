@@ -1292,6 +1292,23 @@ export const oneClickAccountSetup = async (req: Request, res: Response): Promise
     const accountId = accountResponse.data.id;
     console.log(`成功创建Infini账户, ID: ${accountId}`);
     
+    // 如果提供了分组ID，将账户添加到分组
+    if (userData.group_id) {
+      try {
+        console.log(`尝试将账户添加到分组, 账户ID: ${accountId}, 分组ID: ${userData.group_id}`);
+        const groupResponse = await infiniAccountService.addAccountToGroup(userData.group_id, accountId);
+        
+        if (groupResponse.success) {
+          console.log(`成功将账户添加到分组, 分组ID: ${userData.group_id}`);
+        } else {
+          console.error(`将账户添加到分组失败: ${groupResponse.message}`);
+        }
+      } catch (groupError) {
+        console.error('将账户添加到分组时出错:', groupError);
+        // 不因分组关联失败而中断整个流程
+      }
+    }
+    
     const results: any = {
       success: true,
       accountId,
