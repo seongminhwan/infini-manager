@@ -217,7 +217,7 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
       }
       
       // 提取响应数据
-      const { accountId, randomUser, account, steps } = response.data;
+      const { accountId, randomUser, account, steps } = response;
       
       // 确定各步骤执行状态
       const is2faEnabled = steps.twoFa?.success || false;
