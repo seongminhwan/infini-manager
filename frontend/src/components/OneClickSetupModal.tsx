@@ -172,9 +172,6 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
     try {
       setLoading(true);
       
-      // 从表单中获取主邮箱
-      const selectedMainEmail = values.mainEmail;
-      
       // 调用后端一键式账户设置API
       message.loading('正在执行一键式账户设置...');
       
@@ -188,11 +185,11 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
       
       // 提取后缀，并准备数据
       let emailSuffix = '';
-      if (selectedMainEmail) {
+      if (mainEmail) { // 使用mainEmail变量(存储了邮箱地址)来提取后缀
         // 尝试从主邮箱中提取后缀
-        const atIndex = selectedMainEmail.indexOf('@');
+        const atIndex = mainEmail.indexOf('@');
         if (atIndex !== -1) {
-          emailSuffix = selectedMainEmail.substring(atIndex + 1);
+          emailSuffix = mainEmail.substring(atIndex + 1);
         }
       }
       
@@ -203,7 +200,7 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
       
       const userData = {
         email_suffix: emailSuffix, // 为了满足API类型要求
-        main_email: selectedMainEmail // 使用表单选择的主邮箱，让后端可以使用
+        main_email: selectedEmailId // 使用邮箱ID作为主邮箱标识
       };
       
       console.log('发送一键式账户设置请求，参数:', { setupOptions, userData });
