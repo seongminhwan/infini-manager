@@ -10,6 +10,7 @@ import {
   IdcardOutlined,
 } from '@ant-design/icons';
 import RandomUserRegisterModal from '../../components/RandomUserRegisterModal';
+import BatchRegisterModal from '../../components/BatchRegisterModal';
 import styled from 'styled-components';
 
 const { Title, Text } = Typography;
@@ -56,6 +57,7 @@ const AccountRegister: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isRandomUserModalVisible, setIsRandomUserModalVisible] = useState(false);
   const [registeredAccounts, setRegisteredAccounts] = useState<any[]>([]);
+  const [batchRegisterModalVisible, setBatchRegisterModalVisible] = useState(false);
   
   // 提交单个账户注册
   const handleSubmit = (values: any) => {
@@ -91,6 +93,11 @@ const AccountRegister: React.FC = () => {
     setIsRandomUserModalVisible(true);
   };
   
+  // 显示批量注册随机用户模态框
+  const showBatchRegisterModal = () => {
+    setBatchRegisterModalVisible(true);
+  };
+  
   // 处理随机用户注册成功
   const handleRandomUserSuccess = (account: any) => {
     setIsRandomUserModalVisible(false);
@@ -124,6 +131,9 @@ const AccountRegister: React.FC = () => {
       </MenuItem>
       <MenuItem key="random" onClick={showRandomUserModal}>
         <IdcardOutlined /> 注册随机用户
+      </MenuItem>
+      <MenuItem key="batchRegister" onClick={showBatchRegisterModal}>
+        <UserAddOutlined /> 批量注册随机用户
       </MenuItem>
     </Menu>
   );
@@ -227,6 +237,15 @@ const AccountRegister: React.FC = () => {
               </Dropdown>
               
               <Button
+                type="primary"
+                size="large"
+                icon={<UserAddOutlined />}
+                onClick={showBatchRegisterModal}
+              >
+                批量注册随机用户
+              </Button>
+              
+              <Button
                 icon={<UploadOutlined />}
                 size="large"
                 onClick={showBatchModal}
@@ -285,6 +304,29 @@ const AccountRegister: React.FC = () => {
         visible={isRandomUserModalVisible}
         onCancel={() => setIsRandomUserModalVisible(false)}
         onSuccess={handleRandomUserSuccess}
+      />
+      
+      {/* 批量注册随机用户模态框 */}
+      <BatchRegisterModal
+        visible={batchRegisterModalVisible}
+        onClose={() => setBatchRegisterModalVisible(false)}
+        onSuccess={() => {
+          // 批量注册完成后刷新数据
+          message.success('批量注册完成');
+        }}
+        onRegisterSuccess={(newAccount) => {
+          // 每注册成功一个账户就添加到列表
+          const newAccountRecord = {
+            key: String(Date.now()) + Math.random(),
+            accountName: newAccount.email,
+            initialBalance: 0,
+            status: 'success',
+            createdAt: new Date().toLocaleString(),
+            infiniAccount: newAccount
+          };
+          
+          setRegisteredAccounts(prevAccounts => [newAccountRecord, ...prevAccounts]);
+        }}
       />
     </div>
   );
