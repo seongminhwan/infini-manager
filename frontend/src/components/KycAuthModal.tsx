@@ -248,28 +248,25 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
               // 立即填充表单，不等待进入第二步
               fillFormWithRandomUserData(userResponse.data);
               message.success('已自动获取并填充关联的随机用户信息');
-              return; // 获取成功，直接返回
             } else {
               console.warn('获取随机用户信息失败，API返回:', userResponse);
-              // 获取失败，将在下面生成随机用户数据
+              message.warning('获取账户关联的随机用户信息失败，请手动点击"生成随机用户信息"按钮');
             }
           } catch (error) {
             console.error('获取随机用户信息失败:', error);
-            // 获取失败，将在下面生成随机用户数据
+            message.warning('获取账户关联的随机用户信息失败，请手动点击"生成随机用户信息"按钮');
           }
         } else {
-          console.log('账户没有关联的随机用户ID，将自动生成随机用户数据');
+          console.log('账户没有关联的随机用户ID');
+          message.info('当前账户没有关联的随机用户信息，请点击"生成随机用户信息"按钮');
         }
       } else {
         console.warn('获取账户信息失败，API返回:', accountResponse.data);
+        message.warning('获取账户信息失败，请手动点击"生成随机用户信息"按钮');
       }
-      
-      // 如果上面的步骤未成功获取到随机用户数据，则生成新的随机用户数据
-      await generateAndFillRandomUser();
     } catch (error) {
       console.error('获取账户信息失败:', error);
-      // 如果所有API调用都失败，仍然尝试生成随机用户数据
-      await generateRandomUserData();
+      message.error('获取账户信息失败，请手动点击"生成随机用户信息"按钮');
     } finally {
       setLoadingRandomUser(false);
     }
