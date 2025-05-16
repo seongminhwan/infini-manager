@@ -128,8 +128,9 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
           const defaultAccount = response.data.find((account: any) => account.isDefault);
           if (defaultAccount) {
             setMainEmail(defaultAccount.email);
-            form.setFieldsValue({ mainEmail: defaultAccount.email });
-            console.log('自动选择默认邮箱:', defaultAccount.email);
+            setSelectedEmailId(defaultAccount.id);
+            form.setFieldsValue({ mainEmail: defaultAccount.id });
+            console.log('自动选择默认邮箱:', defaultAccount.email, '邮箱ID:', defaultAccount.id);
           }
         }
       } catch (error) {
