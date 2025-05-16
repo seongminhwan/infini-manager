@@ -211,6 +211,7 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
   // 在组件挂载和visible变化时，尝试获取关联的随机用户信息并立即填充表单
   useEffect(() => {
     if (accountId && visible) {
+      message.loading('正在获取账户关联的随机用户信息...');
       fetchAssociatedRandomUser();
     }
   }, [accountId, visible]);
@@ -246,27 +247,78 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
               
               // 立即填充表单，不等待进入第二步
               fillFormWithRandomUserData(userResponse.data);
-              
-              // 仅当当前在第二步时才显示消息
-              if (currentStep === 1) {
-                message.success('已自动填充关联的随机用户信息');
-              }
+              message.success('已自动获取并填充关联的随机用户信息');
             } else {
               console.warn('获取随机用户信息失败，API返回:', userResponse);
+              // 如果获取随机用户失败，自动生成一个新的随机用户
+              await generateAndAssociateRandomUser();
             }
           } catch (error) {
             console.error('获取随机用户信息失败:', error);
+            // 如果获取随机用户出错，自动生成一个新的随机用户
+            await generateAndAssociateRandomUser();
           }
         } else {
-          console.log('账户没有关联的随机用户ID');
+          console.log('账户没有关联的随机用户ID，将自动生成随机用户');
+          // 账户没有关联随机用户，自动生成一个
+          await generateAndAssociateRandomUser();
         }
       } else {
         console.warn('获取账户信息失败，API返回:', accountResponse.data);
+        // 如果获取账户信息失败，尝试直接生成随机用户
+        await generateAndAssociateRandomUser();
       }
     } catch (error) {
       console.error('获取账户信息失败:', error);
+      // 如果所有API调用都失败，尝试生成随机用户但不关联
+      await generateRandomUserData();
     } finally {
       setLoadingRandomUser(false);
+    }
+  };
+  
+  // 生成随机用户并关联到当前账户
+  const generateAndAssociateRandomUser = async () => {
+    try {
+      console.log('生成并关联随机用户到账户，账户ID:', accountId);
+      
+      // 调用后端API生成随机用户
+      const response = await randomUserApi.generateRandomUsers({ count: 1 });
+      console.log('生成随机用户API响应:', response);
+      
+      if (response.success && response.data && response.data.length > 0) {
+        const userData = response.data[0];
+        console.log('成功生成随机用户数据:', userData);
+        setRandomUserData(userData);
+        
+        // 填充表单
+        fillFormWithRandomUserData(userData);
+        message.success('已生成随机用户信息并填充表单');
+        
+        // 尝试关联随机用户到当前账户
+        try {
+          if (userData.id && accountId) {
+            console.log('尝试关联随机用户到账户:', userData.id, accountId);
+            // 假设有一个API来关联随机用户和账户
+            const associateResponse = await api.post(`${apiBaseUrl}/api/infini-accounts/${accountId}/associate-random-user`, {
+              randomUserId: userData.id
+            });
+            console.log('关联随机用户响应:', associateResponse.data);
+            
+            if (associateResponse.data.success) {
+              console.log('成功关联随机用户到账户');
+            }
+          }
+        } catch (associateError) {
+          console.error('关联随机用户失败:', associateError);
+          // 关联失败不影响表单填充，只记录日志
+        }
+      } else {
+        console.warn('生成随机用户信息失败，API返回:', response);
+        message.error('生成随机用户信息失败');
+      }
+    } catch (error) {
+      console.error('生成并关联随机用户失败:', error);
     }
   };
   
