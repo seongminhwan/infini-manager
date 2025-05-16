@@ -208,12 +208,20 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
   const [randomUserData, setRandomUserData] = useState<any>(null);
   const [loadingRandomUser, setLoadingRandomUser] = useState<boolean>(false);
   
-  // 在组件挂载和accountId变化时，尝试获取关联的随机用户信息
+  // 在组件挂载和visible变化时，尝试获取关联的随机用户信息
   useEffect(() => {
-    if (accountId && visible && currentStep === 1) {
+    if (accountId && visible) {
       fetchAssociatedRandomUser();
     }
-  }, [accountId, visible, currentStep]);
+  }, [accountId, visible]);
+  
+  // 在currentStep变化时，如果进入第二步且已有随机用户数据，自动填充表单
+  useEffect(() => {
+    if (currentStep === 1 && randomUserData) {
+      fillFormWithRandomUserData(randomUserData);
+      message.success('已自动填充关联的随机用户信息');
+    }
+  }, [currentStep, randomUserData, fillFormWithRandomUserData]);
   
   // 获取关联的随机用户信息
   const fetchAssociatedRandomUser = async () => {
@@ -236,10 +244,7 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
             
             if (userResponse.success && userResponse.data) {
               setRandomUserData(userResponse.data);
-              
-              // 自动填充表单
-              fillFormWithRandomUserData(userResponse.data);
-              message.success('已自动填充关联的随机用户信息');
+              console.log('已获取关联的随机用户信息，将在进入护照信息步骤时自动填充表单');
             }
           } catch (error) {
             console.error('获取随机用户信息失败:', error);
