@@ -75,6 +75,7 @@ import KycAuthModal from '../../components/KycAuthModal';
 import KycViewModal from '../../components/KycViewModal';
 import CardApplyModal from '../../components/CardApplyModal';
 import CardDetailModal from '../../components/CardDetailModal';
+import RedPacketModal from '../../components/RedPacketModal';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
 
@@ -2182,94 +2183,12 @@ const AccountMonitor: React.FC = () => {
     }
   };
 
-  // 红包领取模态框可见状态和加载状态
+  // 红包领取状态
   const [redPacketModalVisible, setRedPacketModalVisible] = useState(false);
-  const [redPacketLoading, setRedPacketLoading] = useState(false);
-  const [redPacketCode, setRedPacketCode] = useState('7aEh9cfqfWxmaJmEWTSCWe'); // 默认红包码
-  const [redPacketProgress, setRedPacketProgress] = useState<{
-    current: number;
-    total: number;
-    success: number;
-    failed: number;
-    totalAmount: string;
-    results: Array<{
-      accountId: string;
-      success: boolean;
-      amount: string;
-      message?: string;
-    }>;
-  }>({
-    current: 0,
-    total: 0,
-    success: 0,
-    failed: 0,
-    totalAmount: '0',
-    results: []
-  });
 
   // 打开红包领取模态框
   const openRedPacketModal = () => {
-    // 重置进度状态
-    setRedPacketProgress({
-      current: 0,
-      total: 0,
-      success: 0,
-      failed: 0,
-      totalAmount: '0',
-      results: []
-    });
-    setRedPacketCode('7aEh9cfqfWxmaJmEWTSCWe'); // 设置默认红包码
     setRedPacketModalVisible(true);
-  };
-
-  // 批量领取红包
-  const batchGrabRedPacket = async () => {
-    if (!redPacketCode) {
-      message.error('请输入红包码');
-      return;
-    }
-
-    if (accounts.length === 0) {
-      message.error('没有可用的账户');
-      return;
-    }
-
-    try {
-      setRedPacketLoading(true);
-      message.loading('正在批量领取红包...');
-
-      // 获取所有账户ID
-      const accountIds = accounts.map(account => account.id.toString());
-      
-      // 定义进度回调函数
-      const onProgress = (current: number, total: number, result: any) => {
-        // 更新进度状态
-        setRedPacketProgress(prev => ({
-          current,
-          total,
-          success: result.success ? prev.success + 1 : prev.success,
-          failed: !result.success ? prev.failed + 1 : prev.failed,
-          totalAmount: result.success ? 
-            (parseFloat(prev.totalAmount) + parseFloat(result.amount)).toFixed(6) : 
-            prev.totalAmount,
-          results: [...prev.results, result]
-        }));
-      };
-
-      // 调用批量领取红包API
-      const response = await transferApi.batchGrabRedPacket(accountIds, redPacketCode, onProgress);
-      
-      if (response.success) {
-        message.success(response.message || '批量领取红包完成');
-      } else {
-        message.error(response.message || '批量领取红包失败');
-      }
-    } catch (error: any) {
-      message.error(error.response?.data?.message || error.message || '批量领取红包失败');
-      console.error('批量领取红包失败:', error);
-    } finally {
-      setRedPacketLoading(false);
-    }
   };
   // 获取所有账户分组并构建账户-分组的映射关系
   const fetchGroups = async () => {
@@ -3416,107 +3335,12 @@ const AccountMonitor: React.FC = () => {
       )}
       
       {/* 红包领取模态框 */}
-      <Modal
-        title="批量领取红包"
-        open={redPacketModalVisible}
-        onCancel={() => setRedPacketModalVisible(false)}
-        width={600}
-        footer={[
-          <Button key="cancel" onClick={() => setRedPacketModalVisible(false)}>
-            关闭
-          </Button>,
-          <Button
-            key="start"
-            type="primary"
-            loading={redPacketLoading}
-            onClick={batchGrabRedPacket}
-            disabled={redPacketLoading || accounts.length === 0}
-          >
-            开始领取
-          </Button>
-        ]}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Form.Item label="红包码">
-            <Input 
-              value={redPacketCode}
-              onChange={(e) => setRedPacketCode(e.target.value)}
-              placeholder="请输入红包码"
-              disabled={redPacketLoading}
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-          
-          <Alert
-            message="提示"
-            description="系统将使用所有账户依次领取红包，请确保账户已经登录并且红包码有效。"
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
-        </div>
-        
-        {/* 进度显示 */}
-        {redPacketLoading && (
-          <>
-            <div style={{ marginBottom: 16 }}>
-              <Progress 
-                percent={redPacketProgress.total ? Math.round((redPacketProgress.current / redPacketProgress.total) * 100) : 0} 
-                status="active"
-              />
-              <div style={{ textAlign: 'center', marginTop: 8 }}>
-                {redPacketProgress.current} / {redPacketProgress.total}
-              </div>
-            </div>
-            
-            <Descriptions bordered size="small" column={2}>
-              <Descriptions.Item label="已完成">
-                {redPacketProgress.current} / {redPacketProgress.total}
-              </Descriptions.Item>
-              <Descriptions.Item label="成功领取">
-                <Tag color="green">{redPacketProgress.success}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="领取失败">
-                <Tag color="red">{redPacketProgress.failed}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="累计金额">
-                <Tag color="blue">{redPacketProgress.totalAmount}</Tag>
-              </Descriptions.Item>
-            </Descriptions>
-          </>
-        )}
-        
-        {/* 结果列表 */}
-        {redPacketProgress.results.length > 0 && (
-          <div style={{ marginTop: 16 }}>
-            <Divider>领取结果</Divider>
-            <List
-              size="small"
-              bordered
-              dataSource={redPacketProgress.results}
-              renderItem={(item) => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={
-                      <Space>
-                        <span>账户ID: {item.accountId}</span>
-                        <Tag color={item.success ? 'green' : 'red'}>
-                          {item.success ? '成功' : '失败'}
-                        </Tag>
-                      </Space>
-                    }
-                    description={
-                      item.success ? 
-                      `领取金额: ${item.amount}` : 
-                      `失败原因: ${item.message || '未知错误'}`
-                    }
-                  />
-                </List.Item>
-              )}
-            />
-          </div>
-        )}
-      </Modal>
+      <RedPacketModal
+        visible={redPacketModalVisible}
+        onClose={() => setRedPacketModalVisible(false)}
+        accountIds={accounts.map(account => account.id.toString())}
+        onSuccess={fetchAccounts}
+      />
     </div>
   );
 };
