@@ -110,6 +110,7 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
   const [setupResult, setSetupResult] = useState<SetupResult | null>(null);
   const [mainEmail, setMainEmail] = useState<string>(''); // 存储已选择的主邮箱（显示用）
   const [selectedEmailId, setSelectedEmailId] = useState<string>(''); // 存储选中主邮箱的ID
+  const [invitationCode, setInvitationCode] = useState<string>('TC7MLI9'); // 邀请码，默认值TC7MLI9
   const [emailAccounts, setEmailAccounts] = useState<any[]>([]); // 邮箱账户列表
   const [loadingEmails, setLoadingEmails] = useState(false); // 邮箱列表加载状态
   
@@ -200,7 +201,8 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
       
       const userData = {
         email_suffix: emailSuffix, // 为了满足API类型要求
-        main_email: selectedEmailId // 使用邮箱ID作为主邮箱标识
+        main_email: selectedEmailId, // 使用邮箱ID作为主邮箱标识
+        invitation_code: values.invitationCode || invitationCode // 使用表单中的邀请码，如果没有则使用默认值
       };
       
       console.log('发送一键式账户设置请求，参数:', { setupOptions, userData });
@@ -271,7 +273,8 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
         enable2fa: true,
         enableKyc: true,
         enableCard: true,
-        mainEmail: mainEmail
+        mainEmail: mainEmail,
+        invitationCode: invitationCode
       }}
     >
       <Divider orientation="left">主邮箱选择</Divider>
@@ -295,6 +298,14 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
             label: `${account.email}${account.isDefault ? ' (默认)' : ''}`,
           }))}
         />
+      </Form.Item>
+      
+      <Form.Item
+        name="invitationCode"
+        label="邀请码"
+        rules={[{ required: true, message: '请输入邀请码' }]}
+      >
+        <Input placeholder="请输入邀请码" />
       </Form.Item>
       
       <Divider orientation="left">自动化步骤选择</Divider>
