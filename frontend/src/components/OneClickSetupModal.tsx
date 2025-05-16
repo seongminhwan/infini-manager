@@ -1,423 +1,351 @@
 /**
- * 一键注册级用户模态框组件
- * 用于实现一键式账户设置功能，包括随机用户注册、自动2FA、自动KYC和一键开卡
+ * 一键式账户设置模态框
+ * 用于一键完成随机用户注册、自动2FA、自动KYC和一键开卡的功能
  */
 import React, { useState } from 'react';
 import {
   Modal,
   Form,
-  Button,
-  Checkbox,
-  message,
   Input,
+  Button,
+  message,
+  Checkbox,
   Space,
   Spin,
   Typography,
-  Alert,
+  Result,
   Divider,
-  Row,
-  Col,
-  Card,
+  Descriptions
 } from 'antd';
 import {
-  UserAddOutlined,
+  UserOutlined,
+  MailOutlined,
+  LockOutlined,
+  ReloadOutlined,
+  InfoCircleOutlined,
+  CheckCircleOutlined,
   SafetyCertificateOutlined,
   IdcardOutlined,
-  CreditCardOutlined,
-  LoadingOutlined,
-  InfoCircleOutlined,
-  ReloadOutlined,
-  CheckCircleOutlined,
+  CreditCardOutlined
 } from '@ant-design/icons';
 import { infiniAccountApi } from '../services/api';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
-interface OneClickSetupModalProps {
+// 接口定义
+interface OneClickSetupProps {
   visible: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-const OneClickSetupModal: React.FC<OneClickSetupModalProps> = ({
-  visible,
-  onClose,
-  onSuccess,
-}) => {
+// 表单数据接口
+interface OneClickSetupFormData {
+  email: string;
+  password: string;
+  enable2fa: boolean;
+  enableKyc: boolean;
+  enableCard: boolean;
+}
+
+// 响应结果接口
+interface SetupResult {
+  success: boolean;
+  accountId?: number;
+  email?: string;
+  userId?: string;
+  is2faEnabled?: boolean;
+  isKycEnabled?: boolean;
+  isCardEnabled?: boolean;
+  message?: string;
+}
+
+// 生成随机强密码
+const generateStrongPassword = (): string => {
+  const length = Math.floor(Math.random() * 9) + 16; // 16-24位长度
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=';
+  let password = '';
+  
+  // 确保至少包含一个特殊字符
+  let hasSpecialChar = false;
+  const specialChars = '!@#$%^&*()_+~`|}{[]:;?><,./-=';
+  
+  // 生成随机密码
+  for (let i = 0; i < length; i++) {
+    const randomChar = charset.charAt(Math.floor(Math.random() * charset.length));
+    password += randomChar;
+    
+    // 检查是否包含特殊字符
+    if (specialChars.includes(randomChar)) {
+      hasSpecialChar = true;
+    }
+  }
+  
+  // 如果没有特殊字符，替换最后一个字符为特殊字符
+  if (!hasSpecialChar) {
+    const randomSpecialChar = specialChars.charAt(Math.floor(Math.random() * specialChars.length));
+    password = password.slice(0, -1) + randomSpecialChar;
+  }
+  
+  return password;
+};
+
+// 随机生成邮箱地址
+const generateRandomEmail = (): string => {
+  const domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'protonmail.com'];
+  const adjectives = ['happy', 'clever', 'smart', 'bright', 'sharp', 'wise', 'cool', 'amazing', 'awesome', 'brilliant'];
+  const nouns = ['user', 'person', 'player', 'student', 'teacher', 'developer', 'coder', 'gamer', 'master', 'ninja'];
+  
+  const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const randomNum = Math.floor(Math.random() * 10000);
+  const domain = domains[Math.floor(Math.random() * domains.length)];
+  
+  return `${adjective}.${noun}${randomNum}@${domain}`;
+};
+
+// 一键式账户设置模态框组件
+const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, onSuccess }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [setupResult, setSetupResult] = useState<any>(null);
-  const [setupSuccess, setSetupSuccess] = useState(false);
+  const [setupResult, setSetupResult] = useState<SetupResult | null>(null);
   
   // 重置状态
   const resetState = () => {
     form.resetFields();
     setSetupResult(null);
-    setSetupSuccess(false);
-    form.setFieldsValue({
-      enable2FA: true,
-      enableKYC: true,
-      enableCard: true,
-      password: generateRandomPassword(),
-    });
-  };
-
-  // 生成随机强密码
-  const generateRandomPassword = (): string => {
-    const length = Math.floor(Math.random() * 9) + 16; // 16-24位长度
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=';
-    let password = '';
-    
-    // 确保至少包含一个特殊字符
-    let hasSpecialChar = false;
-    const specialChars = '!@#$%^&*()_+~`|}{[]:;?><,./-=';
-    
-    // 生成随机密码
-    for (let i = 0; i < length; i++) {
-      const randomChar = charset.charAt(Math.floor(Math.random() * charset.length));
-      password += randomChar;
-      
-      // 检查是否包含特殊字符
-      if (specialChars.includes(randomChar)) {
-        hasSpecialChar = true;
-      }
-    }
-    
-    // 如果没有特殊字符，替换最后一个字符为特殊字符
-    if (!hasSpecialChar) {
-      const randomSpecialChar = specialChars.charAt(Math.floor(Math.random() * specialChars.length));
-      password = password.slice(0, -1) + randomSpecialChar;
-    }
-    
-    return password;
   };
   
-  // 表单提交时自动生成一个随机邮箱前缀
-  const generateRandomEmailPrefix = (): string => {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let prefix = '';
-    for (let i = 0; i < 10; i++) {
-      prefix += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return prefix;
-  };
-
-  // 组件挂载时设置默认值
-  React.useEffect(() => {
-    if (visible) {
-      resetState();
-    }
-  }, [visible]);
-
   // 处理关闭
   const handleClose = () => {
     resetState();
     onClose();
   };
-
-  // 处理重置
-  const handleReset = () => {
-    resetState();
+  
+  // 生成随机信息
+  const generateRandomInfo = () => {
+    form.setFieldsValue({
+      email: generateRandomEmail(),
+      password: generateStrongPassword()
+    });
+    message.success('已生成随机账户信息');
   };
-
-  // 处理提交
-  const handleSubmit = async () => {
+  
+  // 提交表单
+  const handleSubmit = async (values: OneClickSetupFormData) => {
     try {
-      const values = await form.validateFields();
       setLoading(true);
       
-      const { emailPrefix, domain, password, enable2FA, enableKYC, enableCard } = values;
-      const email = `${emailPrefix}@${domain}`;
-      
-      const params = {
-        email,
-        password,
-        enable2FA,
-        enableKYC,
-        enableCard,
-      };
-      
-      const response = await infiniAccountApi.oneClickAccountSetup(params);
+      // 调用一键式账户设置API
+      const response = await infiniAccountApi.oneClickAccountSetup({
+        email: values.email,
+        password: values.password,
+        enable2fa: values.enable2fa,
+        enableKyc: values.enableKyc,
+        enableCard: values.enableCard
+      });
       
       if (response.success) {
-        setSetupResult(response.data);
-        setSetupSuccess(true);
         message.success('一键式账户设置成功');
-        onSuccess(); // 刷新账户列表
+        // 设置结果
+        setSetupResult({
+          success: true,
+          accountId: response.data.accountId,
+          email: response.data.email,
+          userId: response.data.userId,
+          is2faEnabled: response.data.is2faEnabled,
+          isKycEnabled: response.data.isKycEnabled,
+          isCardEnabled: response.data.isCardEnabled,
+        });
+        
+        // 刷新账户列表
+        onSuccess();
       } else {
-        setSetupResult({ error: response.message });
-        message.error(`一键式账户设置失败: ${response.message}`);
+        message.error(response.message || '一键式账户设置失败');
+        setSetupResult({
+          success: false,
+          message: response.message || '一键式账户设置失败，请重试'
+        });
       }
     } catch (error: any) {
-      setSetupResult({ error: error.message });
-      message.error(`一键式账户设置失败: ${error.message}`);
+      console.error('一键式账户设置出错:', error);
+      message.error('一键式账户设置失败: ' + error.message);
+      setSetupResult({
+        success: false,
+        message: error.message || '一键式账户设置失败，请重试'
+      });
     } finally {
       setLoading(false);
     }
   };
-
-  // 生成随机密码
-  const generatePassword = () => {
-    const password = generateRandomPassword();
-    form.setFieldsValue({ password });
-    message.success('已生成随机强密码');
-  };
-
-  // 生成随机邮箱
-  const generateRandomEmail = () => {
-    const emailPrefix = generateRandomEmailPrefix();
-    form.setFieldsValue({ emailPrefix });
-    message.success('已生成随机邮箱前缀');
-  };
-
-  // 渲染设置结果
-  const renderSetupResult = () => {
+  
+  // 渲染表单
+  const renderForm = () => (
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={handleSubmit}
+      initialValues={{
+        enable2fa: true,
+        enableKyc: true,
+        enableCard: true
+      }}
+    >
+      <Form.Item
+        name="email"
+        label="邮箱"
+        rules={[
+          { required: true, message: '请输入邮箱' },
+          { type: 'email', message: '请输入有效的邮箱地址' }
+        ]}
+      >
+        <Input prefix={<MailOutlined />} placeholder="请输入邮箱" />
+      </Form.Item>
+      
+      <Form.Item
+        name="password"
+        label="密码"
+        rules={[{ required: true, message: '请输入密码' }]}
+      >
+        <Input.Password 
+          prefix={<LockOutlined />} 
+          placeholder="请输入密码" 
+          addonAfter={
+            <Button 
+              type="text" 
+              icon={<ReloadOutlined />} 
+              onClick={(e) => {
+                e.preventDefault();
+                form.setFieldsValue({ password: generateStrongPassword() });
+              }}
+              style={{ border: 'none', padding: 0 }}
+            />
+          }
+        />
+      </Form.Item>
+      
+      <Divider orientation="left">自动化步骤选择</Divider>
+      
+      <Form.Item name="enable2fa" valuePropName="checked">
+        <Checkbox>
+          <Space>
+            <SafetyCertificateOutlined />
+            自动开启2FA
+          </Space>
+        </Checkbox>
+      </Form.Item>
+      
+      <Form.Item name="enableKyc" valuePropName="checked">
+        <Checkbox>
+          <Space>
+            <IdcardOutlined />
+            自动进行KYC认证
+          </Space>
+        </Checkbox>
+      </Form.Item>
+      
+      <Form.Item name="enableCard" valuePropName="checked">
+        <Checkbox>
+          <Space>
+            <CreditCardOutlined />
+            自动开通卡片
+          </Space>
+        </Checkbox>
+      </Form.Item>
+      
+      <Form.Item>
+        <Button block type="dashed" icon={<ReloadOutlined />} onClick={generateRandomInfo}>
+          生成随机账户信息
+        </Button>
+      </Form.Item>
+      
+      <Form.Item>
+        <Text type="secondary">
+          <InfoCircleOutlined style={{ marginRight: 8 }} />
+          一键式账户设置将自动完成选定的所有步骤，无需额外操作
+        </Text>
+      </Form.Item>
+    </Form>
+  );
+  
+  // 渲染结果页面
+  const renderResult = () => {
     if (!setupResult) return null;
     
-    if (setupResult.error) {
+    if (setupResult.success) {
       return (
-        <Alert
-          message="设置失败"
-          description={setupResult.error}
-          type="error"
-          showIcon
-          style={{ marginBottom: 16 }}
+        <Result
+          status="success"
+          title="一键式账户设置成功"
+          subTitle="账户已创建并完成选定的所有步骤"
+          extra={[
+            <Button type="primary" key="back" onClick={handleClose}>
+              完成
+            </Button>
+          ]}
+        >
+          <Descriptions column={1} bordered>
+            <Descriptions.Item label="账户ID">{setupResult.accountId}</Descriptions.Item>
+            <Descriptions.Item label="用户ID">{setupResult.userId}</Descriptions.Item>
+            <Descriptions.Item label="邮箱">{setupResult.email}</Descriptions.Item>
+            <Descriptions.Item label="2FA状态">
+              {setupResult.is2faEnabled ? '已开启' : '未开启'}
+            </Descriptions.Item>
+            <Descriptions.Item label="KYC状态">
+              {setupResult.isKycEnabled ? '已认证' : '未认证'}
+            </Descriptions.Item>
+            <Descriptions.Item label="卡片状态">
+              {setupResult.isCardEnabled ? '已开通' : '未开通'}
+            </Descriptions.Item>
+          </Descriptions>
+        </Result>
+      );
+    } else {
+      return (
+        <Result
+          status="error"
+          title="一键式账户设置失败"
+          subTitle={setupResult.message || '请重试或联系管理员'}
+          extra={[
+            <Button type="primary" key="retry" onClick={() => setSetupResult(null)}>
+              重试
+            </Button>,
+            <Button key="back" onClick={handleClose}>
+              关闭
+            </Button>
+          ]}
         />
       );
     }
-    
-    return (
-      <div>
-        <Alert
-          message="设置成功"
-          description="账户已成功创建并完成设置"
-          type="success"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-        
-        <Card title="账户信息" style={{ marginBottom: 16 }}>
-          <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <Text strong>账户ID: </Text>
-              <Text>{setupResult.accountId}</Text>
-            </Col>
-            <Col span={12}>
-              <Text strong>邮箱: </Text>
-              <Text>{setupResult.email}</Text>
-            </Col>
-            <Col span={24}>
-              <Text strong>状态: </Text>
-              <Text>{setupResult.status || '已创建'}</Text>
-            </Col>
-          </Row>
-        </Card>
-        
-        {setupResult.twoFaResult && (
-          <Card title="2FA 设置结果" style={{ marginBottom: 16 }}>
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <Text strong>状态: </Text>
-                <Text>{setupResult.twoFaResult.success ? '成功' : '失败'}</Text>
-              </Col>
-              {setupResult.twoFaResult.secretKey && (
-                <Col span={24}>
-                  <Text strong>密钥: </Text>
-                  <Text>{setupResult.twoFaResult.secretKey}</Text>
-                </Col>
-              )}
-            </Row>
-          </Card>
-        )}
-        
-        {setupResult.kycResult && (
-          <Card title="KYC 设置结果" style={{ marginBottom: 16 }}>
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <Text strong>状态: </Text>
-                <Text>{setupResult.kycResult.success ? '成功' : '失败'}</Text>
-              </Col>
-              {setupResult.kycResult.message && (
-                <Col span={24}>
-                  <Text strong>详情: </Text>
-                  <Text>{setupResult.kycResult.message}</Text>
-                </Col>
-              )}
-            </Row>
-          </Card>
-        )}
-        
-        {setupResult.cardResult && (
-          <Card title="开卡结果" style={{ marginBottom: 16 }}>
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <Text strong>状态: </Text>
-                <Text>{setupResult.cardResult.success ? '成功' : '失败'}</Text>
-              </Col>
-              {setupResult.cardResult.cardId && (
-                <Col span={24}>
-                  <Text strong>卡片ID: </Text>
-                  <Text>{setupResult.cardResult.cardId}</Text>
-                </Col>
-              )}
-            </Row>
-          </Card>
-        )}
-      </div>
-    );
   };
-
+  
   return (
     <Modal
       title="一键注册级用户"
       open={visible}
       onCancel={handleClose}
-      width={700}
-      footer={[
-        <Button key="cancel" onClick={handleClose}>
-          关闭
-        </Button>,
-        <Button
-          key="reset"
-          onClick={handleReset}
-          disabled={loading}
-          style={{ display: setupSuccess ? 'none' : 'inline-block' }}
-        >
-          重置
-        </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          onClick={() => form.submit()}
-          loading={loading}
-          style={{ display: setupSuccess ? 'none' : 'inline-block' }}
-        >
-          一键设置
-        </Button>,
-      ]}
+      footer={null}
+      width={600}
     >
-      {setupSuccess ? (
-        renderSetupResult()
-      ) : (
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          initialValues={{
-            emailPrefix: generateRandomEmailPrefix(),
-            domain: 'gmail.com',
-            password: generateRandomPassword(),
-            enable2FA: true,
-            enableKYC: true,
-            enableCard: true,
-          }}
-        >
-          <Title level={5}>账户信息</Title>
-          <Row gutter={16}>
-            <Col span={14}>
-              <Form.Item
-                name="emailPrefix"
-                label="邮箱前缀"
-                rules={[{ required: true, message: '请输入邮箱前缀' }]}
+      <Spin spinning={loading}>
+        {setupResult ? renderResult() : (
+          <div>
+            {renderForm()}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <Button onClick={handleClose}>
+                取消
+              </Button>
+              <Button 
+                type="primary" 
+                onClick={() => form.submit()}
+                loading={loading}
               >
-                <Input 
-                  addonAfter={
-                    <Button 
-                      type="text" 
-                      icon={<ReloadOutlined />} 
-                      onClick={generateRandomEmail}
-                      style={{ border: 'none', padding: 0 }}
-                    />
-                  }
-                  placeholder="输入邮箱前缀"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={10}>
-              <Form.Item
-                name="domain"
-                label="域名"
-                rules={[{ required: true, message: '请选择域名' }]}
-              >
-                <Input placeholder="gmail.com" />
-              </Form.Item>
-            </Col>
-          </Row>
-          
-          <Form.Item
-            name="password"
-            label="密码"
-            rules={[{ required: true, message: '请输入密码' }]}
-          >
-            <Input.Password 
-              placeholder="输入密码" 
-              addonAfter={
-                <Button 
-                  type="text" 
-                  icon={<ReloadOutlined />} 
-                  onClick={generatePassword}
-                  style={{ border: 'none', padding: 0 }}
-                />
-              }
-            />
-          </Form.Item>
-          
-          <Divider orientation="left">功能选择</Divider>
-          
-          <Form.Item name="enable2FA" valuePropName="checked">
-            <Checkbox>
-              <Space>
-                <SafetyCertificateOutlined />
-                <span>启用自动2FA</span>
-              </Space>
-            </Checkbox>
-          </Form.Item>
-          
-          <Form.Item name="enableKYC" valuePropName="checked">
-            <Checkbox>
-              <Space>
-                <IdcardOutlined />
-                <span>启用自动KYC认证</span>
-              </Space>
-            </Checkbox>
-          </Form.Item>
-          
-          <Form.Item name="enableCard" valuePropName="checked">
-            <Checkbox>
-              <Space>
-                <CreditCardOutlined />
-                <span>启用一键开卡</span>
-              </Space>
-            </Checkbox>
-          </Form.Item>
-          
-          <Alert
-            message="提示"
-            description="一键注册级用户将自动完成随机用户注册、账户创建、2FA验证、KYC认证和一键开卡流程，您可以选择需要开启的功能。"
-            type="info"
-            showIcon
-          />
-        </Form>
-      )}
-      
-      {loading && (
-        <div style={{ textAlign: 'center', padding: '20px 0' }}>
-          <Spin 
-            indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} 
-            tip="正在进行一键式账户设置..."
-          />
-        </div>
-      )}
-      
-      {setupResult && !setupSuccess && (
-        <Alert
-          message="设置失败"
-          description={setupResult.error}
-          type="error"
-          showIcon
-          style={{ marginTop: 16 }}
-        />
-      )}
+                开始设置
+              </Button>
+            </div>
+          </div>
+        )}
+      </Spin>
     </Modal>
   );
 };
