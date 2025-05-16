@@ -436,7 +436,7 @@ const AccountRegister: React.FC = () => {
       title: '状态',
       key: 'status',
       width: 100,
-      render: (_, record: RegisterResult) => {
+      render: (_: any, record: RegisterResult) => {
         if (record.success) {
           return <Text type="success" strong><CheckCircleOutlined /> 成功</Text>;
         } else {
