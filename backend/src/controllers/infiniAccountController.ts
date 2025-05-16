@@ -1122,6 +1122,385 @@ export const removeAccountFromGroup = async (req: Request, res: Response): Promi
 };
 
 /**
+ * 一键式账户设置
+ * 自动执行用户注册、2FA认证、KYC验证和开卡流程
+ */
+export const oneClickAccountSetup = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { setupOptions, userData } = req.body;
+    
+    // 验证必要的参数
+    if (!setupOptions || !userData) {
+      res.status(400).json({
+        success: false,
+        message: '缺少必要参数'
+      });
+      return;
+    }
+    
+    console.log(`接收到一键式账户设置请求，选项:`, setupOptions);
+    
+    // 创建随机用户
+    const randomUserService = new RandomUserService();
+    const randomUserResponse = await randomUserService.generateRandomUsers({ 
+      email_suffix: userData.email_suffix, 
+      count: 1 
+    });
+    
+    if (!randomUserResponse.success) {
+      res.status(500).json({
+        success: false,
+        message: `生成随机用户失败: ${randomUserResponse.message}`
+      });
+      return;
+    }
+    
+    const randomUser = randomUserResponse.data[0];
+    console.log(`成功生成随机用户: ${randomUser.email_prefix}@${userData.email_suffix || 'example.com'}`);
+    
+    // 注册Infini账户
+    let email = randomUser.full_email || `${randomUser.email_prefix}@${userData.email_suffix || 'example.com'}`;
+    let password = randomUser.password;
+    
+    const accountResponse = await infiniAccountService.createInfiniAccount(email, password, randomUser.id);
+    
+    if (!accountResponse.success) {
+      res.status(500).json({
+        success: false,
+        message: `创建Infini账户失败: ${accountResponse.message}`,
+        randomUser
+      });
+      return;
+    }
+    
+    const accountId = accountResponse.data.id;
+    console.log(`成功创建Infini账户, ID: ${accountId}`);
+    
+    const results: any = {
+      success: true,
+      accountId,
+      randomUser,
+      account: accountResponse.data,
+      steps: {
+        register: { success: true }
+      }
+    };
+    
+    // 根据选项执行后续步骤
+    
+    // 自动2FA绑定
+    if (setupOptions.enable2fa) {
+      console.log(`开始执行2FA绑定步骤, 账户ID: ${accountId}`);
+      const twoFaResponse = await setupTwoFactorAuth(accountId, email);
+      results.steps.twoFa = twoFaResponse;
+      
+      if (!twoFaResponse.success) {
+        // 继续执行后续步骤，但记录失败信息
+        console.error(`2FA设置失败: ${twoFaResponse.message}`);
+      }
+    }
+    
+    // 自动KYC验证
+    if (setupOptions.enableKyc) {
+      console.log(`开始执行KYC验证步骤, 账户ID: ${accountId}`);
+      const kycResponse = await setupKycVerification(accountId, randomUser);
+      results.steps.kyc = kycResponse;
+      
+      if (!kycResponse.success) {
+        // 继续执行后续步骤，但记录失败信息
+        console.error(`KYC验证失败: ${kycResponse.message}`);
+      }
+    }
+    
+    // 自动开卡
+    if (setupOptions.enableCard) {
+      console.log(`开始执行开卡步骤, 账户ID: ${accountId}`);
+      const cardResponse = await setupCard(accountId, setupOptions.cardType);
+      results.steps.card = cardResponse;
+      
+      if (!cardResponse.success) {
+        // 记录失败信息
+        console.error(`开卡失败: ${cardResponse.message}`);
+      }
+    }
+    
+    // 返回所有步骤的执行结果
+    res.status(201).json(results);
+    
+  } catch (error) {
+    console.error('一键式账户设置失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `一键式账户设置失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 设置2FA认证
+ * @param accountId Infini账户ID
+ * @param email 账户邮箱
+ */
+async function setupTwoFactorAuth(accountId: string, email: string): Promise<any> {
+  try {
+    // 1. 获取2FA二维码
+    const qrcodeResponse = await infiniAccountService.getGoogle2faQrcode(accountId);
+    if (!qrcodeResponse.success) {
+      return {
+        success: false,
+        message: `获取2FA二维码失败: ${qrcodeResponse.message}`
+      };
+    }
+    
+    const qrCodeData = qrcodeResponse.data;
+    
+    // 2. 解析二维码URL获取密钥
+    const totpUrl = qrCodeData.totp_url;
+    const secretRegex = /secret=([A-Z0-9]+)/;
+    const match = totpUrl.match(secretRegex);
+    if (!match || !match[1]) {
+      return {
+        success: false,
+        message: '无法从2FA二维码URL中提取密钥'
+      };
+    }
+    
+    const secretKey = match[1];
+    console.log(`成功从2FA二维码URL中提取密钥: ${secretKey}`);
+    
+    // 3. 保存2FA信息
+    await infiniAccountService.update2faInfo(accountId, {
+      qr_code_url: totpUrl,
+      secret_key: secretKey,
+      recovery_codes: qrCodeData.recovery_codes || []
+    });
+    console.log(`成功保存2FA信息到数据库`);
+    
+    // 4. 发送2FA验证邮件
+    const emailResponse = await infiniAccountService.sendGoogle2faVerificationEmail(email, accountId, 6);
+    if (!emailResponse.success) {
+      return {
+        success: false,
+        message: `发送2FA验证邮件失败: ${emailResponse.message}`
+      };
+    }
+    console.log(`成功发送2FA验证邮件到: ${email}`);
+    
+    // 5. 使用TotpToolService生成验证码
+    const totpToolService = new TotpToolService();
+    const totpResponse = await totpToolService.generateTotpCode(secretKey);
+    if (!totpResponse.success) {
+      return {
+        success: false,
+        message: `生成TOTP验证码失败: ${totpResponse.message}`
+      };
+    }
+    
+    const totpCode = totpResponse.data.code;
+    console.log(`成功生成TOTP验证码: ${totpCode}`);
+    
+    // 6. 尝试从邮件中获取验证码
+    let verificationCode = '';
+    try {
+      const verifyResponse = await infiniAccountService.fetchVerificationCode(email, '', 3, 5);
+      if (verifyResponse.success && verifyResponse.data && verifyResponse.data.code) {
+        verificationCode = verifyResponse.data.code;
+        console.log(`成功从邮件中获取验证码: ${verificationCode}`);
+      }
+    } catch (error) {
+      console.error('无法从邮件获取验证码，使用默认验证码:', error);
+      // 使用默认值，主要是为了演示，实际应该从邮件中获取或用更可靠的方式
+      verificationCode = '000000';
+    }
+    
+    if (!verificationCode) {
+      return {
+        success: false,
+        message: '无法获取2FA验证邮件中的验证码'
+      };
+    }
+    
+    // 7. 绑定2FA
+    const bindResponse = await infiniAccountService.bindGoogle2fa(verificationCode, totpCode, accountId);
+    console.log(`2FA绑定结果:`, bindResponse);
+    
+    return {
+      success: bindResponse.success,
+      message: bindResponse.message || '2FA绑定完成',
+      data: {
+        secretKey,
+        qrCodeUrl: totpUrl,
+        recoveryCode: qrCodeData.recovery_codes || []
+      }
+    };
+  } catch (error) {
+    console.error('设置2FA认证失败:', error);
+    return {
+      success: false,
+      message: `设置2FA认证失败: ${(error as Error).message}`
+    };
+  }
+}
+
+/**
+ * 设置KYC验证
+ * @param accountId Infini账户ID
+ * @param randomUser 随机用户数据
+ */
+async function setupKycVerification(accountId: string, randomUser: any): Promise<any> {
+  try {
+    // 1. 获取随机KYC图片
+    const kycImageResponse = await fetch(`${process.env.API_BASE_URL || 'http://localhost:3000'}/api/kyc-images/random`);
+    if (!kycImageResponse.ok) {
+      return {
+        success: false,
+        message: '获取随机KYC图片失败'
+      };
+    }
+    
+    const kycImageData = await kycImageResponse.json();
+    if (!kycImageData.success || !kycImageData.data) {
+      return {
+        success: false,
+        message: '获取随机KYC图片数据失败'
+      };
+    }
+    
+    const kycImage = kycImageData.data;
+    console.log(`成功获取随机KYC图片, ID: ${kycImage.id}`);
+    
+    // 2. 上传KYC图片
+    // 将base64转换为Buffer
+    let imageData = kycImage.img_base64 || kycImage.base64;
+    if (!imageData) {
+      return {
+        success: false,
+        message: '无效的KYC图片数据'
+      };
+    }
+    
+    // 如果base64字符串包含前缀，需要移除
+    if (imageData.includes('base64,')) {
+      imageData = imageData.split('base64,')[1];
+    }
+    
+    const imageBuffer = Buffer.from(imageData, 'base64');
+    
+    // 上传图片
+    const uploadResponse = await infiniAccountService.uploadKycImage(
+      accountId,
+      imageBuffer,
+      `kyc_image_${kycImage.id || Date.now()}.jpg`
+    );
+    
+    if (!uploadResponse.success) {
+      return {
+        success: false,
+        message: `上传KYC图片失败: ${uploadResponse.message}`
+      };
+    }
+    
+    const fileName = uploadResponse.data.file_name;
+    console.log(`成功上传KYC图片, 文件名: ${fileName}`);
+    
+    // 提取电话号码信息
+    let phoneCode = '+1';
+    let phoneNumber = '';
+    
+    if (randomUser.phone) {
+      const phoneRegex = /^(\+\d+)\s+(.+)$/;
+      const match = randomUser.phone.match(phoneRegex);
+      
+      if (match) {
+        phoneCode = match[1];
+        phoneNumber = match[2];
+      } else {
+        phoneNumber = randomUser.phone;
+      }
+    }
+    
+    // 3. 提交护照KYC信息
+    const kycData = {
+      phoneNumber: phoneNumber,
+      phoneCode: phoneCode,
+      firstName: randomUser.first_name,
+      lastName: randomUser.last_name,
+      country: 'CHN', // 默认值
+      passportNumber: randomUser.passport_no,
+      fileName: fileName
+    };
+    
+    console.log(`提交护照KYC信息:`, kycData);
+    const kycResponse = await infiniAccountService.submitPassportKyc(accountId, kycData);
+    console.log(`KYC提交结果:`, kycResponse);
+    
+    return {
+      success: kycResponse.success,
+      message: kycResponse.message || 'KYC验证完成',
+      data: kycResponse.data
+    };
+  } catch (error) {
+    console.error('设置KYC验证失败:', error);
+    return {
+      success: false,
+      message: `设置KYC验证失败: ${(error as Error).message}`
+    };
+  }
+}
+
+/**
+ * 设置开卡
+ * @param accountId Infini账户ID
+ * @param cardType 卡片类型
+ */
+async function setupCard(accountId: string, cardType: number = 3): Promise<any> {
+  try {
+    // 获取可用卡类型
+    const cardTypesResponse = await infiniAccountService.getAvailableCardTypes(accountId);
+    if (!cardTypesResponse.success) {
+      return {
+        success: false,
+        message: `获取可用卡类型失败: ${cardTypesResponse.message}`
+      };
+    }
+    
+    // 检查请求的卡类型是否可用
+    const availableCardTypes = cardTypesResponse.data?.cardTypes || [];
+    console.log(`可用卡类型:`, availableCardTypes);
+    
+    if (!availableCardTypes.includes(cardType)) {
+      // 使用第一个可用的卡类型
+      if (availableCardTypes.length > 0) {
+        cardType = availableCardTypes[0];
+        console.log(`请求的卡类型不可用，使用第一个可用的卡类型: ${cardType}`);
+      } else {
+        return {
+          success: false,
+          message: '没有可用的卡类型'
+        };
+      }
+    }
+    
+    // 创建卡片
+    console.log(`开始创建卡片，类型: ${cardType}`);
+    const cardResponse = await infiniAccountService.createCard(accountId, cardType);
+    console.log(`卡片创建结果:`, cardResponse);
+    
+    return {
+      success: cardResponse.success,
+      message: cardResponse.message || '开卡完成',
+      data: cardResponse.data
+    };
+  } catch (error) {
+    console.error('设置开卡失败:', error);
+    return {
+      success: false,
+      message: `设置开卡失败: ${(error as Error).message}`
+    };
+  }
+}
+
+/**
  * 批量从分组中移除账户
  */
 export const removeAccountsFromGroup = async (req: Request, res: Response): Promise<void> => {
