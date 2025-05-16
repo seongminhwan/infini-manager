@@ -1212,11 +1212,44 @@ export const oneClickAccountSetup = async (req: Request, res: Response): Promise
     
     // 使用验证码注册账户
     console.log(`使用验证码 ${verificationCode} 注册账户: ${email}`);
-    const registerResponse = await infiniAccountService.registerInfiniAccount(email, password, verificationCode);
-    if (!registerResponse.success) {
+    
+    // 直接调用Infini注册API
+    try {
+      const registerResponse = await httpClient.post(
+        `${process.env.INFINI_API_BASE_URL || 'https://api-card.infini.money'}/user/register`,
+        { 
+          email, 
+          password, 
+          verification_code: verificationCode,
+          invitation_code: '' // 可选的邀请码字段
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+            'Referer': 'https://app.infini.money/',
+            'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+          }
+        }
+      );
+      
+      if (registerResponse.data.code !== 0) {
+        res.status(500).json({
+          success: false,
+          message: `注册Infini账户失败: ${registerResponse.data.message || '未知错误'}`,
+          randomUser
+        });
+        return;
+      }
+      
+      console.log('注册API响应成功:', registerResponse.data);
+    } catch (error) {
+      console.error('调用注册API失败:', error);
       res.status(500).json({
         success: false,
-        message: `注册Infini账户失败: ${registerResponse.message}`,
+        message: `调用注册API失败: ${(error as Error).message}`,
         randomUser
       });
       return;
