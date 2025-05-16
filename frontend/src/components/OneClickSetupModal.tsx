@@ -201,7 +201,7 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
       
       const userData = {
         email_suffix: emailSuffix, // 为了满足API类型要求
-        main_email: mainEmail // 附加主邮箱信息，让后端可以使用
+        main_email: selectedMainEmail // 使用表单选择的主邮箱，让后端可以使用
       };
       
       console.log('发送一键式账户设置请求，参数:', { setupOptions, userData });
