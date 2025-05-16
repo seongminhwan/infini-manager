@@ -1164,6 +1164,66 @@ export const oneClickAccountSetup = async (req: Request, res: Response): Promise
     let email = randomUser.full_email || `${randomUser.email_prefix}@${userData.email_suffix || 'example.com'}`;
     let password = randomUser.password;
     
+    // 先发送验证码
+    console.log(`发送验证码到邮箱: ${email}`);
+    const sendCodeResponse = await infiniAccountService.sendVerificationCode(email, 0); // 0表示注册验证码
+    if (!sendCodeResponse.success) {
+      res.status(500).json({
+        success: false,
+        message: `发送验证码失败: ${sendCodeResponse.message}`,
+        randomUser
+      });
+      return;
+    }
+    
+    // 从邮件中获取验证码
+    console.log(`尝试从邮件中获取验证码`);
+    let verificationCode = '';
+    try {
+      // 尝试3次，每次间隔5秒，从邮件中获取验证码
+      const verifyResponse = await infiniAccountService.fetchVerificationCode(email, '', 3, 5);
+      if (verifyResponse.success && verifyResponse.data && verifyResponse.data.code) {
+        verificationCode = verifyResponse.data.code;
+        console.log(`成功从邮件中获取验证码: ${verificationCode}`);
+      }
+    } catch (error) {
+      console.error('无法从邮件获取验证码，继续尝试使用sendAndWaitVerificationCode:', error);
+      
+      // 直接等待验证码
+      try {
+        const waitCodeResponse = await infiniAccountService.sendAndWaitVerificationCode(email, 0);
+        if (waitCodeResponse.success && waitCodeResponse.data) {
+          verificationCode = waitCodeResponse.data.code;
+          console.log(`通过等待方式获取验证码成功: ${verificationCode}`);
+        }
+      } catch (waitError) {
+        console.error('等待验证码也失败:', waitError);
+      }
+    }
+    
+    if (!verificationCode) {
+      res.status(500).json({
+        success: false,
+        message: '无法获取验证码，注册失败',
+        randomUser
+      });
+      return;
+    }
+    
+    // 使用验证码注册账户
+    console.log(`使用验证码 ${verificationCode} 注册账户: ${email}`);
+    const registerResponse = await infiniAccountService.registerInfiniAccount(email, password, verificationCode);
+    if (!registerResponse.success) {
+      res.status(500).json({
+        success: false,
+        message: `注册Infini账户失败: ${registerResponse.message}`,
+        randomUser
+      });
+      return;
+    }
+    
+    // 注册成功后，创建账户记录
+    console.log(`注册成功，创建账户记录`);
     const accountResponse = await infiniAccountService.createInfiniAccount(email, password, randomUser.id);
     
     if (!accountResponse.success) {
