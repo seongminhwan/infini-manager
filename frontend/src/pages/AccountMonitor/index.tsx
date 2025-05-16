@@ -3347,6 +3347,13 @@ const AccountMonitor: React.FC = () => {
         accountIds={accounts.map(account => account.id.toString())}
         onSuccess={fetchAccounts}
       />
+      
+      {/* 一键注册级用户模态框 */}
+      <OneClickSetupModal
+        visible={oneClickSetupModalVisible}
+        onClose={() => setOneClickSetupModalVisible(false)}
+        onSuccess={fetchAccounts}
+      />
     </div>
   );
 };
