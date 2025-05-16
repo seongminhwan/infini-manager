@@ -232,13 +232,13 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
         const account = accountResponse.data.data;
         console.log('账户信息:', account);
         
-        // 检查是否有关联的mock_user_id（随机用户ID）
-        if (account.mock_user_id) {
-          console.log('找到关联的随机用户ID:', account.mock_user_id);
+        // 检查是否有关联的mockUserId（随机用户ID）
+        if (account.mockUserId) {
+          console.log('找到关联的随机用户ID:', account.mockUserId);
           
           // 获取随机用户信息
           try {
-            const userResponse = await randomUserApi.getRandomUserById(account.mock_user_id.toString());
+            const userResponse = await randomUserApi.getRandomUserById(account.mockUserId.toString());
             console.log('随机用户API响应:', userResponse);
             
             if (userResponse.success && userResponse.data) {
