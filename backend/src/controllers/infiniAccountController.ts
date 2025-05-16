@@ -10,6 +10,7 @@ import { RandomUserService } from '../service/RandomUserService';
 import { TotpToolService } from '../service/TotpToolService'; 
 import { InfiniAccountCreate } from '../types';
 import httpClient from '../utils/httpClient';
+import db from '../db/db';
 
 // 创建InfiniAccountService实例
 const infiniAccountService = new InfiniAccountService();
@@ -1140,13 +1141,24 @@ export const oneClickAccountSetup = async (req: Request, res: Response): Promise
       });
       return;
     }
+    // 根据main_email查询主邮箱
+    const mainEmail = await db('email_accounts')
+      .where('id', userData.main_email)
+      .first();
+    if (!mainEmail) {
+      res.status(400).json({
+        success: false,
+        message: '主邮箱不存在'
+      });
+      return;
+    }
     
     console.log(`接收到一键式账户设置请求，选项:`, setupOptions);
     
     // 创建随机用户
     const randomUserService = new RandomUserService();
     const randomUserResponse = await randomUserService.generateRandomUsers({ 
-      email_suffix: userData.email_suffix, 
+      email_suffix: mainEmail.domain_name, 
       count: 1 
     });
     
@@ -1182,7 +1194,7 @@ export const oneClickAccountSetup = async (req: Request, res: Response): Promise
     let verificationCode = '';
     try {
       // 尝试3次，每次间隔5秒，从邮件中获取验证码
-      const verifyResponse = await infiniAccountService.fetchVerificationCode(email, '', 3, 5);
+      const verifyResponse = await infiniAccountService.fetchVerificationCode(email, mainEmail.email, 20, 5);
       if (verifyResponse.success && verifyResponse.data && verifyResponse.data.code) {
         verificationCode = verifyResponse.data.code;
         console.log(`成功从邮件中获取验证码: ${verificationCode}`);
@@ -1214,24 +1226,32 @@ export const oneClickAccountSetup = async (req: Request, res: Response): Promise
     // 使用验证码注册账户
     console.log(`使用验证码 ${verificationCode} 注册账户: ${email}`);
     
+    // 获取邀请码
+    const invitationCode = userData.invitation_code || 'TC7MLI9';
+    console.log(`使用邀请码 ${invitationCode} 注册账户`);
+    
     // 直接调用Infini注册API
     try {
       const registerResponse = await httpClient.post(
-        `${process.env.INFINI_API_BASE_URL || 'https://api-card.infini.money'}/user/register`,
+        `${process.env.INFINI_API_BASE_URL || 'https://api-card.infini.money'}/user/registration/email`,
         { 
           email, 
           password, 
           verification_code: verificationCode,
-          invitation_code: '' // 可选的邀请码字段
+          invitation_code: invitationCode // 使用传入的邀请码
         },
         {
           headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
             'Referer': 'https://app.infini.money/',
-            'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+            'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
             'sec-ch-ua-mobile': '?0',
             'sec-ch-ua-platform': '"macOS"',
+            'accept': 'application/json, text/plain, */*',
+            'accept-language': 'zh-CN,zh;q=0.9',
+            'origin': 'http://localhost:33202',
+            'priority': 'u=1, i'
           }
         }
       );
