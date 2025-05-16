@@ -354,12 +354,12 @@ const CardApplyModal: React.FC<CardApplyModalProps> = ({
       return;
     }
 
-    // 检查是否已完成KYC认证
-    if (!isKycVerified(account)) {
-      setCardCreateStatus('kyc-required');
-      message.error('需要先完成KYC认证才能申请卡片');
-      return;
-    }
+    // // 检查是否已完成KYC认证
+    // if (!isKycVerified(account)) {
+    //   setCardCreateStatus('kyc-required');
+    //   message.error('需要先完成KYC认证才能申请卡片');
+    //   return;
+    // }
 
     try {
       setApplyLoading(true);
@@ -561,38 +561,38 @@ const CardApplyModal: React.FC<CardApplyModalProps> = ({
   };
   
   // 如果需要KYC认证，显示KYC提示
-  if (cardCreateStatus === 'kyc-required') {
-    return (
-      <Modal
-        title="一键开卡"
-        open={visible}
-        onCancel={onClose}
-        width={600}
-        footer={[
-          <Button key="close" onClick={onClose}>
-            关闭
-          </Button>
-        ]}
-      >
-        <Result
-          status="warning"
-          title="KYC认证未完成"
-          subTitle="您需要先完成KYC认证才能申请卡片"
-          icon={<IdcardOutlined style={{ color: '#faad14' }} />}
-          extra={
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ marginBottom: 24 }}>
-                请在账户详情页面完成KYC认证后再尝试开卡。KYC认证通常需要1-2个工作日进行审核。
-              </p>
-              <Button type="primary" onClick={onClose}>
-                我知道了
-              </Button>
-            </div>
-          }
-        />
-      </Modal>
-    );
-  }
+  // if (cardCreateStatus === 'kyc-required') {
+  //   return (
+  //     <Modal
+  //       title="一键开卡"
+  //       open={visible}
+  //       onCancel={onClose}
+  //       width={600}
+  //       footer={[
+  //         <Button key="close" onClick={onClose}>
+  //           关闭
+  //         </Button>
+  //       ]}
+  //     >
+  //       <Result
+  //         status="warning"
+  //         title="KYC认证未完成"
+  //         subTitle="您需要先完成KYC认证才能申请卡片"
+  //         icon={<IdcardOutlined style={{ color: '#faad14' }} />}
+  //         extra={
+  //           <div style={{ textAlign: 'center' }}>
+  //             <p style={{ marginBottom: 24 }}>
+  //               请在账户详情页面完成KYC认证后再尝试开卡。KYC认证通常需要1-2个工作日进行审核。
+  //             </p>
+  //             <Button type="primary" onClick={onClose}>
+  //               我知道了
+  //             </Button>
+  //           </div>
+  //         }
+  //       />
+  //     </Modal>
+  //   );
+  // }
 
   return (
     <Modal
@@ -610,7 +610,7 @@ const CardApplyModal: React.FC<CardApplyModalProps> = ({
           icon={<CreditCardOutlined />}
           loading={applyLoading}
           onClick={applyNewCard}
-          disabled={!cardPrices[selectedCardType] || cardCreateStatus === 'success' || !isKycVerified(account)}
+          // disabled={!cardPrices[selectedCardType] || cardCreateStatus === 'success' || !isKycVerified(account)}
         >
           {cardCreateStatus === 'success' ? '已申请成功' : '确认开卡'}
         </Button>,
