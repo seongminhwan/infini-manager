@@ -108,7 +108,8 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [setupResult, setSetupResult] = useState<SetupResult | null>(null);
-  const [mainEmail, setMainEmail] = useState<string>(''); // 存储已选择的主邮箱
+  const [mainEmail, setMainEmail] = useState<string>(''); // 存储已选择的主邮箱（显示用）
+  const [selectedEmailId, setSelectedEmailId] = useState<string>(''); // 存储选中主邮箱的ID
   const [emailAccounts, setEmailAccounts] = useState<any[]>([]); // 邮箱账户列表
   const [loadingEmails, setLoadingEmails] = useState(false); // 邮箱列表加载状态
   
