@@ -2638,20 +2638,48 @@ const AccountMonitor: React.FC = () => {
         );
       }
     },
+    // 根据金额和颜色区间配置获取样式的辅助函数
+    const getStyleForBalance = (amount: number, colorRanges: any[]) => {
+      const result = {
+        color: "default", // 默认标签颜色
+        style: {} as React.CSSProperties // 默认样式为空
+      };
+      
+      // 从大到小遍历阈值，找到第一个符合条件的区间
+      for (const range of colorRanges) {
+        if (amount >= range.threshold) {
+          result.color = range.color;
+          // 如果有背景色和文字颜色，添加到样式中
+          if (range.backgroundColor && range.textColor) {
+            result.style = {
+              backgroundColor: range.backgroundColor,
+              color: range.textColor
+            };
+          }
+          break;
+        }
+      }
+      
+      return result;
+    };
+    
     {
       title: '可用余额',
       dataIndex: 'availableBalance',
       key: 'availableBalance',
       width: 140,
       sorter: (a: InfiniAccount, b: InfiniAccount) => a.availableBalance - b.availableBalance,
-      render: (amount: number) => (
-        <BalanceTag 
-          color={amount === 0 ? "default" : "green"}
-          style={amount > 0 ? { backgroundColor: '#52c41a', color: 'white' } : {}}
-        >
-          {amount.toFixed(6)}
-        </BalanceTag>
-      ),
+      render: (amount: number) => {
+        const { color, style } = getStyleForBalance(amount, availableBalanceColorRanges);
+        return (
+          <BalanceTag 
+            color={color}
+            style={style}
+          >
+            {amount.toFixed(6)}
+          </BalanceTag>
+        );
+      },
     },
     {
       title: '红包余额',
@@ -2660,39 +2688,11 @@ const AccountMonitor: React.FC = () => {
       width: 140,
       sorter: (a: InfiniAccount, b: InfiniAccount) => a.redPacketBalance - b.redPacketBalance,
       render: (amount: number) => {
-        // 基于配置的红包余额颜色计算
-        let color = "default"; // 默认灰色（余额为0或负数）
-        let backgroundColor = '';
-        let textColor = '';
-        
-        if (amount > 0) {
-          if (amount >= 1.4) {
-            // 绿色
-            color = "green";
-            backgroundColor = '#52c41a';
-            textColor = 'white';
-          } else if (amount >= 1) {
-            // 蓝色
-            color = "blue";
-            backgroundColor = '#1890ff';
-            textColor = 'white';
-          } else if (amount >= 0.5) {
-            // 橙色
-            color = "orange";
-            backgroundColor = '#fa8c16';
-            textColor = 'white';
-          } else {
-            // 棕色
-            color = "brown";
-            backgroundColor = '#8B4513';
-            textColor = 'white';
-          }
-        }
-
+        const { color, style } = getStyleForBalance(amount, redPacketBalanceColorRanges);
         return (
           <BalanceTag 
             color={color}
-            style={backgroundColor ? { backgroundColor, color: textColor } : {}}
+            style={style}
           >
             {amount.toFixed(6)}
           </BalanceTag>
