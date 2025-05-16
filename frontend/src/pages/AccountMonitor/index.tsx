@@ -3209,6 +3209,9 @@ const AccountMonitor: React.FC = () => {
                   <Menu.Item key="randomRegister" onClick={() => setRandomUserRegisterModalVisible(true)}>
                     注册随机用户
                   </Menu.Item>
+                  <Menu.Item key="oneClickSetup" onClick={() => setOneClickSetupModalVisible(true)}>
+                    一键注册级用户
+                  </Menu.Item>
                 </Menu>
               }
               trigger={['click']}
