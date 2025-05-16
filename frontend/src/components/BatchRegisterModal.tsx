@@ -266,22 +266,35 @@ const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, on
       
       console.log(`执行第 ${index+1} 次注册，参数:`, { setupOptions, userData });
       
+      // 直接使用axios发送请求，避免可能的API封装问题
+      const requestData = {
+        setupOptions,
+        userData
+      };
+      
+      console.log(`直接发送API请求，数据:`, JSON.stringify(requestData, null, 2));
+      
       // 调用后端API
-      const response = await infiniAccountApi.oneClickAccountSetup(setupOptions, userData);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/one-click-setup`, requestData);
       
-      console.log(`第 ${index+1} 次注册响应:`, response);
+      console.log(`第 ${index+1} 次注册原始响应:`, response);
       
-      if (!response.success) {
-        throw new Error(response.message || '注册失败');
+      // 解构响应数据
+      const responseData = response.data;
+      
+      console.log(`第 ${index+1} 次注册响应数据:`, responseData);
+      
+      if (!responseData.success) {
+        throw new Error(responseData.message || '注册失败');
       }
       
       // 提取响应数据
-      const { accountId, randomUser, account, steps } = response;
+      const { accountId, randomUser, account, steps } = responseData;
       
       // 确定各步骤执行状态
-      const is2faEnabled = steps.twoFa?.success || false;
-      const isKycEnabled = steps.kyc?.success || false;
-      const isCardEnabled = steps.card?.success || false;
+      const is2faEnabled = steps && steps.twoFa && steps.twoFa.success || false;
+      const isKycEnabled = steps && steps.kyc && steps.kyc.success || false;
+      const isCardEnabled = steps && steps.card && steps.card.success || false;
       
       // 返回注册结果
       return {
