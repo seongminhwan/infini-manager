@@ -169,6 +169,46 @@ export class RandomUserService {
   }
   
   /**
+   * 生成随机中国手机号
+   * - 格式为：1xx xxxx xxxx（11位数字）
+   * - 使用不会分配给用户的号段（如14x、16x、19x等）
+   */
+  private async generateChinesePhone(): Promise<string> {
+    // 尝试最多20次生成不重复的手机号
+    for (let attempt = 0; attempt < 20; attempt++) {
+      // 使用不常见或未分配的号段前缀
+      // 14x: 物联网专用号段
+      // 16x: 部分未分配号段
+      // 19x: 部分未分配号段
+      const unusedPrefixes = ['144', '146', '148', '149', '164', '165', '167', '191', '192', '196', '197', '198', '199'];
+      const prefix = unusedPrefixes[Math.floor(Math.random() * unusedPrefixes.length)];
+      
+      // 生成剩余8位数字
+      let remainingDigits = '';
+      for (let i = 0; i < 8; i++) {
+        remainingDigits += this.numbers.charAt(Math.floor(Math.random() * this.numbers.length));
+      }
+      
+      // 中国格式手机号：1xx xxxx xxxx
+      const phone = `${prefix}${remainingDigits}`;
+      
+      // 检查是否已存在
+      const exists = await db('random_users')
+        .where('phone', phone)
+        .first();
+      
+      if (!exists) {
+        return phone;
+      }
+    }
+    
+    // 如果尝试多次后仍无法生成不重复的手机号，则使用时间戳
+    const timestamp = Date.now().toString();
+    const unique = timestamp.substring(timestamp.length - 8);
+    return `144${unique}`;
+  }
+
+  /**
    * 生成随机美国手机号
    * - 格式为：(xxx) xxx-xxxx
    * - 使用555作为中间三位数，这是电影和测试常用的号码段
