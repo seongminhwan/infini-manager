@@ -2644,14 +2644,45 @@ const AccountMonitor: React.FC = () => {
       key: 'redPacketBalance',
       width: 140,
       sorter: (a: InfiniAccount, b: InfiniAccount) => a.redPacketBalance - b.redPacketBalance,
-      render: (amount: number) => (
-        <BalanceTag 
-          color={amount === 0 ? "default" : "red"}
-          style={amount > 0 ? { backgroundColor: '#ff4d4f', color: 'white' } : {}}
-        >
-          {amount.toFixed(6)}
-        </BalanceTag>
-      ),
+      render: (amount: number) => {
+        // 基于配置的红包余额颜色计算
+        let color = "default"; // 默认灰色（余额为0或负数）
+        let backgroundColor = '';
+        let textColor = '';
+        
+        if (amount > 0) {
+          if (amount >= 1.4) {
+            // 绿色
+            color = "green";
+            backgroundColor = '#52c41a';
+            textColor = 'white';
+          } else if (amount >= 1) {
+            // 蓝色
+            color = "blue";
+            backgroundColor = '#1890ff';
+            textColor = 'white';
+          } else if (amount >= 0.5) {
+            // 橙色
+            color = "orange";
+            backgroundColor = '#fa8c16';
+            textColor = 'white';
+          } else {
+            // 棕色
+            color = "brown";
+            backgroundColor = '#8B4513';
+            textColor = 'white';
+          }
+        }
+
+        return (
+          <BalanceTag 
+            color={color}
+            style={backgroundColor ? { backgroundColor, color: textColor } : {}}
+          >
+            {amount.toFixed(6)}
+          </BalanceTag>
+        );
+      },
     },
     {
       title: '状态',
