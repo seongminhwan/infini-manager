@@ -9,6 +9,7 @@ import { InfiniAccountService } from '../service/InfiniAccountService';
 import { RandomUserService } from '../service/RandomUserService';
 import { TotpToolService } from '../service/TotpToolService'; 
 import { InfiniAccountCreate } from '../types';
+import httpClient from '../utils/httpClient';
 
 // 创建InfiniAccountService实例
 const infiniAccountService = new InfiniAccountService();
