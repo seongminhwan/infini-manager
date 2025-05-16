@@ -6,6 +6,8 @@
 import { Request, Response } from 'express';
 import multer from 'multer';
 import { InfiniAccountService } from '../service/InfiniAccountService';
+import { RandomUserService } from '../service/RandomUserService';
+import { TotpToolService } from '../service/TotpToolService'; 
 import { InfiniAccountCreate } from '../types';
 
 // 创建InfiniAccountService实例
