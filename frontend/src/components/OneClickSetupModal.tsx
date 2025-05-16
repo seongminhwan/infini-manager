@@ -255,8 +255,13 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
   
   // 处理主邮箱改变事件
   const handleMainEmailChange = (value: string) => {
-    setMainEmail(value);
-    console.log('已选择主邮箱:', value);
+    // 根据选中的ID找到对应的邮箱对象
+    const selectedEmail = emailAccounts.find(account => account.id === value);
+    if (selectedEmail) {
+      setMainEmail(selectedEmail.email); // 保存邮箱地址用于显示
+      setSelectedEmailId(value); // 保存邮箱ID用于API调用
+      console.log('已选择主邮箱:', selectedEmail.email, '邮箱ID:', value);
+    }
   };
   
   // 渲染表单
@@ -289,7 +294,7 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
           }
           options={emailAccounts.map(account => ({
-            value: account.email,
+            value: account.id,
             label: `${account.email}${account.isDefault ? ' (默认)' : ''}`,
           }))}
         />
