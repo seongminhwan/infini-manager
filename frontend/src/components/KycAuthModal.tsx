@@ -221,7 +221,7 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
       fillFormWithRandomUserData(randomUserData);
       message.success('已自动填充关联的随机用户信息');
     }
-  }, [currentStep, randomUserData, fillFormWithRandomUserData]);
+  }, [currentStep, randomUserData]); // 移除fillFormWithRandomUserData依赖，避免循环引用
   
   // 获取关联的随机用户信息
   const fetchAssociatedRandomUser = async () => {
