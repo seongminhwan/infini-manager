@@ -1442,6 +1442,31 @@ const AccountCreateModal: React.FC<{
   );
 };
 
+// 根据金额和颜色区间配置获取样式的辅助函数
+const getStyleForBalance = (amount: number, colorRanges: any[]) => {
+  const result = {
+    color: "default", // 默认标签颜色
+    style: {} as React.CSSProperties // 默认样式为空
+  };
+  
+  // 从大到小遍历阈值，找到第一个符合条件的区间
+  for (const range of colorRanges) {
+    if (amount >= range.threshold) {
+      result.color = range.color;
+      // 如果有背景色和文字颜色，添加到样式中
+      if (range.backgroundColor && range.textColor) {
+        result.style = {
+          backgroundColor: range.backgroundColor,
+          color: range.textColor
+        };
+      }
+      break;
+    }
+  }
+  
+  return result;
+};
+
 // KYC图片类型接口
 interface KycImage {
   id: number;
@@ -2638,31 +2663,6 @@ const AccountMonitor: React.FC = () => {
         );
       }
     },
-    // 根据金额和颜色区间配置获取样式的辅助函数
-    const getStyleForBalance = (amount: number, colorRanges: any[]) => {
-      const result = {
-        color: "default", // 默认标签颜色
-        style: {} as React.CSSProperties // 默认样式为空
-      };
-      
-      // 从大到小遍历阈值，找到第一个符合条件的区间
-      for (const range of colorRanges) {
-        if (amount >= range.threshold) {
-          result.color = range.color;
-          // 如果有背景色和文字颜色，添加到样式中
-          if (range.backgroundColor && range.textColor) {
-            result.style = {
-              backgroundColor: range.backgroundColor,
-              color: range.textColor
-            };
-          }
-          break;
-        }
-      }
-      
-      return result;
-    };
-    
     {
       title: '可用余额',
       dataIndex: 'availableBalance',
