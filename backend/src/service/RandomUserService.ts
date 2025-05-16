@@ -289,7 +289,8 @@ export class RandomUserService {
     const password = this.generateRandomPassword();
     const { lastName, firstName } = await this.generateRandomName();
     const passportNo = await this.generatePassportNo();
-    const phone = await this.generatePhone();
+    // 暂时使用中国手机号代替美国手机号
+    const phone = await this.generateChinesePhone();
     const { year, month, day } = this.generateBirthDate();
     
     // 如果提供了邮箱后缀，则生成完整邮箱
