@@ -138,14 +138,13 @@ export function setupAxiosInterceptors() {
         
         // 将请求和错误信息记录到数据库
         await AxiosLoggingService.logRequest({
-          url: fullUrl,
+          request_url: fullUrl,
           method: (config.method || 'GET').toUpperCase(),
           duration_ms: duration,
-          status_code: error.response ? error.response.status : 0,
+          response_status: error.response ? error.response.status : 0,
           request_body: requestBody,
-          response_body: responseBody,
+          response_data: responseBody,
           request_headers: requestHeaders,
-          response_headers: responseHeaders,
           error_message: error.message,
           success: false
         });
