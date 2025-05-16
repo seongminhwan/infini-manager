@@ -136,14 +136,16 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
       
       // 调用一键式账户设置API，传递两个所需参数
       // setupOptions：仅包含自动化选项（2FA、KYC、开卡）
-      // userData：传递空对象，由后端自动生成随机用户信息
+      // userData：传递默认email_suffix，由后端自动生成随机用户信息
       const response = await infiniAccountApi.oneClickAccountSetup(
         {
           enable2fa: values.enable2fa,
           enableKyc: values.enableKyc,
           enableCard: values.enableCard
         },
-        {}
+        {
+          email_suffix: "protonmail.com" // 默认使用protonmail作为随机邮箱后缀
+        }
       );
       
       if (response.success) {
