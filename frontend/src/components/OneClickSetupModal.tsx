@@ -136,15 +136,15 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
     try {
       setLoading(true);
       
-      // 从邮箱中提取后缀
+      // 从邮箱中提取后缀（域名部分）用于生成随机用户
       const emailParts = values.email.split('@');
       const emailSuffix = emailParts.length > 1 ? emailParts[1] : '';
       
       // 调用一键式账户设置API，传递两个所需参数
+      // setupOptions：仅包含自动化选项（2FA、KYC、开卡）
+      // userData：仅包含email_suffix，用于生成随机用户
       const response = await infiniAccountApi.oneClickAccountSetup(
         {
-          email: values.email,
-          password: values.password,
           enable2fa: values.enable2fa,
           enableKyc: values.enableKyc,
           enableCard: values.enableCard
