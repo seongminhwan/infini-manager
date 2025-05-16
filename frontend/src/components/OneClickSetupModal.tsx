@@ -108,40 +108,41 @@ const OneClickSetupModal: React.FC<OneClickSetupProps> = ({ visible, onClose, on
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [setupResult, setSetupResult] = useState<SetupResult | null>(null);
-  const [mainEmail, setMainEmail] = useState<string>(''); // 存储主邮箱信息
+  const [mainEmail, setMainEmail] = useState<string>(''); // 存储已选择的主邮箱
+  const [emailAccounts, setEmailAccounts] = useState<any[]>([]); // 邮箱账户列表
+  const [loadingEmails, setLoadingEmails] = useState(false); // 邮箱列表加载状态
   
-  // 获取系统配置的主邮箱信息
+  // 获取邮箱账户列表
   useEffect(() => {
-    const fetchMainEmail = async () => {
+    const fetchEmailAccounts = async () => {
       try {
-        // 尝试获取所有配置
-        const response = await configApi.getAllConfigs();
+        setLoadingEmails(true);
+        // 获取所有邮箱账户
+        const response = await emailAccountApi.getAllEmailAccounts();
         if (response.success && response.data) {
-          // 查找主邮箱配置
-          const emailConfig = response.data.find(
-            (config: any) => 
-              config.key === 'main_email' || 
-              config.key === 'primary_email' ||
-              config.key === 'email_main'
-          );
+          console.log('获取到邮箱账户列表:', response.data);
+          setEmailAccounts(response.data);
           
-          if (emailConfig) {
-            console.log('找到主邮箱配置:', emailConfig.value);
-            setMainEmail(emailConfig.value);
-          } else {
-            console.log('未找到主邮箱配置，使用默认值');
-            setMainEmail('');
+          // 如果有默认邮箱账户，自动选中
+          const defaultAccount = response.data.find((account: any) => account.isDefault);
+          if (defaultAccount) {
+            setMainEmail(defaultAccount.email);
+            form.setFieldsValue({ mainEmail: defaultAccount.email });
+            console.log('自动选择默认邮箱:', defaultAccount.email);
           }
         }
       } catch (error) {
-        console.error('获取主邮箱配置失败:', error);
+        console.error('获取邮箱账户列表失败:', error);
+        message.error('获取邮箱列表失败，请稍后重试');
+      } finally {
+        setLoadingEmails(false);
       }
     };
     
     if (visible) {
-      fetchMainEmail();
+      fetchEmailAccounts();
     }
-  }, [visible]);
+  }, [visible, form]);
   
   // 重置状态
   const resetState = () => {
