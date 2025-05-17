@@ -2214,12 +2214,7 @@ const AccountMonitor: React.FC = () => {
       const response = await api.post(`${API_BASE_URL}/api/infini-accounts/sync-all-kyc`);
       
       if (response.data.success) {
-        const result = response.data.data as BatchSyncResult;
-        setBatchSyncResult(result);
-        setBatchResultModalVisible(true);
-        message.success(`批量同步KYC信息完成: 总计${result.total}个账户, 成功${result.success}个, 失败${result.failed}个`);
-        fetchPaginatedAccounts(); // 使用分页API刷新账户列表
-      } else {
+        c
         message.error(response.data.message || '批量同步KYC信息失败');
       }
     } catch (error: any) {
