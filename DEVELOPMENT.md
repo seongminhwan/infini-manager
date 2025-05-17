@@ -13,9 +13,9 @@
   - [SQLite配置](#sqlite配置)
   - [MySQL配置](#mysql配置)
   - [如何切换数据库类型](#如何切换数据库类型)
-- [环境变量配置](#环境变量配置)
-  - [后端环境变量](#后端环境变量)
-  - [前端环境变量](#前端环境变量)
+- [项目配置](#项目配置)
+  - [后端配置](#后端配置)
+  - [前端配置](#前端配置)
 - [常见问题](#常见问题)
 
 ## 环境要求
@@ -60,8 +60,6 @@ npm run dev
 ```bash
 cd frontend
 npm install
-# 复制环境配置文件并根据需要修改
-cp .env.example .env
 # 启动开发服务器
 npm start
 ```
@@ -224,9 +222,9 @@ backend:
     - DB_TYPE=sqlite  # 或mysql
 ```
 
-## 环境变量配置
+## 项目配置
 
-### 后端环境变量
+### 后端配置
 
 后端环境变量存储在`backend/.env`文件中，主要配置项包括：
 
@@ -240,19 +238,44 @@ backend:
 | DB_USER        | MySQL用户名                 | root                     |
 | DB_PASSWORD    | MySQL密码                   | password                 |
 | DB_NAME        | MySQL数据库名               | infini_manager           |
+| DISABLE_IP_CHECK | 禁用IP检查（Docker环境中设为true） | false |
 | JWT_SECRET     | JWT密钥                    | your_jwt_secret_key_here |
-| MAIL_*         | 邮件服务配置                | 见.env.example           |
-| TELEGRAM_*     | Telegram配置               | 见.env.example           |
-| GMAIL_*        | Gmail配置                  | 见.env.example           |
 
-### 前端环境变量
+### 前端配置
 
-前端环境变量存储在`frontend/.env`文件中：
+前端使用TypeScript配置文件而非.env文件，配置文件位于：
 
-| 环境变量            | 描述         | 默认值                     |
-|--------------------|-------------|---------------------------|
-| PORT               | 前端服务端口  | 33202                     |
-| REACT_APP_API_URL  | 后端API地址  | 'http://localhost:33201'  |
+- `frontend/src/config.ts` - 主配置文件，根据环境导入不同配置
+- `frontend/src/config.dev.ts` - 开发环境配置
+- `frontend/src/config.docker.ts` - Docker环境配置
+
+#### 开发环境配置 (config.dev.ts)
+
+```typescript
+export const API_BASE_URL = 'http://localhost:33201';
+export const PORT = 33202;
+export const CONFIG = {
+  environment: 'development',
+  apiBaseUrl: API_BASE_URL,
+  port: PORT,
+  debug: true,
+  logLevel: 'debug'
+};
+```
+
+#### Docker环境配置 (config.docker.ts)
+
+```typescript
+export const API_BASE_URL = '';  // 空字符串，由Nginx代理转发
+export const PORT = 80;
+export const CONFIG = {
+  environment: 'docker',
+  apiBaseUrl: API_BASE_URL,
+  port: PORT,
+  debug: false,
+  logLevel: 'info'
+};
+```
 
 ## 常见问题
 
@@ -260,7 +283,8 @@ backend:
 
 如果启动服务时提示端口被占用，可以：
 
-- 修改环境文件中的端口设置（backend/.env和frontend/.env）
+- 修改后端.env文件中的PORT设置
+- 修改前端配置文件中的端口设置
 - 或使用make命令停止现有服务：`make stop`
 
 ### 2. 数据库连接问题
