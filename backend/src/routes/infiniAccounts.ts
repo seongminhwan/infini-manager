@@ -485,6 +485,83 @@ router.get('/', getAllInfiniAccounts);
 
 /**
  * @swagger
+ * /api/infini-accounts/paginated:
+ *   get:
+ *     summary: 获取分页的Infini账户列表
+ *     description: 支持分页、筛选和排序功能，并关联查询卡片数量
+ *     tags: [InfiniAccounts]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: 页码，默认为1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *         description: 每页记录数，默认为10
+ *       - in: query
+ *         name: filters
+ *         schema:
+ *           type: string
+ *         description: JSON格式的筛选条件
+ *       - in: query
+ *         name: sortField
+ *         schema:
+ *           type: string
+ *         description: 排序字段
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: 排序方向
+ *       - in: query
+ *         name: groupId
+ *         schema:
+ *           type: string
+ *         description: 账户分组ID，用于筛选特定分组的账户
+ *     responses:
+ *       200:
+ *         description: 成功获取分页的Infini账户列表
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     accounts:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         current:
+ *                           type: integer
+ *                           example: 1
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 10
+ *                         total:
+ *                           type: integer
+ *                           example: 100
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 10
+ *       500:
+ *         description: 服务器错误
+ */
+router.get('/paginated', getPaginatedInfiniAccounts);
+
+/**
+ * @swagger
  * /api/infini-accounts/login:
  *   post:
  *     summary: 测试Infini账户登录
