@@ -502,67 +502,19 @@ const BatchCardApply: React.FC = () => {
         setCurrentProcessingIndex(i);
         setProgressPercent(Math.floor((i / selectedAccounts.length) * 100));
         
-        // 处理KYC信息
-        updateAccountStatus(i, 'kyc-submitting');
+        // 获取验证级别
+        const verificationLevel = account.verification_level !== undefined 
+          ? account.verification_level 
+          : account.verificationLevel;
         
-        let kycInfo = await getKycInformation(accountId);
-        let mockUser = account.mock_user_id ? await getRandomUserInfo(account.mock_user_id) : null;
-        let needRefreshRandomUser = false;
-        
-        // 检查是否需要刷新随机用户信息
-        if (autoRefreshInvalidKyc && kycInfo && (!isPhoneNumberValid(kycInfo.phone_code, kycInfo.phone))) {
-          console.log(`账户 ${accountId} 的KYC信息无效，需要刷新`);
-          needRefreshRandomUser = true;
-        }
-        
-        // 如果有mock_user_id但获取失败，或者手机号格式不正确，生成新的随机用户
-        if (needRefreshRandomUser || !mockUser || (mockUser && !isPhoneNumberValid(mockUser.phone_code, mockUser.phone))) {
-          if (autoRetryWithNewRandomUser) {
-            const emailParts = account.email.split('@');
-            const emailSuffix = emailParts.length > 1 ? `@${emailParts[1]}` : '@example.com';
-            mockUser = await generateNewRandomUser(emailSuffix);
-          } else if (!mockUser) {
-            // 如果不允许自动生成新随机用户，且现有随机用户无效，则标记失败
-            updateAccountStatus(i, 'kyc-failed', '无法获取有效的用户信息且未启用自动生成');
-            setFailedCount(prev => prev + 1);
-            continue;
-          }
-        }
-        
-        // 准备KYC数据
-        let kycData;
-        if (mockUser) {
-          kycData = {
-            first_name: mockUser.first_name,
-            last_name: mockUser.last_name,
-            phone_code: mockUser.phone_code,
-            phone_number: mockUser.phone,
-            birthday: mockUser.birth_date || "1990-01-01"
-          };
-        } else if (kycInfo) {
-          kycData = {
-            first_name: kycInfo.first_name,
-            last_name: kycInfo.last_name,
-            phone_code: kycInfo.phone_code,
-            phone_number: kycInfo.phone,
-            birthday: kycInfo.birthday || "1990-01-01"
-          };
-        } else {
-          // 如果没有KYC信息和随机用户信息，标记为失败
-          updateAccountStatus(i, 'kyc-failed', '无法获取KYC信息和随机用户信息');
-          setFailedCount(prev => prev + 1);
-          continue;
-        }
-        
-        // 提交KYC基础信息
-        const kycSuccess = await submitKycBasic(accountId, kycData);
-        
-        if (kycSuccess) {
-          updateAccountStatus(i, 'kyc-success');
+        // 检查账户是否已完成KYC或基础KYC
+        if (verificationLevel === 1 || verificationLevel === 2) {
+          // 账户已完成KYC或基础KYC，直接跳过KYC提交步骤
+          console.log(`账户 ${accountId} 已完成KYC验证(级别${verificationLevel})，跳过KYC提交步骤`);
+          updateAccountStatus(i, 'kyc-success', '已完成KYC验证');
           
-          // 申请新卡
+          // 直接申请新卡
           updateAccountStatus(i, 'card-applying');
-          
           const cardSuccess = await applyNewCard(accountId);
           
           if (cardSuccess) {
@@ -573,8 +525,80 @@ const BatchCardApply: React.FC = () => {
             setFailedCount(prev => prev + 1);
           }
         } else {
-          updateAccountStatus(i, 'kyc-failed', '提交KYC信息失败');
-          setFailedCount(prev => prev + 1);
+          // 账户未完成KYC，需要提交KYC信息
+          updateAccountStatus(i, 'kyc-submitting');
+          
+          let kycInfo = await getKycInformation(accountId);
+          let mockUser = account.mock_user_id ? await getRandomUserInfo(account.mock_user_id) : null;
+          let needRefreshRandomUser = false;
+          
+          // 检查是否需要刷新随机用户信息
+          if (autoRefreshInvalidKyc && kycInfo && (!isPhoneNumberValid(kycInfo.phone_code, kycInfo.phone))) {
+            console.log(`账户 ${accountId} 的KYC信息无效，需要刷新`);
+            needRefreshRandomUser = true;
+          }
+          
+          // 如果有mock_user_id但获取失败，或者手机号格式不正确，生成新的随机用户
+          if (needRefreshRandomUser || !mockUser || (mockUser && !isPhoneNumberValid(mockUser.phone_code, mockUser.phone))) {
+            if (autoRetryWithNewRandomUser) {
+              const emailParts = account.email.split('@');
+              const emailSuffix = emailParts.length > 1 ? `@${emailParts[1]}` : '@example.com';
+              mockUser = await generateNewRandomUser(emailSuffix);
+            } else if (!mockUser) {
+              // 如果不允许自动生成新随机用户，且现有随机用户无效，则标记失败
+              updateAccountStatus(i, 'kyc-failed', '无法获取有效的用户信息且未启用自动生成');
+              setFailedCount(prev => prev + 1);
+              continue;
+            }
+          }
+          
+          // 准备KYC数据
+          let kycData;
+          if (mockUser) {
+            kycData = {
+              first_name: mockUser.first_name,
+              last_name: mockUser.last_name,
+              phone_code: mockUser.phone_code,
+              phone_number: mockUser.phone,
+              birthday: mockUser.birth_date || "1990-01-01"
+            };
+          } else if (kycInfo) {
+            kycData = {
+              first_name: kycInfo.first_name,
+              last_name: kycInfo.last_name,
+              phone_code: kycInfo.phone_code,
+              phone_number: kycInfo.phone,
+              birthday: kycInfo.birthday || "1990-01-01"
+            };
+          } else {
+            // 如果没有KYC信息和随机用户信息，标记为失败
+            updateAccountStatus(i, 'kyc-failed', '无法获取KYC信息和随机用户信息');
+            setFailedCount(prev => prev + 1);
+            continue;
+          }
+          
+          // 提交KYC基础信息
+          const kycSuccess = await submitKycBasic(accountId, kycData);
+          
+          if (kycSuccess) {
+            updateAccountStatus(i, 'kyc-success');
+            
+            // 申请新卡
+            updateAccountStatus(i, 'card-applying');
+            
+            const cardSuccess = await applyNewCard(accountId);
+            
+            if (cardSuccess) {
+              updateAccountStatus(i, 'card-success', '开卡成功');
+              setSuccessCount(prev => prev + 1);
+            } else {
+              updateAccountStatus(i, 'card-failed', '申请卡片失败');
+              setFailedCount(prev => prev + 1);
+            }
+          } else {
+            updateAccountStatus(i, 'kyc-failed', '提交KYC信息失败');
+            setFailedCount(prev => prev + 1);
+          }
         }
       }
       
