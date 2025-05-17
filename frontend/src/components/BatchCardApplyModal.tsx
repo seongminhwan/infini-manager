@@ -46,6 +46,8 @@ import {
   LeftOutlined,
   RightOutlined
 } from '@ant-design/icons';
+import { TransferDirection } from 'antd/lib/transfer';
+import { Key as TransferKey } from 'rc-table/lib/interface';
 import { infiniAccountApi, randomUserApi, infiniCardApi } from '../services/api';
 import styled from 'styled-components';
 
@@ -150,7 +152,7 @@ const BatchCardApplyModal: React.FC<BatchCardApplyModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [applyLoading, setApplyLoading] = useState<boolean>(false);
   const [processStatus, setProcessStatus] = useState<'idle' | 'processing' | 'completed' | 'error'>('idle');
-  const [targetKeys, setTargetKeys] = useState<string[]>([]);
+  const [targetKeys, setTargetKeys] = useState<TransferKey[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<InfiniAccount[]>([]);
   const [excludeCardOwners, setExcludeCardOwners] = useState<boolean>(true);
   const [selectedAccounts, setSelectedAccounts] = useState<InfiniAccount[]>([]);
@@ -210,7 +212,7 @@ const BatchCardApplyModal: React.FC<BatchCardApplyModalProps> = ({
   // 当targetKeys变化时，更新selectedAccounts
   useEffect(() => {
     const selected = accounts.filter(account => 
-      targetKeys.includes(account.id.toString())
+      targetKeys.includes(account.id.toString() as TransferKey)
     );
     setSelectedAccounts(selected);
     
@@ -514,7 +516,7 @@ const BatchCardApplyModal: React.FC<BatchCardApplyModalProps> = ({
   };
   
   // 处理 Transfer 变化
-  const handleChange = (nextTargetKeys: string[]) => {
+  const handleChange = (nextTargetKeys: TransferKey[], direction: TransferDirection, moveKeys: TransferKey[]) => {
     setTargetKeys(nextTargetKeys);
   };
   
