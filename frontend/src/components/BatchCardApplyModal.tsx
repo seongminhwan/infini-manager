@@ -268,14 +268,6 @@ const BatchCardApplyModal: React.FC<BatchCardApplyModalProps> = ({
     }
   };
   
-  // 转换数据以适应Transfer组件
-  const transferData = filteredAccounts.map(account => ({
-    key: account.id.toString(),
-    title: account.email,
-    description: `${account.balance ? '$' + parseFloat(account.balance).toFixed(2) : '余额未知'} | ${getVerificationLevelText(account)}`,
-    disabled: excludeCardOwners && account.hasCard
-  }));
-  
   // 获取验证级别文本
   const getVerificationLevelText = (account: InfiniAccount): string => {
     const level = account.verification_level !== undefined 
@@ -287,6 +279,14 @@ const BatchCardApplyModal: React.FC<BatchCardApplyModalProps> = ({
     if (level === 3) return '认证中';
     return '未认证';
   };
+  
+  // 转换数据以适应Transfer组件
+  const transferData = filteredAccounts.map(account => ({
+    key: account.id.toString(),
+    title: account.email,
+    description: `${account.balance ? '$' + parseFloat(account.balance).toFixed(2) : '余额未知'} | ${getVerificationLevelText(account)}`,
+    disabled: excludeCardOwners && account.hasCard
+  }));
   
   // 获取KYC信息
   const getKycInformation = async (accountId: string): Promise<KycInformation | null> => {
