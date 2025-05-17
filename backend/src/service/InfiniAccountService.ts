@@ -552,6 +552,212 @@ export class InfiniAccountService {
   }
 
   /**
+   * 获取分页的Infini账户列表，包含卡片数量
+   * 支持分页、筛选和排序功能
+   * @param page 页码，默认为1
+   * @param pageSize 每页记录数，默认为10
+   * @param filters 筛选条件，可按字段过滤
+   * @param sortField 排序字段
+   * @param sortOrder 排序方向：'asc'或'desc'
+   * @param groupId 可选的分组ID，用于筛选特定分组的账户
+   */
+  async getInfiniAccountsPaginated(
+    page: number = 1, 
+    pageSize: number = 10, 
+    filters: Record<string, any> = {}, 
+    sortField?: string, 
+    sortOrder?: 'asc' | 'desc',
+    groupId?: string
+  ): Promise<ApiResponse> {
+    try {
+      // 使用子查询计算每个账户的卡片数量
+      const cardCountSubquery = db('infini_cards')
+        .select('infini_account_id')
+        .count('* as card_count')
+        .groupBy('infini_account_id')
+        .as('card_counts');
+        
+      // 构建基础查询
+      let query = db('infini_accounts')
+        .select([
+          'infini_accounts.id',
+          'infini_accounts.user_id as userId',
+          'infini_accounts.email',
+          'infini_accounts.password', // 返回密码，用于账户管理
+          'infini_accounts.uid',
+          'infini_accounts.invitation_code as invitationCode',
+          'infini_accounts.available_balance as availableBalance',
+          'infini_accounts.withdrawing_amount as withdrawingAmount',
+          'infini_accounts.red_packet_balance as redPacketBalance',
+          'infini_accounts.total_consumption_amount as totalConsumptionAmount',
+          'infini_accounts.total_earn_balance as totalEarnBalance',
+          'infini_accounts.daily_consumption as dailyConsumption',
+          'infini_accounts.status',
+          'infini_accounts.user_type as userType',
+          'infini_accounts.google_2fa_is_bound as google2faIsBound',
+          'infini_accounts.google_password_is_set as googlePasswordIsSet',
+          'infini_accounts.is_kol as isKol',
+          'infini_accounts.is_protected as isProtected',
+          'infini_accounts.verification_level as verificationLevel',
+          'infini_accounts.cookie_expires_at as cookieExpiresAt',
+          'infini_accounts.infini_created_at as infiniCreatedAt',
+          'infini_accounts.last_sync_at as lastSyncAt',
+          'infini_accounts.created_at as createdAt',
+          'infini_accounts.updated_at as updatedAt',
+          'infini_accounts.mock_user_id as mockUserId',
+          db.raw('IFNULL(card_counts.card_count, 0) as cardCount') // 添加卡片数量字段
+        ])
+        // 左连接卡片计数子查询
+        .leftJoin(cardCountSubquery, 'infini_accounts.id', 'card_counts.infini_account_id');
+
+      // 应用分组筛选
+      if (groupId) {
+        query = query
+          .join('infini_account_group_relations', 'infini_accounts.id', 'infini_account_group_relations.infini_account_id')
+          .where('infini_account_group_relations.group_id', groupId);
+      }
+
+      // 应用动态筛选条件
+      if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
+            // 特殊处理卡片数量筛选
+            if (key === 'cardCount') {
+              // 支持 '>5', '<10', '=3' 等格式
+              if (typeof value === 'string') {
+                const match = value.match(/([><]=?|=)(\d+)/);
+                if (match) {
+                  const [, operator, count] = match;
+                  switch (operator) {
+                    case '>':
+                      query = query.havingRaw('cardCount > ?', [parseInt(count, 10)]);
+                      break;
+                    case '>=':
+                      query = query.havingRaw('cardCount >= ?', [parseInt(count, 10)]);
+                      break;
+                    case '<':
+                      query = query.havingRaw('cardCount < ?', [parseInt(count, 10)]);
+                      break;
+                    case '<=':
+                      query = query.havingRaw('cardCount <= ?', [parseInt(count, 10)]);
+                      break;
+                    case '=':
+                      query = query.havingRaw('cardCount = ?', [parseInt(count, 10)]);
+                      break;
+                  }
+                }
+              }
+            } else if (typeof value === 'string' && value.includes('%')) {
+              // 模糊搜索
+              query = query.where(`infini_accounts.${key}`, 'like', value);
+            } else {
+              // 精确匹配
+              query = query.where(`infini_accounts.${key}`, value);
+            }
+          }
+        });
+      }
+
+      // 获取总记录数（需要在应用排序和分页前计算）
+      const countQuery = query.clone();
+      const countResult = await countQuery.count('infini_accounts.id as total').first();
+      const total = countResult ? parseInt(countResult.total as string, 10) : 0;
+
+      // 应用排序
+      if (sortField && sortOrder) {
+        // 特殊处理卡片数量排序
+        if (sortField === 'cardCount') {
+          query = query.orderBy('cardCount', sortOrder);
+        } else {
+          query = query.orderBy(`infini_accounts.${sortField}`, sortOrder);
+        }
+      } else {
+        // 默认排序
+        query = query.orderBy('infini_accounts.created_at', 'desc');
+      }
+
+      // 应用分页
+      const offset = (page - 1) * pageSize;
+      query = query.limit(pageSize).offset(offset);
+
+      // 执行查询获取分页数据
+      const accounts = await query;
+
+      // 获取所有账户的2FA信息
+      const accountIds = accounts.map(account => account.id);
+      const twoFaInfos = await db('infini_2fa_info')
+        .whereIn('infini_account_id', accountIds)
+        .select('*');
+
+      // 创建一个快速查找映射，通过账户ID找到对应的2FA信息
+      const twoFaInfoMap = new Map();
+      twoFaInfos.forEach(info => {
+        twoFaInfoMap.set(info.infini_account_id, {
+          qrCodeUrl: info.qr_code_url,
+          secretKey: info.secret_key,
+          recoveryCodes: info.recovery_codes ? JSON.parse(info.recovery_codes) : []
+        });
+      });
+
+      // 获取所有账户的分组信息
+      const accountGroups = await db('infini_account_group_relations')
+        .join('infini_account_groups', 'infini_account_group_relations.group_id', 'infini_account_groups.id')
+        .whereIn('infini_account_group_relations.infini_account_id', accountIds)
+        .select([
+          'infini_account_group_relations.infini_account_id',
+          'infini_account_groups.id as groupId',
+          'infini_account_groups.name as groupName',
+          'infini_account_groups.description',
+          'infini_account_groups.is_default as isDefault'
+        ]);
+
+      // 创建账户ID到分组列表的映射
+      const accountGroupsMap = new Map();
+      accountGroups.forEach(relation => {
+        if (!accountGroupsMap.has(relation.infini_account_id)) {
+          accountGroupsMap.set(relation.infini_account_id, []);
+        }
+        accountGroupsMap.get(relation.infini_account_id).push({
+          id: relation.groupId,
+          name: relation.groupName,
+          description: relation.description,
+          isDefault: relation.isDefault
+        });
+      });
+
+      // 为每个账户添加2FA信息和分组信息
+      accounts.forEach(account => {
+        // 添加2FA信息
+        if (twoFaInfoMap.has(account.id)) {
+          account.twoFaInfo = twoFaInfoMap.get(account.id);
+        }
+
+        // 添加分组信息
+        account.groups = accountGroupsMap.get(account.id) || [];
+      });
+
+      return {
+        success: true,
+        data: {
+          accounts, // 当前页数据
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            totalPages: Math.ceil(total / pageSize)
+          }
+        },
+      };
+    } catch (error) {
+      console.error('获取分页Infini账户列表失败:', error);
+      return {
+        success: false,
+        message: `获取分页Infini账户列表失败: ${(error as Error).message}`,
+      };
+    }
+  }
+
+  /**
    * 获取所有Infini账户，包含2FA信息
    * @param groupId 可选的分组ID，用于筛选特定分组的账户
    */
