@@ -2812,6 +2812,24 @@ const AccountMonitor: React.FC = () => {
         </Tag>
       ),
     },
+    {
+      title: '已开卡数量',
+      dataIndex: 'cardCount',
+      key: 'cardCount',
+      width: 120,
+      sorter: true, // 支持服务器端排序
+      filters: [
+        { text: '无卡片', value: '=0' },
+        { text: '1-3张', value: '>=1,<=3' },
+        { text: '4-10张', value: '>3,<=10' },
+        { text: '10张以上', value: '>10' }
+      ],
+      render: (text: number) => (
+        <Tag color={text > 0 ? 'blue' : 'default'}>
+          {text || 0}
+        </Tag>
+      )
+    },
   {
     title: '账户安全',
     key: 'security',
