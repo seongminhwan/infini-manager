@@ -24,6 +24,7 @@ import {
   Result,
   Empty
 } from 'antd';
+import { TableProps } from 'antd/lib/table';
 import { 
   LoadingOutlined, 
   CreditCardOutlined, 
@@ -43,9 +44,6 @@ const { Title, Text, Paragraph } = Typography;
 const StyledCard = styled(Card)`
   margin-bottom: 16px;
 `;
-
-// 使用TableProps定义类型
-import { TableProps } from 'antd/lib/table';
 
 // 定义样式表格组件，使用TableProps指定泛型
 const StyledCardTable = styled(Table)<TableProps<InfiniAccount>>`
