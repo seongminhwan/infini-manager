@@ -2218,7 +2218,7 @@ const AccountMonitor: React.FC = () => {
         setBatchSyncResult(result);
         setBatchResultModalVisible(true);
         message.success(`批量同步KYC信息完成: 总计${result.total}个账户, 成功${result.success}个, 失败${result.failed}个`);
-        fetchAccounts(); // 刷新账户列表
+        fetchPaginatedAccounts(); // 使用分页API刷新账户列表
       } else {
         message.error(response.data.message || '批量同步KYC信息失败');
       }
@@ -2300,7 +2300,7 @@ const AccountMonitor: React.FC = () => {
       setBatchSyncResult(result);
       setBatchResultModalVisible(true);
       message.success(`批量同步卡片信息完成: 总计${total}个账户, 成功${success}个, 失败${failed}个`);
-      fetchAccounts(); // 刷新账户列表
+      fetchPaginatedAccounts(); // 使用分页API刷新账户列表
     } catch (error: any) {
       message.error(error.response?.data?.message || error.message || '批量同步卡片信息失败');
       console.error('批量同步卡片信息失败:', error);
@@ -2496,7 +2496,7 @@ const AccountMonitor: React.FC = () => {
       
       if (response.data.success) {
         message.success('账户信息同步成功');
-        fetchAccounts(); // 刷新账户列表
+        fetchPaginatedAccounts(); // 使用分页API刷新账户列表
       } else {
         message.error(response.data.message || '账户信息同步失败');
       }
@@ -2520,7 +2520,7 @@ const AccountMonitor: React.FC = () => {
       if (response.success) {
         message.success('KYC状态同步成功');
         // 刷新账户列表，确保状态更新
-        await fetchAccounts();
+        await fetchPaginatedAccounts();
       } else {
         message.error(response.message || 'KYC状态同步失败');
       }
@@ -2541,7 +2541,7 @@ const AccountMonitor: React.FC = () => {
       
       if (response.data.success) {
         message.success('账户删除成功');
-        fetchAccounts(); // 刷新账户列表
+        fetchPaginatedAccounts(); // 使用分页API刷新账户列表
       } else {
         message.error(response.data.message || '账户删除失败');
       }
