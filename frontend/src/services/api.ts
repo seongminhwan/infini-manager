@@ -18,9 +18,16 @@ const api: AxiosInstance = axios.create({
 });
 
 // API基础URL
-// 使用相对路径，让请求通过Nginx代理转发
-const apiBaseUrl = '';  // 空字符串，使请求从根路径开始
-console.log('apiBaseUrl', apiBaseUrl || '(使用相对路径)');
+// 根据环境变量决定使用绝对路径还是相对路径
+// REACT_APP_USE_RELATIVE_PATH为true时使用相对路径，支持通过Nginx代理转发
+// 在本地开发环境中使用绝对路径，在Docker环境中使用相对路径
+const useRelativePath = process.env.REACT_APP_USE_RELATIVE_PATH === 'true';
+const apiBaseUrl = useRelativePath 
+  ? '' // 在Docker环境中使用相对路径，通过Nginx代理转发
+  : (process.env.REACT_APP_API_URL || 'http://localhost:33201'); // 在本地开发环境中使用绝对路径
+
+console.log('API路径模式:', useRelativePath ? '相对路径（通过Nginx代理）' : '绝对路径');
+console.log('apiBaseUrl:', apiBaseUrl || '(根路径)');
 
 /**
  * 配置API服务
