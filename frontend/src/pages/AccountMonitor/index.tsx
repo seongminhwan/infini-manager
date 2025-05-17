@@ -3385,7 +3385,6 @@ const AccountMonitor: React.FC = () => {
     'dailyConsumption': 'daily_consumption',
     'lastSyncAt': 'last_sync_at',
     'verificationLevel': 'verification_level',
-    'cardCount': 'card_count',
     'userId': 'user_id',
     'cookieExpiresAt': 'cookie_expires_at',
     'infiniCreatedAt': 'infini_created_at',
@@ -3395,9 +3394,21 @@ const AccountMonitor: React.FC = () => {
     'invitationCode': 'invitation_code'
   };
   
+  // 特殊字段映射，这些字段不需要表名前缀
+  const directFieldMapping: Record<string, string> = {
+    'cardCount': 'cardCount', // 直接使用别名排序
+  };
+  
   // 将驼峰字段名转换为下划线分隔字段名
   const convertFieldName = (field?: string): string | undefined => {
     if (!field) return undefined;
+    
+    // 检查是否是特殊字段（不需要表名前缀的字段）
+    if (directFieldMapping[field]) {
+      return directFieldMapping[field];
+    }
+    
+    // 常规字段映射
     return fieldNameMapping[field] || field;
   };
 
