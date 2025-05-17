@@ -153,7 +153,7 @@ mysql-start:
 	@docker run --name infini-mysql \
 		-e MYSQL_ROOT_PASSWORD=password \
 		-e MYSQL_DATABASE=infini_manager \
-		-p 3306:3306 \
+		-p 3307:3306 \
 		-v $(shell pwd)/data/mysql:/var/lib/mysql \
 		-d mysql:8.0 \
 		--character-set-server=utf8mb4 \
@@ -164,7 +164,7 @@ mysql-start:
 	@echo "MySQL服务已启动"
 	@echo "连接信息:"
 	@echo "  主机: localhost"
-	@echo "  端口: 3306"
+	@echo "  端口: 3307"
 	@echo "  用户: root"
 	@echo "  密码: password"
 	@echo "  数据库: infini_manager"
