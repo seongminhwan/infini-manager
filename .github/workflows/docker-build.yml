@@ -1,0 +1,94 @@
+name: 构建并发布Docker镜像
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  FRONTEND_IMAGE: gcr.io/${{ github.repository }}/frontend
+  BACKEND_IMAGE: gcr.io/${{ github.repository }}/backend
+
+jobs:
+  build-and-push:
+    name: 构建并推送Docker镜像到GCR
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      # 设置 QEMU 和 Docker Buildx
+      - name: 设置 QEMU
+        uses: docker/setup-qemu-action@v2
+      
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      # 登录到 Google Cloud
+      - id: 'auth'
+        name: 'Google Cloud认证'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+      
+      # 安装 gcloud CLI
+      - name: 设置 Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+      
+      # 配置 Docker 使用 gcloud 作为认证器
+      - name: 配置 Docker
+        run: |
+          gcloud auth configure-docker gcr.io
+      
+      # 设置镜像标签
+      - name: 提取镜像元数据
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ env.FRONTEND_IMAGE }}
+            ${{ env.BACKEND_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=short
+      
+      # 构建并推送后端镜像
+      - name: 构建并推送后端镜像
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      # 构建并推送前端镜像
+      - name: 构建并推送前端镜像
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      # 在 PR 中显示镜像信息
+      - name: 输出镜像信息
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "### Docker镜像构建完成 :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "前端镜像: \`${{ env.FRONTEND_IMAGE }}:sha-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "后端镜像: \`${{ env.BACKEND_IMAGE }}:sha-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "这些镜像在PR合并后会被推送到GCR。" >> $GITHUB_STEP_SUMMARY
