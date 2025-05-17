@@ -1714,3 +1714,57 @@ export const removeAccountsFromGroup = async (req: Request, res: Response): Prom
     });
   }
 };
+
+/**
+ * 获取分页的Infini账户列表
+ * 支持分页、筛选和排序功能
+ */
+export const getPaginatedInfiniAccounts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // 获取查询参数
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
+    
+    // 处理筛选条件
+    let filters = {};
+    if (req.query.filters) {
+      try {
+        filters = JSON.parse(req.query.filters as string);
+      } catch (e) {
+        console.warn('解析筛选条件失败:', e);
+      }
+    }
+    
+    // 处理排序参数
+    const sortField = req.query.sortField as string;
+    const sortOrder = req.query.sortOrder as 'asc' | 'desc';
+    
+    // 分组ID参数
+    const groupId = req.query.groupId as string;
+    
+    console.log(`接收到获取分页Infini账户列表请求，页码: ${page}, 每页记录数: ${pageSize}, 排序字段: ${sortField || '无'}, 排序方向: ${sortOrder || '无'}, 分组ID: ${groupId || '无'}`);
+    
+    // 调用服务层方法
+    const service = new InfiniAccountService();
+    const response = await service.getInfiniAccountsPaginated(
+      page,
+      pageSize,
+      filters,
+      sortField,
+      sortOrder,
+      groupId
+    );
+    
+    if (response.success) {
+      res.json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('获取分页Infini账户列表失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `获取分页Infini账户列表失败: ${(error as Error).message}`
+    });
+  }
+};
