@@ -11,11 +11,22 @@ export async function up(knex: Knex): Promise<void> {
   });
   
   // 更新已有记录，提取邮箱域名
-  await knex.raw(`
-    UPDATE email_accounts 
-    SET domain_name = SUBSTR(email, INSTR(email, '@') + 1) 
-    WHERE email LIKE '%@%'
-  `);
+  // 根据数据库类型使用兼容的字符串函数
+  const isMysql = knex.client.config.client.includes('mysql');
+  
+  if (isMysql) {
+    await knex.raw(`
+      UPDATE email_accounts 
+      SET domain_name = SUBSTRING(email, LOCATE('@', email) + 1) 
+      WHERE email LIKE '%@%'
+    `);
+  } else {
+    await knex.raw(`
+      UPDATE email_accounts 
+      SET domain_name = SUBSTR(email, INSTR(email, '@') + 1) 
+      WHERE email LIKE '%@%'
+    `);
+  }
   
   return Promise.resolve();
 }
