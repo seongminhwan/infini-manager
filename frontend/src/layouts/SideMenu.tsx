@@ -15,6 +15,7 @@ import {
   IdcardOutlined,
   TeamOutlined,
   DollarOutlined,
+  CreditCardOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -161,6 +162,17 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       key: '/kyc-image-manage',
       icon: <FileImageOutlined />,
       label: 'KYC图片管理',
+    },
+    {
+      key: 'card-ops',
+      icon: <CreditCardOutlined />,
+      label: '卡片管理',
+      children: [
+        {
+          key: '/batch-card-apply',
+          label: '批量开卡',
+        }
+      ]
     },
     {
       key: '/random-user-manage',
