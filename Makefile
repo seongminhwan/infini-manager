@@ -137,6 +137,17 @@ docker-start:
 	@docker-compose up -d
 	@echo "Docker服务已启动, 前端访问: http://localhost:33202, 后端访问: http://localhost:33201"
 
+# 使用SQLite模式启动Docker服务 - 适合轻量级部署
+docker-sqlite:
+	@echo "确保SQLite数据目录存在..."
+	@mkdir -p backend/db
+	@echo "使用SQLite模式启动Docker Compose服务..."
+	@docker-compose up -d
+	@echo "Docker服务(SQLite模式)已启动"
+	@echo "前端访问: http://localhost:33202"
+	@echo "后端访问: http://localhost:33201"
+	@echo "SQLite数据库文件存储在: ./backend/db/infini.sqlite3"
+
 # 停止docker-compose服务
 docker-stop:
 	@echo "停止Docker Compose服务..."
@@ -213,10 +224,11 @@ help:
 	@echo "  make start-mysql-all  - 使用MySQL启动所有服务 (先后端，再前端)"
 	@echo ""
 	@echo "Docker服务命令:"
-	@echo "  make docker-start - 使用Docker Compose启动所有服务"
-	@echo "  make docker-stop  - 停止Docker Compose服务"
-	@echo "  make docker-build - 构建Docker Compose镜像"
-	@echo "  make docker-logs  - 查看Docker Compose日志"
+	@echo "  make docker-start  - 使用Docker Compose启动所有服务"
+	@echo "  make docker-sqlite - 使用SQLite模式启动Docker服务(轻量级部署)"
+	@echo "  make docker-stop   - 停止Docker Compose服务"
+	@echo "  make docker-build  - 构建Docker Compose镜像"
+	@echo "  make docker-logs   - 查看Docker Compose日志"
 	@echo ""
 	@echo "MySQL Docker命令:"
 	@echo "  make mysql-start  - 启动MySQL Docker实例 (数据持久化到./data/mysql目录)"
@@ -225,4 +237,4 @@ help:
 	@echo "其他命令:"
 	@echo "  make help         - 显示帮助信息"
 
-.PHONY: start start-backend start-front backend front stop help docker-start docker-stop docker-build docker-logs mysql-start mysql-stop start-mysql start-mysql-all
+.PHONY: start start-backend start-front backend front stop help docker-start docker-sqlite docker-stop docker-build docker-logs mysql-start mysql-stop start-mysql start-mysql-all

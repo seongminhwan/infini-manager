@@ -14,9 +14,9 @@ const PORT: number = parseInt(process.env.PORT || '5000', 10);
 // 初始化数据库并启动服务器
 initializeDatabase()
   .then(() => {
-// 启动服务器 - 只监听127.0.0.1确保安全
-    app.listen(PORT, '127.0.0.1', () => {
-  console.log(`服务器已启动，监听地址 127.0.0.1:${PORT}`);
+// 启动服务器 - 监听所有网络接口以支持容器化环境
+    app.listen(PORT, '0.0.0.0', () => {
+  console.log(`服务器已启动，监听地址 0.0.0.0:${PORT}`);
   console.log(`Swagger文档地址: http://localhost:${PORT}/api-docs`);
   console.log(`健康检查地址: http://localhost:${PORT}/api/health`);
     });

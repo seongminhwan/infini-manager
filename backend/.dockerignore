@@ -1,0 +1,34 @@
+# 排除本地node_modules目录，确保使用容器内编译的依赖
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# 排除版本控制目录
+.git
+.gitignore
+
+# 排除本地环境文件（除非需要复制）
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# 排除文档和测试文件
+README.md
+docs
+test
+tests
+
+# 排除build输出目录
+dist
+build
+
+# 排除日志文件
+logs
+*.log
+
+# 排除OS相关文件
+.DS_Store
+Thumbs.db

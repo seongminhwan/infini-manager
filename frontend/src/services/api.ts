@@ -8,6 +8,8 @@
 import axios, { AxiosResponse, AxiosError, AxiosRequestConfig, AxiosInstance } from 'axios';
 import { message } from 'antd';
 import { showGlobalError } from '../context/ErrorContext';
+// 从配置文件导入API基础URL
+import { API_BASE_URL } from '../config';
 
 // 创建axios实例
 const api: AxiosInstance = axios.create({
@@ -17,8 +19,9 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// API基础URL
-const apiBaseUrl = 'http://localhost:33201';
+// 使用配置文件中定义的API基础URL
+const apiBaseUrl = API_BASE_URL;
+console.log(`API路径模式: 使用配置文件设置 - ${apiBaseUrl || '相对路径'}`);
 
 /**
  * 配置API服务
