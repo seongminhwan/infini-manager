@@ -17,19 +17,12 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// 智能检测API基础URL - 根据当前环境自动选择合适的API地址
-let apiBaseUrl = '';
-
-// 检测当前环境
-if (window.location.host.includes('localhost')) {
-  // 本地开发环境 - 直接连接到后端服务
-  apiBaseUrl = 'http://localhost:33201';
-  console.log('API路径模式: 开发环境，直接连接到后端 -', apiBaseUrl);
-} else {
-  // 生产环境或Docker环境 - 使用相对路径，由Nginx代理转发
-  apiBaseUrl = '';
-  console.log('API路径模式: 生产环境，使用相对路径（通过Nginx代理）');
-}
+// API基础URL - 统一使用相对路径，适用于所有环境
+// 相对路径将根据当前环境自动处理：
+// - 本地开发环境：通过package.json中的proxy配置转发到后端
+// - Docker环境：通过Nginx配置转发到后端
+const apiBaseUrl = '';
+console.log('API路径模式: 使用相对路径（通过代理/Nginx转发）');
 
 /**
  * 配置API服务
