@@ -59,8 +59,16 @@ start-front:
 	fi
 	@# 启动前端服务
 	@echo "启动前端服务..."
-	@cd frontend && npm run dev &
+	@cd frontend && npm start &
+	@# 等待前端服务启动
 	@echo "前端服务正在启动，请等待..."
+	@sleep 5
+	@# 检查前端服务是否正常启动
+	@if ! lsof -i :$(FRONTEND_PORT) > /dev/null; then \
+		echo "警告: 前端服务可能未正常启动，请检查日志"; \
+	else \
+		echo "前端服务已启动在端口 $(FRONTEND_PORT)"; \
+	fi
 
 # 单独指定其他命令
 backend: start-backend
@@ -86,10 +94,20 @@ start-mysql-all:
 	@echo "使用MySQL启动所有服务..."
 	@# 首先启动MySQL后端
 	@$(MAKE) start-mysql
-	@sleep 5  # 等待后端完全启动
+	@# 等待后端完全启动
+	@echo "等待后端服务完全启动..."
+	@sleep 10
+	@# 检查后端是否启动成功
+	@if ! curl -s http://localhost:$(BACKEND_PORT)/api/health > /dev/null; then \
+		echo "警告: 后端服务可能未正常启动，请检查日志"; \
+	else \
+		echo "后端服务已成功启动"; \
+	fi
 	@# 启动前端
 	@$(MAKE) start-front
 	@echo "所有服务已启动 (使用MySQL数据库)"
+	@echo "前端访问地址: http://localhost:$(FRONTEND_PORT)"
+	@echo "后端API地址: http://localhost:$(BACKEND_PORT)"
 
 # 停止所有服务
 stop:
