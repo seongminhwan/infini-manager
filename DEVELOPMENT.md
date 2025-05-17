@@ -100,7 +100,7 @@ make help
 #### 前提条件
 
 - 已安装Docker和Docker Compose
-- 确保端口33201和33202未被占用
+- 确保端口33201和80未被占用
 
 #### 步骤
 
@@ -230,7 +230,7 @@ backend:
 
 | 环境变量        | 描述                       | 默认值                    |
 |----------------|----------------------------|--------------------------|
-| PORT           | 后端服务端口                | 33201                    |
+| PORT           | 后端服务端口                | 5000 (Makefile中设为33201) |
 | NODE_ENV       | 环境（development/production）| development               |
 | DB_TYPE        | 数据库类型（sqlite/mysql）   | sqlite                   |
 | DB_HOST        | MySQL主机地址               | localhost                |
