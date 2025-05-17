@@ -103,7 +103,7 @@
 1. **获取源代码**
 ```bash
 # 使用Git克隆项目
-git clone <项目Git地址>
+git clone https://github.com/seongminhwan/infini-manager.git
 # 进入项目目录
 cd infini-manager
 ```
