@@ -21,29 +21,6 @@ jobs:
     
     steps:
       - name: 检出代码
-name: 构建并发布Docker镜像
-
-on:
-  push:
-    branches: [ main, master, develop ]
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ main, master ]
-
-env:
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
-  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
-
-jobs:
-  build-and-push:
-    name: 构建并推送Docker镜像到GitHub Packages
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    
-    steps:
-      - name: 检出代码
         uses: actions/checkout@v3
       
       # 设置 QEMU 和 Docker Buildx
