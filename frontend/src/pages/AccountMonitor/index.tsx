@@ -2218,10 +2218,12 @@ const AccountMonitor: React.FC = () => {
         fetchPaginatedAccounts(); // 使用分页API刷新账户列表
       } else {
         message.error(response.data.message || '批量同步KYC信息失败');
+        fetchPaginatedAccounts(); // 即使失败也刷新列表，以确保数据一致性
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || error.message || '批量同步KYC信息失败');
       console.error('批量同步KYC信息失败:', error);
+      fetchPaginatedAccounts(); // 错误情况下也刷新列表，确保UI与服务器数据同步
     } finally {
       setBatchSyncing(false);
     }
