@@ -8,7 +8,7 @@ export async function up(knex: Knex): Promise<void> {
   // 创建infini_cards表
   return knex.schema.createTable('infini_cards', (table) => {
     table.increments('id').primary();
-    table.integer('infini_account_id').notNullable().references('id').inTable('infini_accounts').onDelete('CASCADE');
+    table.integer('infini_account_id').unsigned().notNullable().references('id').inTable('infini_accounts').onDelete('CASCADE');
     table.string('card_id').comment('从API返回的卡片ID');
     table.string('status').comment('卡片状态');
     table.string('currency').comment('货币类型');
