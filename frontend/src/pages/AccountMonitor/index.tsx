@@ -2214,8 +2214,8 @@ const AccountMonitor: React.FC = () => {
       const response = await api.post(`${API_BASE_URL}/api/infini-accounts/sync-all-kyc`);
       
       if (response.data.success) {
-        c
-        message.error(response.data.message || '批量同步KYC信息失败');
+        message.success('批量同步KYC信息成功');
+        fetchPaginatedAccounts(); // 使用分页API刷新账户列表
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || error.message || '批量同步KYC信息失败');
