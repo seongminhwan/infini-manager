@@ -238,6 +238,7 @@ const BatchCardApply: React.FC = () => {
           setModalVisible(false);
           fetchAccounts(); // 刷新账户列表
         }}
+        accounts={accounts.filter(account => selectedAccountIds.includes(account.id))}
       />
     </PageContainer>
   );
