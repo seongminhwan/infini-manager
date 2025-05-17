@@ -450,6 +450,19 @@ const BatchCardApply: React.FC = () => {
     }
   };
   
+  // 提交KYC生日信息
+  const submitKycBirthday = async (accountId: string, birthday: string): Promise<boolean> => {
+    try {
+      console.log(`提交KYC生日信息, 账户ID: ${accountId}, 生日: ${birthday}`);
+      const response = await infiniCardApi.submitKycBirthday(accountId, birthday);
+      
+      return response.success;
+    } catch (error) {
+      console.error(`提交KYC生日信息失败, 账户ID: ${accountId}:`, error);
+      return false;
+    }
+  };
+  
   // 申请新卡
   const applyNewCard = async (accountId: string): Promise<boolean> => {
     try {
@@ -513,7 +526,21 @@ const BatchCardApply: React.FC = () => {
           console.log(`账户 ${accountId} 已完成KYC验证(级别${verificationLevel})，跳过KYC提交步骤`);
           updateAccountStatus(i, 'kyc-success', '已完成KYC验证');
           
-          // 直接申请新卡
+          // 提交KYC生日信息
+          try {
+            console.log(`账户 ${accountId} 已完成KYC验证(级别${verificationLevel})，提交KYC生日信息`);
+            // 使用默认生日或从mockUser获取
+            const birthday = account.mock_user_id 
+              ? (await getRandomUserInfo(account.mock_user_id))?.birth_date || "1990-01-01"
+              : "1990-01-01";
+            await submitKycBirthday(accountId, birthday);
+            // 即使提交生日信息失败也继续执行开卡
+          } catch (error) {
+            console.error(`提交KYC生日信息时发生异常, 账户ID: ${accountId}:`, error);
+            // 记录错误但不中断流程
+          }
+          
+          // 申请新卡
           updateAccountStatus(i, 'card-applying');
           const cardSuccess = await applyNewCard(accountId);
           
@@ -571,10 +598,10 @@ const BatchCardApply: React.FC = () => {
               birthday: kycInfo.birthday || "1990-01-01"
             };
           } else {
-            // 如果没有KYC信息和随机用户信息，标记为失败
-            updateAccountStatus(i, 'kyc-failed', '无法获取KYC信息和随机用户信息');
-            setFailedCount(prev => prev + 1);
-            continue;
+          // 如果没有KYC信息和随机用户信息，标记为失败
+          updateAccountStatus(i, 'kyc-failed', '无法获取KYC信息和随机用户信息');
+          setFailedCount(prev => prev + 1);
+          continue;
           }
           
           // 提交KYC基础信息，并捕获异常
@@ -591,6 +618,16 @@ const BatchCardApply: React.FC = () => {
             updateAccountStatus(i, 'kyc-success');
           } else {
             updateAccountStatus(i, 'kyc-failed', '提交KYC信息失败，仍继续开卡');
+          }
+          
+          // 提交KYC生日信息，并捕获异常
+          try {
+            const birthday = kycData.birthday || "1990-01-01";
+            await submitKycBirthday(accountId, birthday);
+            // 即使提交生日信息失败也继续执行开卡
+          } catch (error) {
+            console.error(`提交KYC生日信息时发生异常, 账户ID: ${accountId}:`, error);
+            // 记录错误但不中断流程
           }
           
           // 无论KYC成功与否，都继续申请新卡
