@@ -264,16 +264,16 @@ const BatchCardApply: React.FC = () => {
       filtered = filtered.filter(account => !account.hasCard);
     }
     
-    // 高级筛选条件
-    if (filters.minBalance !== undefined) {
+    // 高级筛选条件 - 支持单边区间值
+    if (filters.minBalance !== undefined && filters.minBalance !== null) {
       filtered = filtered.filter(account => 
-        account.balance && parseFloat(account.balance) >= (filters.minBalance || 0)
+        account.balance && parseFloat(account.balance) >= filters.minBalance!
       );
     }
     
-    if (filters.maxBalance !== undefined) {
+    if (filters.maxBalance !== undefined && filters.maxBalance !== null) {
       filtered = filtered.filter(account => 
-        account.balance && parseFloat(account.balance) <= (filters.maxBalance || Infinity)
+        account.balance && parseFloat(account.balance) <= filters.maxBalance!
       );
     }
     
@@ -302,8 +302,40 @@ const BatchCardApply: React.FC = () => {
       });
     }
     
-    // 红包余额和注册时间筛选需要后端支持，这里仅做示例
-    // 实际业务中可能需要调整API或在前端做额外处理
+    // 红包余额筛选 - 支持单边区间值
+    if (filters.minRedPacket !== undefined && filters.minRedPacket !== null) {
+      filtered = filtered.filter(account => 
+        account.redPacketBalance && parseFloat(account.redPacketBalance) >= filters.minRedPacket!
+      );
+    }
+    
+    if (filters.maxRedPacket !== undefined && filters.maxRedPacket !== null) {
+      filtered = filtered.filter(account => 
+        account.redPacketBalance && parseFloat(account.redPacketBalance) <= filters.maxRedPacket!
+      );
+    }
+    
+    // 注册时间筛选 - 支持单边区间值
+    if (filters.registerDate && filters.registerDate.length === 2) {
+      const startDate = filters.registerDate[0];
+      const endDate = filters.registerDate[1];
+      
+      if (startDate) {
+        filtered = filtered.filter(account => {
+          if (!account.registerDate) return false;
+          const date = new Date(account.registerDate);
+          return date >= startDate;
+        });
+      }
+      
+      if (endDate) {
+        filtered = filtered.filter(account => {
+          if (!account.registerDate) return false;
+          const date = new Date(account.registerDate);
+          return date <= endDate;
+        });
+      }
+    }
     
     setFilteredAccounts(filtered);
   };
