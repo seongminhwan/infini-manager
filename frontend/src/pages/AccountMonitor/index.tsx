@@ -3351,6 +3351,9 @@ const AccountMonitor: React.FC = () => {
                   <Menu.Item key="syncAllKyc" onClick={batchSyncAllKyc}>
                     批量同步KYC信息
                   </Menu.Item>
+                  <Menu.Item key="syncAllCards" onClick={batchSyncAllCards}>
+                    批量同步卡片信息
+                  </Menu.Item>
                   <Menu.Item key="redPacket" onClick={openRedPacketModal}>
                     批量领取红包
                   </Menu.Item>
