@@ -21,7 +21,15 @@ export async function up(knex: Knex): Promise<void> {
     
     // 索引
     table.index('created_at');
-    table.index('url');
+    // 不同数据库对索引长度有不同限制，MySQL需要指定前缀长度
+    const isMysql = knex.client.config.client.includes('mysql');
+    if (isMysql) {
+      // MySQL环境：为长字符串字段指定索引前缀长度
+      await knex.schema.raw('CREATE INDEX `axios_request_logs_url_index` ON `axios_request_logs`(`url`(255))');
+    } else {
+      // SQLite环境：可以直接创建完整索引
+      table.index('url');
+    }
     table.index('method');
     table.index('status_code');
     table.index('success');
