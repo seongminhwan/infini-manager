@@ -2224,6 +2224,85 @@ const AccountMonitor: React.FC = () => {
       setBatchSyncing(false);
     }
   };
+  
+  // 批量同步所有账户卡片信息
+  const batchSyncAllCards = async () => {
+    try {
+      setBatchSyncing(true);
+      message.info('开始批量同步卡片信息...');
+      
+      // 获取所有账户
+      const accountsResponse = await api.get(`${API_BASE_URL}/api/infini-accounts`);
+      
+      if (!accountsResponse.data.success) {
+        message.error(accountsResponse.data.message || '获取账户列表失败');
+        setBatchSyncing(false);
+        return;
+      }
+      
+      const allAccounts = accountsResponse.data.data || [];
+      const total = allAccounts.length;
+      let success = 0;
+      let failed = 0;
+      const results: Array<{
+        id: number;
+        email: string;
+        success: boolean;
+        message?: string;
+      }> = [];
+      
+      // 遍历所有账户，逐个同步卡片信息
+      for (const account of allAccounts) {
+        try {
+          const syncResponse = await api.post(`${API_BASE_URL}/api/infini-cards/sync`, {
+            accountId: account.id
+          });
+          
+          if (syncResponse.data.success) {
+            success++;
+            results.push({
+              id: account.id,
+              email: account.email,
+              success: true
+            });
+          } else {
+            failed++;
+            results.push({
+              id: account.id,
+              email: account.email,
+              success: false,
+              message: syncResponse.data.message
+            });
+          }
+        } catch (error: any) {
+          failed++;
+          results.push({
+            id: account.id,
+            email: account.email,
+            success: false,
+            message: error.response?.data?.message || error.message || '同步失败'
+          });
+        }
+      }
+      
+      const result: BatchSyncResult = {
+        total,
+        success,
+        failed,
+        accounts: results
+      };
+      
+      setBatchSyncResult(result);
+      setBatchResultModalVisible(true);
+      message.success(`批量同步卡片信息完成: 总计${total}个账户, 成功${success}个, 失败${failed}个`);
+      fetchAccounts(); // 刷新账户列表
+    } catch (error: any) {
+      message.error(error.response?.data?.message || error.message || '批量同步卡片信息失败');
+      console.error('批量同步卡片信息失败:', error);
+    } finally {
+      setBatchSyncing(false);
+    }
+  };
 
   // 红包领取状态
   const [redPacketModalVisible, setRedPacketModalVisible] = useState(false);
