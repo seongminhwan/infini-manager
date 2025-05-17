@@ -14,6 +14,7 @@ import RandomUserManage from '../pages/RandomUserManage';
 import AccountGroupManage from '../pages/AccountGroupManage';
 import AffCashback from '../pages/AffCashback';
 import AffHistory from '../pages/AffHistory';
+import BatchCardApply from '../pages/BatchCardApply';
 
 /**
  * 应用路由配置
@@ -40,6 +41,8 @@ const AppRoutes: React.FC = () => {
         {/* AFF返现相关路由 */}
         <Route path="/aff-cashback" element={<AffCashback />} />
         <Route path="/aff-history" element={<AffHistory />} />
+        {/* 卡片管理相关路由 */}
+        <Route path="/batch-card-apply" element={<BatchCardApply />} />
       </Route>
     </Routes>
   );
