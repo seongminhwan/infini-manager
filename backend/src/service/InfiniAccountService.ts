@@ -4242,6 +4242,88 @@ export class InfiniAccountService {
    * 针对每个账户，获取并更新KYC信息
    * 已完成KYC状态的账户会跳过再次同步
    */
+  /**
+   * 上传KYC生日信息
+   * @param accountId Infini账户ID
+   * @param birthday 生日日期，格式为YYYY-MM-DD
+   * @returns 上传结果
+   */
+  async submitKycBirthday(accountId: string, birthday: string): Promise<ApiResponse> {
+    try {
+      console.log(`开始上传KYC生日信息，账户ID: ${accountId}, 生日: ${birthday}`);
+
+      // 查找账户
+      const account = await db('infini_accounts')
+        .where('id', accountId)
+        .first();
+
+      if (!account) {
+        console.error(`上传KYC生日信息失败: 找不到ID为${accountId}的Infini账户`);
+        return {
+          success: false,
+          message: '找不到指定的Infini账户'
+        };
+      }
+
+      // 获取有效Cookie
+      const cookie = await this.getCookieForAccount(account, '上传KYC生日信息失败，');
+
+      if (!cookie) {
+        console.error(`上传KYC生日信息失败: 无法获取账户${account.email}的有效登录凭证`);
+        return {
+          success: false,
+          message: '上传KYC生日信息失败，无法获取有效的登录凭证'
+        };
+      }
+
+      // 调用API上传生日信息
+      const response = await httpClient.post(
+        `${INFINI_API_BASE_URL}/card/kyc/birthday`,
+        { birthday },
+        {
+          headers: {
+            'Cookie': cookie,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en',
+            'Cache-Control': 'no-cache',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+            'Referer': 'https://app.infini.money/',
+            'Origin': 'https://app.infini.money',
+            'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'Pragma': 'no-cache'
+          }
+        }
+      );
+
+      console.log('Infini KYC生日信息API响应:', response.data);
+
+      // 验证API响应
+      if (response.data.code === 0) {
+        console.log(`KYC生日信息上传成功`);
+        return {
+          success: true,
+          data: response.data.data,
+          message: 'KYC生日信息上传成功'
+        };
+      } else {
+        console.error(`Infini API返回错误: ${response.data.message || '未知错误'}`);
+        return {
+          success: false,
+          message: `上传KYC生日信息失败: ${response.data.message || '未知错误'}`
+        };
+      }
+    } catch (error) {
+      console.error('上传KYC生日信息失败:', error);
+      return {
+        success: false,
+        message: `上传KYC生日信息失败: ${(error as Error).message}`
+      };
+    }
+  }
+
   async syncAllKycInformation(): Promise<ApiResponse> {
     try {
       // 获取所有Infini账户
