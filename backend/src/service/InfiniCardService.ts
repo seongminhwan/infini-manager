@@ -1096,12 +1096,14 @@ export class InfiniCardService {
       
       return {
         success: true,
-        data: statementsWithMetadata,
-        pagination: {
-          total,
-          page,
-          pageSize,
-          totalPages: Math.ceil(total / pageSize)
+        data: {
+          statements: statementsWithMetadata,
+          pagination: {
+            total,
+            page,
+            pageSize,
+            totalPages: Math.ceil(total / pageSize)
+          }
         },
         message: '成功获取本地卡片流水记录'
       };
