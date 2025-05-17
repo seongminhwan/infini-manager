@@ -702,12 +702,12 @@ const BatchCardApply: React.FC = () => {
               排除已有卡片的账户
             </Checkbox>
             
-            <Divider orientation="left" style={{ margin: '12px 0' }}>高级筛选</Divider>
+            <Divider orientation="left" style={{ margin: '8px 0' }}>高级筛选</Divider>
             
-            <Row gutter={[16, 16]}>
+            <Row gutter={[8, 8]}>
               {/* 余额筛选 */}
-              <Col span={12}>
-                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>余额</Title>
+              <Col span={8}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 4 }}>余额</Title>
                 <Space>
                   <InputNumber 
                     placeholder="最小余额" 
@@ -726,8 +726,8 @@ const BatchCardApply: React.FC = () => {
               </Col>
               
               {/* 用户名筛选 */}
-              <Col span={12}>
-                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>用户名</Title>
+              <Col span={8}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 4 }}>用户名</Title>
                 <Input 
                   placeholder="输入关键字搜索用户名" 
                   allowClear 
@@ -737,8 +737,8 @@ const BatchCardApply: React.FC = () => {
               </Col>
               
               {/* 用户名正则筛选 */}
-              <Col span={12}>
-                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>用户名正则</Title>
+              <Col span={8}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 4 }}>用户名正则</Title>
                 <Input 
                   placeholder="输入正则表达式" 
                   allowClear 
@@ -748,8 +748,8 @@ const BatchCardApply: React.FC = () => {
               </Col>
               
               {/* 注册时间筛选 */}
-              <Col span={12}>
-                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>注册时间</Title>
+              <Col span={8}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 4 }}>注册时间</Title>
                 <DatePicker.RangePicker 
                   style={{ width: 240 }} 
                   onChange={(dates) => handleFilterChange('registerDate', dates)}
@@ -757,8 +757,8 @@ const BatchCardApply: React.FC = () => {
               </Col>
               
               {/* 红包余额筛选 */}
-              <Col span={12}>
-                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>红包余额</Title>
+              <Col span={8}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 4 }}>红包余额</Title>
                 <Space>
                   <InputNumber 
                     placeholder="最小红包" 
@@ -777,8 +777,8 @@ const BatchCardApply: React.FC = () => {
               </Col>
               
               {/* 认证状态筛选 */}
-              <Col span={12}>
-                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>认证状态</Title>
+              <Col span={8}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 4 }}>认证状态</Title>
                 <Select
                   mode="multiple"
                   placeholder="选择认证状态"
