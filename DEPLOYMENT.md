@@ -1,13 +1,12 @@
 # Infini 账号管理系统 - 部署手册
 
-本文档为Infini账号管理系统的部署手册，详细介绍如何在生产环境中部署、更新和管理系统。
+本文档为Infini账号管理系统的部署手册，详细介绍如何部署、更新和管理系统。
 
 ## 目录
 
 - [版本信息](#版本信息)
 - [部署方式](#部署方式)
   - [Docker部署](#docker部署)
-  - [手动部署](#手动部署)
 - [更新与升级](#更新与升级)
 - [备份与恢复](#备份与恢复)
 - [常见问题](#常见问题)
@@ -40,7 +39,7 @@
 
 ### Docker部署
 
-Docker部署是推荐的生产环境部署方式，它具有以下优点：
+Docker部署是推荐的部署方式，它具有以下优点：
 - 环境一致性，避免"在我电脑上能运行"的问题
 - 简化部署流程，无需安装Node.js等依赖
 - 便于管理和扩展
@@ -83,8 +82,8 @@ Docker部署是推荐的生产环境部署方式，它具有以下优点：
    ```
 
 4. 验证部署
-   - 访问前端: http://服务器IP:33202
-   - 访问后端API: http://服务器IP:33201/api/health
+   - 访问前端: http://localhost:80 或直接http://localhost
+   - 访问后端API: http://localhost:33201/api/health
 
 #### 使用官方Docker镜像
 
@@ -107,78 +106,44 @@ Docker部署是推荐的生产环境部署方式，它具有以下优点：
          - ./backend/.env:/app/.env
          - ./data:/app/data
        restart: unless-stopped
+       networks:
+         - infini-network
+       depends_on:
+         - mysql
    
      frontend:
        image: ghcr.io/your-org/infini-manager/frontend:v0.3
        ports:
-         - "33202:80"
+         - "80:80"
        restart: unless-stopped
        depends_on:
          - backend
+       networks:
+         - infini-network
+       
+     mysql:
+       image: mysql:8.0
+       container_name: infini-mysql
+       restart: unless-stopped
+       environment:
+         - MYSQL_ROOT_PASSWORD=password
+         - MYSQL_DATABASE=infini_manager
+       ports:
+         - "3307:3306"
+       volumes:
+         - ./data/mysql:/var/lib/mysql
+         - ./backend/init-mysql.sql:/docker-entrypoint-initdb.d/init.sql
+       networks:
+         - infini-network
+   
+   networks:
+     infini-network:
+       driver: bridge
    ```
 
 2. 启动服务
    ```bash
    docker-compose up -d
-   ```
-
-### 手动部署
-
-对于不使用Docker的环境，也可以手动部署系统。
-
-#### 前提条件
-
-- Node.js 14.x 或更高版本
-- npm 6.x 或更高版本
-- 可选: MySQL 8.0 (如果使用MySQL作为数据库)
-
-#### 部署步骤
-
-1. 获取项目代码
-   ```bash
-   git clone <项目Git地址>
-   cd infini-manager
-   ```
-
-2. 构建后端
-   ```bash
-   cd backend
-   npm install
-   npm run build
-   ```
-
-3. 构建前端
-   ```bash
-   cd ../frontend
-   npm install
-   npm run build
-   ```
-
-4. 配置环境
-   ```bash
-   # 复制并编辑后端环境配置
-   cd ../backend
-   cp .env.example .env
-   vi .env
-   ```
-
-5. 启动服务
-   ```bash
-   # 后端服务
-   cd ../backend
-   NODE_ENV=production npm start
-   
-   # 前端服务(可以使用Nginx或其他Web服务器提供静态文件)
-   # 例如使用Nginx:
-   # 配置示例: /etc/nginx/conf.d/infini.conf
-   # server {
-   #   listen 33202;
-   #   root /path/to/infini-manager/frontend/build;
-   #   index index.html;
-   #   location / {
-   #     try_files $uri $uri/ /index.html;
-   #   }
-   # }
    ```
 
 ## 更新与升级
@@ -256,13 +221,13 @@ mysqldump -uroot -ppassword -h localhost -P 3307 infini_manager > backups/infini
 
 ```bash
 # 停止服务
-docker-compose down  # 如果使用Docker
+docker-compose down
 
 # 恢复数据库文件
 cp backups/your_backup_file.sqlite3 backend/db/infini.sqlite3
 
 # 重启服务
-docker-compose up -d  # 如果使用Docker
+docker-compose up -d
 ```
 
 #### MySQL数据恢复
@@ -289,7 +254,7 @@ mysql -uroot -ppassword -h localhost -P 3307 infini_manager < backups/your_backu
 2. 确认端口未被占用
    ```bash
    netstat -tulpn | grep 33201
-   netstat -tulpn | grep 33202
+   netstat -tulpn | grep 80
    ```
 3. 确认环境配置正确
    ```bash
