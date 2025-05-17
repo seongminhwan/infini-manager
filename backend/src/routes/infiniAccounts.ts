@@ -30,6 +30,8 @@ import {
   getCardList,
   update2faInfo,
   oneClickAccountSetup,
+  // 分页获取Infini账户
+  getPaginatedInfiniAccounts,
   // 账户分组相关控制器
   getAllAccountGroups,
   getAccountGroupById,
