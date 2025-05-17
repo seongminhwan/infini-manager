@@ -22,7 +22,13 @@ import {
   List,
   Avatar,
   Spin,
-  message
+  message,
+  Row,
+  Col,
+  Input,
+  InputNumber,
+  DatePicker,
+  Select
 } from 'antd';
 import { 
   CreditCardOutlined, 
@@ -146,6 +152,18 @@ const BatchCardApply: React.FC = () => {
   const [autoRefreshInvalidKyc, setAutoRefreshInvalidKyc] = useState<boolean>(true);
   const [autoRetryWithNewRandomUser, setAutoRetryWithNewRandomUser] = useState<boolean>(true);
   
+  // 筛选条件状态
+  const [filters, setFilters] = useState<{
+    minBalance?: number;
+    maxBalance?: number;
+    username?: string;
+    usernameRegex?: string;
+    registerDate?: [moment.Moment, moment.Moment];
+    minRedPacket?: number;
+    maxRedPacket?: number;
+    verificationLevels?: number[];
+  }>({});
+  
   // 执行状态
   const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number>(-1);
   const [progressPercent, setProgressPercent] = useState<number>(0);
@@ -240,11 +258,76 @@ const BatchCardApply: React.FC = () => {
     if (!accounts) return;
     
     let filtered = [...accounts];
+    
+    // 基础筛选 - 排除已有卡片的账户
     if (excludeCardOwners) {
       filtered = filtered.filter(account => !account.hasCard);
     }
     
+    // 高级筛选条件
+    if (filters.minBalance !== undefined) {
+      filtered = filtered.filter(account => 
+        account.balance && parseFloat(account.balance) >= (filters.minBalance || 0)
+      );
+    }
+    
+    if (filters.maxBalance !== undefined) {
+      filtered = filtered.filter(account => 
+        account.balance && parseFloat(account.balance) <= (filters.maxBalance || Infinity)
+      );
+    }
+    
+    if (filters.username) {
+      filtered = filtered.filter(account => 
+        account.email.toLowerCase().includes(filters.username?.toLowerCase() || '')
+      );
+    }
+    
+    if (filters.usernameRegex) {
+      try {
+        const regex = new RegExp(filters.usernameRegex);
+        filtered = filtered.filter(account => regex.test(account.email));
+      } catch (error) {
+        // 忽略无效的正则表达式
+        console.error('无效的正则表达式:', filters.usernameRegex);
+      }
+    }
+    
+    if (filters.verificationLevels && filters.verificationLevels.length > 0) {
+      filtered = filtered.filter(account => {
+        const level = account.verification_level !== undefined 
+          ? account.verification_level 
+          : account.verificationLevel;
+        return filters.verificationLevels?.includes(level || 0);
+      });
+    }
+    
+    // 红包余额和注册时间筛选需要后端支持，这里仅做示例
+    // 实际业务中可能需要调整API或在前端做额外处理
+    
     setFilteredAccounts(filtered);
+  };
+  
+  // 处理筛选条件变更
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+  
+  // 应用筛选条件
+  const applyFilters = () => {
+    filterAccounts();
+    message.success('筛选条件已应用');
+  };
+  
+  // 重置筛选条件
+  const resetFilters = () => {
+    setFilters({});
+    setExcludeCardOwners(true);
+    filterAccounts();
+    message.success('筛选条件已重置');
   };
   
   // 获取卡片价格
