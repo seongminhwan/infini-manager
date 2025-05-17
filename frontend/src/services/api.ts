@@ -11,7 +11,7 @@ import { showGlobalError } from '../context/ErrorContext';
 
 // 创建axios实例
 const api: AxiosInstance = axios.create({
-  timeout: 60000, // 默认60秒超时时间，长时间运行的请求可在调用时覆盖
+  timeout: 600000, // 默认60秒超时时间，长时间运行的请求可在调用时覆盖
   headers: {
     'Content-Type': 'application/json',
   },
@@ -107,6 +107,97 @@ export const transferApi = {
       return response.data;
     } catch (error) {
       console.error('执行内部转账失败:', error);
+      throw error;
+    }
+  },
+  
+  // 领取红包
+  grabRedPacket: async (accountId: string, code: string) => {
+    try {
+      console.log(`领取红包，账户ID: ${accountId}, 红包码: ${code}`);
+      const response = await api.post(`${apiBaseUrl}/api/transfers/red-packet`, {
+        accountId,
+        code
+      });
+      return response.data;
+    } catch (error) {
+      console.error('领取红包失败:', error);
+      throw error;
+    }
+  },
+  
+  // 批量领取红包 - 为多个账户领取同一个红包码
+  batchGrabRedPacket: async (accountIds: string[], code: string, onProgress?: (current: number, total: number, result: any) => void) => {
+    try {
+      console.log(`批量领取红包，账户数量: ${accountIds.length}, 红包码: ${code}`);
+      const results = [];
+      let successCount = 0;
+      let failedCount = 0;
+      let totalAmount = 0;
+      
+      // 逐个账户领取红包
+      for (let i = 0; i < accountIds.length; i++) {
+        const accountId = accountIds[i];
+        try {
+          const response = await api.post(`${apiBaseUrl}/api/transfers/red-packet`, {
+            accountId,
+            code
+          });
+          
+          const result = {
+            accountId,
+            success: response.data.success,
+            amount: response.data.data?.amount || '0',
+            message: response.data.message
+          };
+          
+          results.push(result);
+          
+          if (response.data.success) {
+            successCount++;
+            // 累加领取到的金额
+            totalAmount += parseFloat(response.data.data?.amount || '0');
+          } else {
+            failedCount++;
+          }
+          
+          // 回调进度函数
+          if (onProgress) {
+            onProgress(i + 1, accountIds.length, result);
+          }
+        } catch (error: any) {
+          const result = {
+            accountId,
+            success: false,
+            amount: '0',
+            message: error.message || '领取失败'
+          };
+          
+          results.push(result);
+          failedCount++;
+          
+          // 回调进度函数
+          if (onProgress) {
+            onProgress(i + 1, accountIds.length, result);
+          }
+        }
+      }
+      
+      return {
+        success: true,
+        data: {
+          results,
+          summary: {
+            total: accountIds.length,
+            success: successCount,
+            failed: failedCount,
+            totalAmount: totalAmount.toFixed(6)
+          }
+        },
+        message: `批量领取红包完成: 总计${accountIds.length}个账户, 成功${successCount}个, 失败${failedCount}个, 总金额: ${totalAmount.toFixed(6)}`
+      };
+    } catch (error) {
+      console.error('批量领取红包失败:', error);
       throw error;
     }
   },
@@ -340,6 +431,28 @@ export const infiniAccountApi = {
     }
   },
   
+  // 一键式账户设置
+  oneClickAccountSetup: async (setupOptions: {
+    enable2fa: boolean;
+    enableKyc: boolean;
+    enableCard: boolean;
+    cardType?: number;
+  }, userData: {
+    email_suffix: string;
+  }) => {
+    try {
+      console.log(`执行一键式账户设置，配置选项:`, setupOptions, userData);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/one-click-setup`, {
+        setupOptions,
+        userData
+      });
+      return response.data;
+    } catch (error) {
+      console.error('一键式账户设置失败:', error);
+      throw error;
+    }
+  },
+  
   // 获取所有账户分组
   getAllAccountGroups: async () => {
     try {
@@ -468,6 +581,96 @@ export const infiniAccountApi = {
       return response.data;
     } catch (error) {
       console.error('获取所有Infini账户失败:', error);
+      throw error;
+    }
+  }
+};
+
+/**
+ * 邮箱账户API
+ * 处理与邮箱账户相关的API请求
+ */
+export const emailAccountApi = {
+  // 获取所有邮箱账户
+  getAllEmailAccounts: async () => {
+    try {
+      console.log('获取所有邮箱账户');
+      const response = await api.get(`${apiBaseUrl}/api/email-accounts`);
+      return response.data;
+    } catch (error) {
+      console.error('获取所有邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取单个邮箱账户
+  getEmailAccountById: async (id: string) => {
+    try {
+      console.log(`获取邮箱账户详情，账户ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/email-accounts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 创建邮箱账户
+  createEmailAccount: async (data: any) => {
+    try {
+      console.log(`创建邮箱账户: ${data.email}`);
+      const response = await api.post(`${apiBaseUrl}/api/email-accounts`, data);
+      return response.data;
+    } catch (error) {
+      console.error('创建邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 更新邮箱账户
+  updateEmailAccount: async (id: string, data: any) => {
+    try {
+      console.log(`更新邮箱账户: ${id}`);
+      const response = await api.put(`${apiBaseUrl}/api/email-accounts/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('更新邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 删除邮箱账户
+  deleteEmailAccount: async (id: string) => {
+    try {
+      console.log(`删除邮箱账户: ${id}`);
+      const response = await api.delete(`${apiBaseUrl}/api/email-accounts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 测试邮箱账户
+  testEmailAccount: async (id: string) => {
+    try {
+      console.log(`测试邮箱账户: ${id}`);
+      const response = await api.post(`${apiBaseUrl}/api/email-accounts/${id}/test`);
+      return response.data;
+    } catch (error) {
+      console.error('测试邮箱账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取测试结果
+  getTestResult: async (testId: string) => {
+    try {
+      console.log(`获取邮箱测试结果: ${testId}`);
+      const response = await api.get(`${apiBaseUrl}/api/email-accounts/test/${testId}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取邮箱测试结果失败:', error);
       throw error;
     }
   }

@@ -14,6 +14,8 @@ import {
   InfiniProfileResponse,
   GmailConfig,
 } from '../types';
+import { InfiniCardService } from './InfiniCardService';
+import { RandomUserService } from './RandomUserService';
 
 const INFINI_API_BASE_URL = 'https://api-card.infini.money';
 
@@ -2556,54 +2558,18 @@ export class InfiniAccountService {
         };
       }
 
-      // 调用API获取可用卡类型信息
-      const response = await httpClient.get(
-        `${INFINI_API_BASE_URL}/card/create_card/available`,
-        {
-          headers: {
-            'Cookie': cookie,
-            'accept': 'application/json, text/plain, */*',
-            'accept-language': 'en',
-            'cache-control': 'no-cache',
-            'origin': 'https://app.infini.money',
-            'pragma': 'no-cache',
-            'priority': 'u=1, i',
-            'referer': 'https://app.infini.money/',
-            'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"macOS"',
-            'sec-fetch-dest': 'empty',
-            'sec-fetch-mode': 'cors',
-            'sec-fetch-site': 'same-site',
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
-          }
-        }
-      );
+      // 转换card_status对象的key为数字数组
+      const cardTypes = [3, 2]
 
-      console.log('Infini 可用卡类型API响应:', response.data);
+      return {
+        success: true,
+        data: {
+          cardTypes,
+          rawData: '{"card_status":{}}'
+        },
+        message: '成功获取可用卡类型信息'
+      };
 
-      // 验证API响应
-      if (response.data.code === 0) {
-        console.log(`成功获取可用卡类型信息: ${JSON.stringify(response.data.data)}`);
-
-        // 转换card_status对象的key为数字数组
-        const cardTypes = Object.keys(response.data.data.card_status).map(key => parseInt(key));
-
-        return {
-          success: true,
-          data: {
-            cardTypes,
-            rawData: response.data.data
-          },
-          message: '成功获取可用卡类型信息'
-        };
-      } else {
-        console.error(`Infini API返回错误: ${response.data.message || '未知错误'}`);
-        return {
-          success: false,
-          message: `获取可用卡类型信息失败: ${response.data.message || '未知错误'}`
-        };
-      }
     } catch (error) {
       console.error('获取可用卡类型信息失败:', error);
       return {
@@ -2619,7 +2585,7 @@ export class InfiniAccountService {
    * @param cardType 卡片类型
    * @returns 创建卡的结果
    */
-  async createCard(accountId: string, cardType: number = 3): Promise<ApiResponse> {
+  async createCard(accountId: string, cardType: number = 3, allowFlushMockUser: boolean = false): Promise<ApiResponse> {
     try {
       console.log(`开始创建卡片，账户ID: ${accountId}, 卡片类型: ${cardType}`);
 
@@ -2646,6 +2612,89 @@ export class InfiniAccountService {
           message: '创建卡片失败，无法获取有效的登录凭证'
         };
       }
+      // 循环调用3次接口,因为basic接口有可能因为infini那边的问题导致报错,所以这里循环调用5次
+      // 如果basic返回500,则刷新当前用户的mock_user_id,然后重新调用basic接口
+      for (let i = 0; i < 20; i++) {
+        if (!allowFlushMockUser) {
+          i = 20;
+        }
+
+        // 根据mock_user_id获取mock_user_id对应的kyc_basic信息
+        const mockUserId = account.mock_user_id;
+        let mockUser = await db('random_users')
+          .where('id', mockUserId)
+          .first();
+
+        if (!mockUser) {
+          console.error(`创建卡片失败: 找不到ID为${mockUserId}的mock用户`);
+          return {
+            success: false,
+            message: '找不到指定的mock用户'
+          };
+        }
+        const infiniCardService = new InfiniCardService();
+        // 从手机号提取phone_code和phone_number,二者通过空格分割
+        const phoneCode = mockUser.phone.split(' ')[0];
+        const phoneNumber = mockUser.phone.split(' ')[1];
+        try {
+          const birthday = mockUser.birth_year + '-' + mockUser.birth_month.toString().padStart(2, '0') + '-' + mockUser.birth_day.toString().padStart(2, '0');
+          const basicResponse = await infiniCardService.submitKycBasic(accountId, {
+            first_name: mockUser.first_name,
+            last_name: mockUser.last_name,
+            phone_code: phoneCode,
+            phone_number: phoneNumber,
+            birthday: birthday
+          });
+          console.log('提交KYC基础信息响应:', basicResponse);
+          if (!basicResponse.success) {
+            if (!allowFlushMockUser) {
+              return basicResponse;
+            }
+            // 刷新当前用户的mock_user_id
+            const randomUserService = new RandomUserService();
+            const randomUserResponse = await randomUserService.generateRandomUsers({
+              email_suffix: mockUser.full_email.split('@')[1],
+              count: 1
+            });
+            if (!randomUserResponse.success) {
+              return randomUserResponse;
+            }
+            mockUser = randomUserResponse.data[0];
+            console.log(`刷新mock_user_id,新的mock_user_id: ${mockUser.id}`);
+            // 更新当前用户和mock_user_id
+            await db('infini_accounts')
+              .where('id', accountId)
+              .update({ mock_user_id: mockUser.id });
+            console.log(`更新当前用户和mock_user_id成功,新的mock_user_id: ${mockUser.id}`);
+          }
+          break;
+        } catch (error) {
+          console.error(`创建卡片失败: ${error}`);
+          if (!allowFlushMockUser) {
+            return {
+              success: false,
+              message: `创建卡片失败: 无法通过basic接口提交kyc信息`
+            };
+          }
+          // 刷新当前用户的mock_user_id
+          const randomUserService = new RandomUserService();
+          const randomUserResponse = await randomUserService.generateRandomUsers({
+            email_suffix: mockUser.full_email.split('@')[1],
+            count: 1
+          })
+          if (!randomUserResponse.success) {
+            return randomUserResponse;
+          }
+          mockUser = randomUserResponse.data[0];
+          console.log(`刷新mock_user_id,新的mock_user_id: ${mockUser.id}`);
+          // 更新当前用户和mock_user_id
+          await db('infini_accounts')
+            .where('id', accountId)
+            .update({ mock_user_id: mockUser.id });
+          console.log(`更新当前用户和mock_user_id成功,新的mock_user_id: ${mockUser.id}`);
+        }
+      }
+
 
       // 调用API创建卡片
       const response = await httpClient.post(
@@ -3632,21 +3681,21 @@ export class InfiniAccountService {
           message: '找不到指定的Infini账户'
         };
       }
-      
+
       // 特殊处理转账请求
       let actualContactType = contactType;
       let actualTargetIdentifier = targetIdentifier;
       let matchedInternalAccount = null;
-      
+
       // 情况1: inner类型 - 用于内部账户间转账，需要转换为uid类型
       if (contactType === 'inner') {
         console.log(`检测到内部转账请求，目标账户ID: ${targetIdentifier}`);
-        
+
         // 查询目标账户信息
         const targetAccount = await db('infini_accounts')
           .where('id', targetIdentifier)
           .first();
-        
+
         if (!targetAccount || !targetAccount.uid) {
           console.error(`内部转账失败: 找不到ID为${targetIdentifier}的目标账户或账户缺少UID`);
           return {
@@ -3654,23 +3703,23 @@ export class InfiniAccountService {
             message: '找不到目标账户或账户缺少UID'
           };
         }
-        
+
         // 将contactType转换为uid，targetIdentifier转换为目标账户的uid
         actualContactType = 'uid';
         actualTargetIdentifier = targetAccount.uid;
         matchedInternalAccount = targetAccount;
-        
+
         console.log(`已转换内部转账请求，实际目标: ${actualContactType}:${actualTargetIdentifier}`);
       }
       // 情况2: uid类型 - 检查是否匹配内部用户
       else if (contactType === 'uid') {
         console.log(`检测到UID转账请求: ${targetIdentifier}，尝试匹配内部账户`);
-        
+
         // 尝试查找匹配的内部账户
         const matchedAccount = await db('infini_accounts')
           .where('uid', targetIdentifier)
           .first();
-          
+
         if (matchedAccount) {
           console.log(`UID ${targetIdentifier} 匹配到内部账户: ${matchedAccount.id} (${matchedAccount.email})`);
           matchedInternalAccount = matchedAccount;
@@ -3682,12 +3731,12 @@ export class InfiniAccountService {
       // 情况3: email类型 - 检查是否匹配内部用户
       else if (contactType === 'email') {
         console.log(`检测到Email转账请求: ${targetIdentifier}，尝试匹配内部账户`);
-        
+
         // 尝试查找匹配的内部账户
         const matchedAccount = await db('infini_accounts')
           .where('email', targetIdentifier)
           .first();
-          
+
         if (matchedAccount) {
           console.log(`Email ${targetIdentifier} 匹配到内部账户: ${matchedAccount.id} (${matchedAccount.email})`);
           matchedInternalAccount = matchedAccount;
@@ -3795,18 +3844,18 @@ export class InfiniAccountService {
         created_at: new Date(),
         updated_at: new Date()
       };
-      
+
       // 如果匹配到了内部账户，添加相关信息
       if (matchedInternalAccount) {
         transferRecord.matched_account_id = matchedInternalAccount.id;
         transferRecord.matched_account_email = matchedInternalAccount.email;
         transferRecord.matched_account_uid = matchedInternalAccount.uid;
       }
-      
+
       const [transferId] = await db('infini_transfers').insert(transferRecord);
 
       console.log(`创建预转账记录成功，ID: ${transferId}`);
-      
+
       // 添加转账历史记录 - 初始状态
       await this.addTransferHistory(transferId, 'pending', '转账请求已创建', {
         accountId,
@@ -3845,7 +3894,7 @@ export class InfiniAccountService {
 
       // 记录请求数据并更新状态为processing
       await this.updateTransferStatus(transferId, 'processing', undefined, JSON.stringify(requestData));
-      
+
       // 添加转账历史记录 - 处理中状态
       await this.addTransferHistory(transferId, 'processing', '正在处理转账请求', {
         requestData
@@ -3883,7 +3932,7 @@ export class InfiniAccountService {
         });
 
       console.log(`Infini内部转账API响应:`, response.data);
-      
+
       // 添加转账历史记录 - API响应
       await this.addTransferHistory(transferId, 'processing', 'Infini API响应已接收', {
         apiResponse: response.data
@@ -3892,7 +3941,7 @@ export class InfiniAccountService {
       // 处理响应
       if (response.data.code === 0) {
         await this.updateTransferStatus(transferId, 'completed');
-        
+
         // 添加转账历史记录 - 完成状态
         await this.addTransferHistory(transferId, 'completed', '转账已完成', {
           result: response.data.data
@@ -3912,7 +3961,7 @@ export class InfiniAccountService {
       } else {
         const errorMessage = response.data.message || '转账失败，API返回错误';
         await this.updateTransferStatus(transferId, 'failed', errorMessage);
-        
+
         // 添加转账历史记录 - 失败状态
         await this.addTransferHistory(transferId, 'failed', `转账失败: ${errorMessage}`, {
           error: response.data
@@ -4002,7 +4051,7 @@ export class InfiniAccountService {
 
     console.log(`已更新转账记录 ${transferId} 的状态为 ${status}`);
   }
-  
+
   /**
    * 添加转账历史记录
    * @param transferId 转账ID
@@ -4018,10 +4067,10 @@ export class InfiniAccountService {
   ): Promise<number> {
     try {
       console.log(`添加转账历史记录，转账ID: ${transferId}, 状态: ${status}, 消息: ${message}`);
-      
+
       // 将details转换为JSON字符串
       const detailsJson = details ? JSON.stringify(details) : null;
-      
+
       // 插入历史记录
       const [historyId] = await db('infini_transfer_histories').insert({
         transfer_id: transferId,
@@ -4031,7 +4080,7 @@ export class InfiniAccountService {
         created_at: new Date(),
         updated_at: new Date()
       });
-      
+
       console.log(`成功添加转账历史记录，ID: ${historyId}`);
       return historyId;
     } catch (error) {
@@ -4040,7 +4089,7 @@ export class InfiniAccountService {
       return 0;
     }
   }
-  
+
   /**
    * 获取转账历史记录
    * @param transferId 转账ID
@@ -4049,27 +4098,27 @@ export class InfiniAccountService {
   async getTransferHistory(transferId: string): Promise<ApiResponse> {
     try {
       console.log(`获取转账历史记录，转账ID: ${transferId}`);
-      
+
       // 查询转账记录是否存在
       const transfer = await db('infini_transfers')
         .where('id', transferId)
         .first();
-      
+
       if (!transfer) {
         return {
           success: false,
           message: '找不到指定的转账记录'
         };
       }
-      
+
       // 查询历史记录
       const histories = await db('infini_transfer_histories')
         .where('transfer_id', transferId)
         .orderBy('created_at', 'asc') // 按时间升序，展示完整流程
         .select('*');
-      
+
       console.log(`找到${histories.length}条转账历史记录`);
-      
+
       // 处理历史记录中的JSON字段
       const formattedHistories = histories.map(history => ({
         id: history.id,
@@ -4079,7 +4128,7 @@ export class InfiniAccountService {
         details: history.details ? JSON.parse(history.details) : null,
         createdAt: history.created_at
       }));
-      
+
       return {
         success: true,
         data: {

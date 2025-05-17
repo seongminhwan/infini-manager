@@ -67,7 +67,7 @@ import { Resizable } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 import { debounce, DebouncedFunc } from 'lodash';
 import { ResizeCallbackData } from 'react-resizable';
-import api, { apiBaseUrl, configApi, infiniAccountApi, randomUserApi, totpToolApi, httpService } from '../../services/api';
+import api, { apiBaseUrl, configApi, infiniAccountApi, randomUserApi, totpToolApi, httpService, transferApi } from '../../services/api';
 import RandomUserRegisterModal from '../../components/RandomUserRegisterModal';
 import TwoFactorAuthModal from '../../components/TwoFactorAuthModal';
 import TwoFaViewModal from '../../components/TwoFaViewModal';
@@ -75,6 +75,9 @@ import KycAuthModal from '../../components/KycAuthModal';
 import KycViewModal from '../../components/KycViewModal';
 import CardApplyModal from '../../components/CardApplyModal';
 import CardDetailModal from '../../components/CardDetailModal';
+import RedPacketModal from '../../components/RedPacketModal';
+import OneClickSetupModal from '../../components/OneClickSetupModal';
+import BatchRegisterModal from '../../components/BatchRegisterModal';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
 
@@ -1439,6 +1442,31 @@ const AccountCreateModal: React.FC<{
   );
 };
 
+// 根据金额和颜色区间配置获取样式的辅助函数
+const getStyleForBalance = (amount: number, colorRanges: any[]) => {
+  const result = {
+    color: "default", // 默认标签颜色
+    style: {} as React.CSSProperties // 默认样式为空
+  };
+  
+  // 从大到小遍历阈值，找到第一个符合条件的区间
+  for (const range of colorRanges) {
+    if (amount >= range.threshold) {
+      result.color = range.color;
+      // 如果有背景色和文字颜色，添加到样式中
+      if (range.backgroundColor && range.textColor) {
+        result.style = {
+          backgroundColor: range.backgroundColor,
+          color: range.textColor
+        };
+      }
+      break;
+    }
+  }
+  
+  return result;
+};
+
 // KYC图片类型接口
 interface KycImage {
   id: number;
@@ -2067,10 +2095,25 @@ const AccountMonitor: React.FC = () => {
   // 表格列控制状态和表格列宽、顺序状态
   const [columnsToShow, setColumnsToShow] = useState<string[]>([
     'index', 'email', 'userId', 'groups', 'verification_level', 'availableBalance', 
-    'status', 'security', 'lastSyncAt', 'action'
+    'redPacketBalance', 'status', 'security', 'lastSyncAt', 'action'
   ]);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  
+  // 余额颜色区间配置
+  const [redPacketBalanceColorRanges, setRedPacketBalanceColorRanges] = useState<any[]>([
+    { threshold: 1.4, color: 'green', backgroundColor: '#52c41a', textColor: 'white' },
+    { threshold: 1, color: 'blue', backgroundColor: '#1890ff', textColor: 'white' },
+    { threshold: 0.5, color: 'orange', backgroundColor: '#fa8c16', textColor: 'white' },
+    { threshold: 0, color: 'brown', backgroundColor: '#8B4513', textColor: 'white' },
+    { threshold: -Infinity, color: 'default', backgroundColor: '', textColor: '' }
+  ]);
+  const [availableBalanceColorRanges, setAvailableBalanceColorRanges] = useState<any[]>([
+    { threshold: 10, color: 'green', backgroundColor: '#52c41a', textColor: 'white' },
+    { threshold: 5, color: 'blue', backgroundColor: '#1890ff', textColor: 'white' },
+    { threshold: 1, color: 'orange', backgroundColor: '#fa8c16', textColor: 'white' },
+    { threshold: 0, color: 'default', backgroundColor: '', textColor: '' }
+  ]);
   
   // 为保存配置创建防抖函数
   const debouncedSaveColumnWidths = useRef<DebouncedFunc<(widths: Record<string, number>) => void>>(
@@ -2180,6 +2223,17 @@ const AccountMonitor: React.FC = () => {
     } finally {
       setBatchSyncing(false);
     }
+  };
+
+  // 红包领取状态
+  const [redPacketModalVisible, setRedPacketModalVisible] = useState(false);
+  // 一键注册级用户模态框状态
+  const [oneClickSetupModalVisible, setOneClickSetupModalVisible] = useState(false);
+  const [batchRegisterModalVisible, setBatchRegisterModalVisible] = useState(false);
+
+  // 打开红包领取模态框
+  const openRedPacketModal = () => {
+    setRedPacketModalVisible(true);
   };
   // 获取所有账户分组并构建账户-分组的映射关系
   const fetchGroups = async () => {
@@ -2615,14 +2669,35 @@ const AccountMonitor: React.FC = () => {
       key: 'availableBalance',
       width: 140,
       sorter: (a: InfiniAccount, b: InfiniAccount) => a.availableBalance - b.availableBalance,
-      render: (amount: number) => (
-        <BalanceTag 
-          color={amount === 0 ? "default" : "green"}
-          style={amount > 0 ? { backgroundColor: '#52c41a', color: 'white' } : {}}
-        >
-          {amount.toFixed(6)}
-        </BalanceTag>
-      ),
+      render: (amount: number) => {
+        const { color, style } = getStyleForBalance(amount, availableBalanceColorRanges);
+        return (
+          <BalanceTag 
+            color={color}
+            style={style}
+          >
+            {amount.toFixed(6)}
+          </BalanceTag>
+        );
+      },
+    },
+    {
+      title: '红包余额',
+      dataIndex: 'redPacketBalance',
+      key: 'redPacketBalance',
+      width: 140,
+      sorter: (a: InfiniAccount, b: InfiniAccount) => a.redPacketBalance - b.redPacketBalance,
+      render: (amount: number) => {
+        const { color, style } = getStyleForBalance(amount, redPacketBalanceColorRanges);
+        return (
+          <BalanceTag 
+            color={color}
+            style={style}
+          >
+            {amount.toFixed(6)}
+          </BalanceTag>
+        );
+      },
     },
     {
       title: '状态',
@@ -2944,6 +3019,28 @@ const AccountMonitor: React.FC = () => {
             console.error('解析显示列配置失败:', e);
           }
         }
+        
+        // 加载红包余额颜色区间配置
+        const redPacketColorResponse = await configApi.getConfigByKey('red_packet_balance_color_ranges');
+        if (redPacketColorResponse.success && redPacketColorResponse.data && redPacketColorResponse.data.value) {
+          try {
+            const colorRanges = JSON.parse(redPacketColorResponse.data.value);
+            setRedPacketBalanceColorRanges(colorRanges);
+          } catch (e) {
+            console.error('解析红包余额颜色区间配置失败:', e);
+          }
+        }
+        
+        // 加载用户余额颜色区间配置
+        const availableColorResponse = await configApi.getConfigByKey('available_balance_color_ranges');
+        if (availableColorResponse.success && availableColorResponse.data && availableColorResponse.data.value) {
+          try {
+            const colorRanges = JSON.parse(availableColorResponse.data.value);
+            setAvailableBalanceColorRanges(colorRanges);
+          } catch (e) {
+            console.error('解析用户余额颜色区间配置失败:', e);
+          }
+        }
       } catch (error) {
         console.error('加载配置失败:', error);
       }
@@ -3175,6 +3272,9 @@ const AccountMonitor: React.FC = () => {
                   <Menu.Item key="syncAllKyc" onClick={batchSyncAllKyc}>
                     批量同步KYC信息
                   </Menu.Item>
+                  <Menu.Item key="redPacket" onClick={openRedPacketModal}>
+                    批量领取红包
+                  </Menu.Item>
                 </Menu>
               }
               trigger={['click']}
@@ -3188,27 +3288,33 @@ const AccountMonitor: React.FC = () => {
                 批量同步 <DownOutlined />
               </Button>
             </Dropdown>
-            <Dropdown
-              overlay={
-                <Menu>
-                  <Menu.Item key="register" onClick={() => setRegisterModalVisible(true)}>
-                    注册账户
-                  </Menu.Item>
-                  <Menu.Item key="randomRegister" onClick={() => setRandomUserRegisterModalVisible(true)}>
-                    注册随机用户
-                  </Menu.Item>
-                </Menu>
-              }
-              trigger={['click']}
-            >
-              <Button 
-                type="primary" 
-                icon={<UserAddOutlined />}
-                style={{ marginRight: 8 }}
+              <Dropdown
+                overlay={
+                  <Menu>
+                    <Menu.Item key="register" onClick={() => setRegisterModalVisible(true)}>
+                      注册账户
+                    </Menu.Item>
+                    <Menu.Item key="randomRegister" onClick={() => setRandomUserRegisterModalVisible(true)}>
+                      注册随机用户
+                    </Menu.Item>
+                    <Menu.Item key="oneClickSetup" onClick={() => setOneClickSetupModalVisible(true)}>
+                      一键注册随机用户
+                    </Menu.Item>
+                    <Menu.Item key="batchRegister" onClick={() => setBatchRegisterModalVisible(true)}>
+                      批量注册随机用户
+                    </Menu.Item>
+                  </Menu>
+                }
+                trigger={['click']}
               >
-                注册账户 <DownOutlined />
-              </Button>
-            </Dropdown>
+                <Button 
+                  type="primary" 
+                  icon={<UserAddOutlined />}
+                  style={{ marginRight: 8 }}
+                >
+                  注册账户 <DownOutlined />
+                </Button>
+              </Dropdown>
             <Dropdown
               overlay={
                 <Menu>
@@ -3321,6 +3427,54 @@ const AccountMonitor: React.FC = () => {
           onRefresh={() => fetchAccounts()}
         />
       )}
+      
+      {/* 红包领取模态框 */}
+      <RedPacketModal
+        visible={redPacketModalVisible}
+        onClose={() => setRedPacketModalVisible(false)}
+        accountIds={accounts.map(account => account.id.toString())}
+        onSuccess={fetchAccounts}
+      />
+      
+      {/* 一键注册级用户模态框 */}
+      <OneClickSetupModal
+        visible={oneClickSetupModalVisible}
+        onClose={() => setOneClickSetupModalVisible(false)}
+        onSuccess={fetchAccounts}
+      />
+      
+      {/* 批量注册随机用户模态框 */}
+      <BatchRegisterModal
+        visible={batchRegisterModalVisible}
+        onClose={() => setBatchRegisterModalVisible(false)}
+        onSuccess={fetchAccounts}
+        onRegisterSuccess={(newAccount) => {
+          // 每注册成功一个新账户，就更新账户列表
+          setAccounts(prevAccounts => {
+            // 创建一个新账户对象，确保它有基本的字段结构
+            const account = {
+              id: newAccount.accountId,
+              userId: newAccount.userId,
+              email: newAccount.email,
+              availableBalance: 0,
+              withdrawingAmount: 0,
+              redPacketBalance: 0,
+              totalConsumptionAmount: 0,
+              totalEarnBalance: 0,
+              dailyConsumption: 0,
+              google2faIsBound: newAccount.is2faEnabled || false,
+              googlePasswordIsSet: false,
+              isKol: false,
+              isProtected: false,
+              lastSyncAt: new Date().toISOString(),
+              verification_level: newAccount.isKycEnabled ? 2 : 0
+            };
+            
+            // 返回包含新账户的列表
+            return [account, ...prevAccounts];
+          });
+        }}
+      />
     </div>
   );
 };

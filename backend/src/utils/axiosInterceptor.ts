@@ -87,7 +87,6 @@ export function setupAxiosInterceptors() {
           request_body: requestBody,
           response_body: responseBody,
           request_headers: requestHeaders,
-          response_headers: responseHeaders,
           success: true
         });
       } catch (loggingError) {
@@ -146,7 +145,6 @@ export function setupAxiosInterceptors() {
           request_body: requestBody,
           response_body: responseBody,
           request_headers: requestHeaders,
-          response_headers: responseHeaders,
           error_message: error.message,
           success: false
         });

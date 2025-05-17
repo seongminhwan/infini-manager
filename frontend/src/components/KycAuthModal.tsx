@@ -208,48 +208,99 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
   const [randomUserData, setRandomUserData] = useState<any>(null);
   const [loadingRandomUser, setLoadingRandomUser] = useState<boolean>(false);
   
-  // 在组件挂载和accountId变化时，尝试获取关联的随机用户信息
+  // 在组件挂载和visible变化时，尝试获取关联的随机用户信息并立即填充表单
   useEffect(() => {
-    if (accountId && visible && currentStep === 1) {
+    if (accountId && visible) {
+      message.loading('正在获取账户关联的随机用户信息...');
       fetchAssociatedRandomUser();
     }
-  }, [accountId, visible, currentStep]);
+  }, [accountId, visible]);
   
   // 获取关联的随机用户信息
   const fetchAssociatedRandomUser = async () => {
     if (!accountId) return;
     
     try {
+      setLoadingRandomUser(true);
+      console.log('开始获取账户关联的随机用户信息，账户ID:', accountId);
+      
       // 先获取账户信息
       const accountResponse = await api.get(`${apiBaseUrl}/api/infini-accounts/${accountId}`);
+      console.log('账户信息API响应:', accountResponse.data);
       
       if (accountResponse.data.success && accountResponse.data.data) {
         const account = accountResponse.data.data;
+        console.log('账户信息:', account);
         
-        // 检查是否有关联的mock_user_id（随机用户ID）
-        if (account.mock_user_id) {
-          setLoadingRandomUser(true);
+        // 检查是否有关联的mockUserId（随机用户ID）
+        if (account.mockUserId) {
+          console.log('找到关联的随机用户ID:', account.mockUserId);
           
           // 获取随机用户信息
           try {
-            const userResponse = await randomUserApi.getRandomUserById(account.mock_user_id.toString());
+            const userResponse = await randomUserApi.getRandomUserById(account.mockUserId.toString());
+            console.log('随机用户API响应:', userResponse);
             
             if (userResponse.success && userResponse.data) {
+              console.log('成功获取随机用户数据:', userResponse.data);
               setRandomUserData(userResponse.data);
               
-              // 自动填充表单
+              // 立即填充表单，不等待进入第二步
               fillFormWithRandomUserData(userResponse.data);
-              message.success('已自动填充关联的随机用户信息');
+              message.success('已自动获取并填充关联的随机用户信息');
+            } else {
+              console.warn('获取随机用户信息失败，API返回:', userResponse);
+              message.warning('获取账户关联的随机用户信息失败，请手动点击"生成随机用户信息"按钮');
             }
           } catch (error) {
             console.error('获取随机用户信息失败:', error);
-          } finally {
-            setLoadingRandomUser(false);
+            message.warning('获取账户关联的随机用户信息失败，请手动点击"生成随机用户信息"按钮');
           }
+        } else {
+          console.log('账户没有关联的随机用户ID');
+          message.info('当前账户没有关联的随机用户信息，请点击"生成随机用户信息"按钮');
         }
+      } else {
+        console.warn('获取账户信息失败，API返回:', accountResponse.data);
+        message.warning('获取账户信息失败，请手动点击"生成随机用户信息"按钮');
       }
     } catch (error) {
       console.error('获取账户信息失败:', error);
+      message.error('获取账户信息失败，请手动点击"生成随机用户信息"按钮');
+    } finally {
+      setLoadingRandomUser(false);
+    }
+  };
+  
+  // 替换 generateAndAssociateRandomUser 为只生成随机用户数据，不尝试关联
+  const generateAndAssociateRandomUser = async () => {
+    console.log('注意：此方法已废弃，使用 generateAndFillRandomUser 代替');
+    await generateAndFillRandomUser();
+  };
+  
+  // 生成随机用户数据并填充表单（不关联到账户）
+  const generateAndFillRandomUser = async () => {
+    try {
+      console.log('自动生成随机用户数据用于KYC表单填充，账户ID:', accountId);
+      
+      // 调用后端API生成随机用户
+      const response = await randomUserApi.generateRandomUsers({ count: 1 });
+      console.log('生成随机用户API响应:', response);
+      
+      if (response.success && response.data && response.data.length > 0) {
+        const userData = response.data[0];
+        console.log('成功生成随机用户数据:', userData);
+        setRandomUserData(userData);
+        
+        // 填充表单
+        fillFormWithRandomUserData(userData);
+        message.success('已自动生成随机用户信息并填充表单');
+      } else {
+        console.warn('生成随机用户信息失败，API返回:', response);
+        message.error('生成随机用户信息失败');
+      }
+    } catch (error) {
+      console.error('生成随机用户数据失败:', error);
     }
   };
   
@@ -260,15 +311,18 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
       
       // 调用后端API生成随机用户
       const response = await randomUserApi.generateRandomUsers({ count: 1 });
+      console.log('生成随机用户API响应:', response);
       
       if (response.success && response.data && response.data.length > 0) {
         const userData = response.data[0];
+        console.log('成功生成随机用户数据:', userData);
         setRandomUserData(userData);
         
         // 填充表单
         fillFormWithRandomUserData(userData);
         message.success('已生成随机用户信息并填充表单');
       } else {
+        console.warn('生成随机用户信息失败，API返回:', response);
         message.error('生成随机用户信息失败');
       }
     } catch (error) {
@@ -281,33 +335,56 @@ const KycAuthModal: React.FC<KycAuthModalProps> = ({
   
   // 使用随机用户数据填充表单
   const fillFormWithRandomUserData = (userData: any) => {
-    if (!userData) return;
-    
-    // 从电话号码中提取国际区号，如果没有提供则使用默认值
-    let phoneCode = userData.phone_code || '+1';
-    if (!phoneCode.startsWith('+')) {
-      phoneCode = '+' + phoneCode;
+    if (!userData) {
+      console.log('没有随机用户数据，无法填充表单');
+      return;
     }
     
-    // 电话号码可能需要处理，确保没有区号部分
-    let phoneNumber = userData.phone || '';
-    // 如果电话号码包含区号，去除区号部分
-    if (phoneNumber.startsWith('+')) {
-      const parts = phoneNumber.split(' ');
-      if (parts.length > 1) {
-        phoneNumber = parts.slice(1).join('');
+    console.log('填充表单，随机用户数据:', userData);
+    
+    // 从电话号码中提取国际区号，优先使用phone字段
+    let phoneCode = '+1'; // 默认值
+    let phoneNumber = '';
+    
+    if (userData.phone) {
+      // 例如："+86 16479668332"
+      const phoneRegex = /^(\+\d+)\s+(.+)$/;
+      const match = userData.phone.match(phoneRegex);
+      
+      if (match) {
+        // 如果匹配成功，提取区号和电话号码
+        phoneCode = match[1]; // 例如："+86"
+        phoneNumber = match[2]; // 例如："16479668332"
+        console.log(`从phone字段中提取区号: ${phoneCode}, 电话号码: ${phoneNumber}`);
+      } else {
+        // 如果匹配失败，可能没有区号格式，使用整个值作为电话号码
+        phoneNumber = userData.phone;
+        console.log(`无法从phone字段中提取区号，使用整个值作为电话号码: ${phoneNumber}`);
       }
+    } else if (userData.phone_code) {
+      // 备用：使用显式提供的phone_code字段
+      phoneCode = userData.phone_code;
+      if (!phoneCode.startsWith('+')) {
+        phoneCode = '+' + phoneCode;
+      }
+      
+      phoneNumber = userData.phone_number || '';
+      console.log(`使用phone_code字段: ${phoneCode}, phone_number字段: ${phoneNumber}`);
     }
     
-    // 设置表单字段值
-    form.setFieldsValue({
+    const formValues = {
       firstName: userData.first_name,
       lastName: userData.last_name,
       country: userData.country || 'CHN', // 使用默认值，如果未提供
       passportNumber: userData.passport_no,
       phoneCode: phoneCode,
       phoneNumber: phoneNumber
-    });
+    };
+    
+    console.log('设置表单值:', formValues);
+    
+    // 设置表单字段值
+    form.setFieldsValue(formValues);
   };
   
   // 清空表单

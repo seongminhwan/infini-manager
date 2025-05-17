@@ -1,34 +1,36 @@
 /**
- * 账户批量注册机页面
- * 直接集成批量注册随机用户功能
+ * 批量注册随机用户模态框
+ * 用于批量完成随机用户注册、自动2FA、自动KYC和一键开卡的功能
  */
 import React, { useState, useEffect } from 'react';
-import { 
-  Card, 
-  Typography, 
-  Form, 
-  InputNumber, 
-  Button, 
-  Checkbox, 
-  Space, 
-  Divider, 
-  Select, 
-  Input, 
-  Tooltip, 
-  Table, 
-  Tag, 
-  message, 
-  Progress, 
-  Result, 
+import {
+  Modal,
+  Form,
+  Input,
+  Button,
+  message,
+  Checkbox,
+  Space,
   Spin,
-  Descriptions
+  Typography,
+  Result,
+  Divider,
+  Descriptions,
+  Select,
+  Tooltip,
+  InputNumber,
+  Progress,
+  List,
+  Card,
+  Tag
 } from 'antd';
 import {
-  UserAddOutlined,
+  UserOutlined,
+  MailOutlined,
+  LockOutlined,
+  ReloadOutlined,
   InfoCircleOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
-  DeleteOutlined,
   SafetyCertificateOutlined,
   IdcardOutlined,
   CreditCardOutlined,
@@ -36,20 +38,28 @@ import {
   PlusOutlined,
   NumberOutlined
 } from '@ant-design/icons';
-import api, { infiniAccountApi, emailAccountApi, apiBaseUrl } from '../../services/api';
-import styled from 'styled-components';
+import api, { infiniAccountApi, randomUserApi, totpToolApi, kycImageApi, apiBaseUrl, configApi, emailAccountApi } from '../services/api';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
-// 玻璃卡片效果
-const GlassCard = styled(Card)`
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  margin-bottom: 24px;
-`;
+// 接口定义
+interface BatchRegisterProps {
+  visible: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  onRegisterSuccess: (account: any) => void; // 每注册成功一个账户就回调一次
+}
+
+// 表单数据接口
+interface BatchRegisterFormData {
+  enable2fa: boolean;
+  enableKyc: boolean;
+  enableCard: boolean;
+  mainEmail: string;
+  groupId: string;
+  invitationCode: string;
+  batchCount: number;
+}
 
 // 注册结果接口
 interface RegisterResult {
@@ -63,30 +73,28 @@ interface RegisterResult {
   message?: string;
 }
 
-/**
- * 账户批量注册机页面组件
- */
-const AccountRegister: React.FC = () => {
+// 批量注册随机用户模态框组件
+const BatchRegisterModal: React.FC<BatchRegisterProps> = ({ visible, onClose, onSuccess, onRegisterSuccess }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [emailAccounts, setEmailAccounts] = useState<any[]>([]);
-  const [loadingEmails, setLoadingEmails] = useState(false);
-  const [accountGroups, setAccountGroups] = useState<any[]>([]);
-  const [loadingGroups, setLoadingGroups] = useState(false);
-  const [mainEmail, setMainEmail] = useState<string>('');
-  const [selectedEmailId, setSelectedEmailId] = useState<string>('');
-  const [invitationCode, setInvitationCode] = useState<string>('TC7MLI9');
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
-  const [newGroupName, setNewGroupName] = useState<string>('');
-  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [registerResults, setRegisterResults] = useState<RegisterResult[]>([]);
+  const [mainEmail, setMainEmail] = useState<string>(''); // 存储已选择的主邮箱（显示用）
+  const [selectedEmailId, setSelectedEmailId] = useState<string>(''); // 存储选中主邮箱的ID
+  const [invitationCode, setInvitationCode] = useState<string>('TC7MLI9'); // 邀请码，默认值TC7MLI9
+  const [emailAccounts, setEmailAccounts] = useState<any[]>([]); // 邮箱账户列表
+  const [loadingEmails, setLoadingEmails] = useState(false); // 邮箱列表加载状态
+  const [accountGroups, setAccountGroups] = useState<any[]>([]); // 账户分组列表
+  const [loadingGroups, setLoadingGroups] = useState(false); // 分组列表加载状态
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(''); // 存储选中分组的ID
+  const [newGroupName, setNewGroupName] = useState<string>(''); // 新建分组名称
+  const [creatingGroup, setCreatingGroup] = useState(false); // 创建分组状态
 
   // 批量注册相关状态
-  const [currentCount, setCurrentCount] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
-  const [batchRunning, setBatchRunning] = useState(false);
-  const [batchProgress, setBatchProgress] = useState(0);
-  const [registrationComplete, setRegistrationComplete] = useState(false);
-  const [registerResults, setRegisterResults] = useState<RegisterResult[]>([]);
+  const [currentCount, setCurrentCount] = useState(0); // 当前已注册数量
+  const [totalCount, setTotalCount] = useState(0); // 计划注册总数
+  const [batchRunning, setBatchRunning] = useState(false); // 批量注册是否正在进行
+  const [batchProgress, setBatchProgress] = useState(0); // 批量注册进度
+  const [registrationComplete, setRegistrationComplete] = useState(false); // 注册是否已完成
   
   // 引用类型，用于在组件内部跟踪注册状态，避免依赖React状态更新
   const registeringRef = React.useRef(false);
@@ -137,8 +145,10 @@ const AccountRegister: React.FC = () => {
       }
     };
     
-    fetchData();
-  }, [form]);
+    if (visible) {
+      fetchData();
+    }
+  }, [visible, form]);
   
   // 重置状态
   const resetState = () => {
@@ -150,6 +160,32 @@ const AccountRegister: React.FC = () => {
     setBatchProgress(0);
     setRegistrationComplete(false);
     registeringRef.current = false;
+  };
+  
+  // 处理关闭
+  const handleClose = () => {
+    // 如果批量注册正在进行，提示用户确认
+    if (batchRunning) {
+      Modal.confirm({
+        title: '批量注册正在进行中',
+        content: '确定要取消当前的批量注册操作吗？',
+        okText: '确定',
+        cancelText: '取消',
+        onOk: () => {
+          console.log('用户确认取消批量注册');
+          // 先停止注册过程
+          registeringRef.current = false;
+          setBatchRunning(false);
+          // 再重置状态
+          resetState();
+          onClose();
+        }
+      });
+      return;
+    }
+    
+    resetState();
+    onClose();
   };
   
   // 处理主邮箱改变事件
@@ -336,6 +372,12 @@ const AccountRegister: React.FC = () => {
         // 更新结果列表
         setRegisterResults(prevResults => [...prevResults, result]);
         
+        // 如果注册成功，调用回调通知父组件更新列表
+        if (result.success && result.accountId) {
+          console.log(`通知父组件更新UI，新增账户ID: ${result.accountId}`);
+          onRegisterSuccess(result);
+        }
+        
         // 如果不是最后一次且未取消，添加一些延迟避免API限流
         if (i < batchCount - 1 && registeringRef.current) {
           console.log(`等待500ms后继续下一次注册...`);
@@ -359,6 +401,9 @@ const AccountRegister: React.FC = () => {
         
         message.success(`批量注册完成，成功: ${successCount}，失败: ${failedCount}`);
         console.log(`批量注册完成，总计: ${totalResults}，成功: ${successCount}，失败: ${failedCount}`);
+        
+        // 刷新账户列表
+        onSuccess();
       } else {
         console.log('批量注册被取消，未完成任何注册');
       }
@@ -372,82 +417,8 @@ const AccountRegister: React.FC = () => {
     }
   };
   
-  // 取消批量注册
-  const handleCancel = () => {
-    if (batchRunning) {
-      message.info('正在取消批量注册...');
-      registeringRef.current = false;
-    } else {
-      resetState();
-    }
-  };
-  
-  // 表格列定义
-  const columns = [
-    {
-      title: '账户ID',
-      dataIndex: 'accountId',
-      key: 'accountId',
-      width: 80,
-    },
-    {
-      title: '邮箱',
-      dataIndex: 'email',
-      key: 'email',
-    },
-    {
-      title: '用户ID',
-      dataIndex: 'userId',
-      key: 'userId',
-      width: 280,
-      ellipsis: true,
-    },
-    {
-      title: '2FA状态',
-      dataIndex: 'is2faEnabled',
-      key: 'is2faEnabled',
-      width: 100,
-      render: (is2faEnabled: boolean) => 
-        is2faEnabled ? 
-          <Tag color="success">已开启</Tag> : 
-          <Tag color="default">未开启</Tag>
-    },
-    {
-      title: 'KYC状态',
-      dataIndex: 'isKycEnabled',
-      key: 'isKycEnabled',
-      width: 100,
-      render: (isKycEnabled: boolean) => 
-        isKycEnabled ? 
-          <Tag color="success">已认证</Tag> : 
-          <Tag color="default">未认证</Tag>
-    },
-    {
-      title: '卡片状态',
-      dataIndex: 'isCardEnabled',
-      key: 'isCardEnabled',
-      width: 100,
-      render: (isCardEnabled: boolean) => 
-        isCardEnabled ? 
-          <Tag color="success">已开通</Tag> : 
-          <Tag color="default">未开通</Tag>
-    },
-    {
-      title: '状态',
-      key: 'status',
-      width: 100,
-      render: (_: any, record: RegisterResult) => {
-        if (record.success) {
-          return <Text type="success" strong><CheckCircleOutlined /> 成功</Text>;
-        } else {
-          return <Text type="danger"><DeleteOutlined /> 失败</Text>;
-        }
-      },
-    },
-  ];
-
-  // 渲染批量注册表单
-  const renderRegisterForm = () => (
+  // 渲染表单
+  const renderForm = () => (
     <Form
       form={form}
       layout="vertical"
@@ -559,7 +530,7 @@ const AccountRegister: React.FC = () => {
         label="邀请码"
         rules={[{ required: true, message: '请输入邀请码' }]}
       >
-        <Input placeholder="请输入邀请码" defaultValue="TC7MLI9" />
+        <Input placeholder="请输入邀请码" />
       </Form.Item>
       
       <Divider orientation="left">自动化步骤选择</Divider>
@@ -597,18 +568,6 @@ const AccountRegister: React.FC = () => {
           批量注册将自动完成选定的所有步骤，为每个账户执行相同的操作
         </Text>
       </Form.Item>
-      
-      <Form.Item>
-        <Button
-          type="primary"
-          htmlType="submit"
-          size="large"
-          loading={loading}
-          block
-        >
-          开始批量注册
-        </Button>
-      </Form.Item>
     </Form>
   );
   
@@ -623,6 +582,50 @@ const AccountRegister: React.FC = () => {
     </div>
   );
   
+  // 渲染注册结果列表
+  const renderResultList = () => (
+    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+      <List
+        dataSource={registerResults}
+        renderItem={(result, index) => (
+          <List.Item>
+            <Card 
+              size="small" 
+              title={`账户 #${index + 1}`}
+              extra={
+                <Tag color={result.success ? "green" : "red"}>
+                  {result.success ? "注册成功" : "注册失败"}
+                </Tag>
+              }
+              style={{ width: '100%' }}
+            >
+              {result.success ? (
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="账户ID">{result.accountId}</Descriptions.Item>
+                  <Descriptions.Item label="邮箱">{result.email}</Descriptions.Item>
+                  <Descriptions.Item label="用户ID">{result.userId}</Descriptions.Item>
+                  <Descriptions.Item label="2FA状态">
+                    {result.is2faEnabled ? '已开启' : '未开启'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="KYC状态">
+                    {result.isKycEnabled ? '已认证' : '未认证'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="卡片状态">
+                    {result.isCardEnabled ? '已开通' : '未开通'}
+                  </Descriptions.Item>
+                </Descriptions>
+              ) : (
+                <div>
+                  <Text type="danger">{result.message}</Text>
+                </div>
+              )}
+            </Card>
+          </List.Item>
+        )}
+      />
+    </div>
+  );
+
   // 渲染完成状态
   const renderCompletionStatus = () => {
     if (!registrationComplete) return null;
@@ -640,65 +643,61 @@ const AccountRegister: React.FC = () => {
     );
   };
   
-  // 渲染进行中或已完成的UI
-  const renderProcessingUI = () => (
-    <div>
-      {/* 进度显示区域 */}
-      {renderBatchProgress()}
-      
-      {/* 完成状态显示 */}
-      {renderCompletionStatus()}
-      
-      {/* 操作按钮 */}
-      <div style={{ marginBottom: 20, textAlign: 'center' }}>
-        {batchRunning ? (
-          <Button type="primary" danger onClick={handleCancel}>
-            取消批量注册
-          </Button>
-        ) : (
-          <Button type="primary" onClick={resetState}>
-            重新开始
-          </Button>
-        )}
-      </div>
-      
-      {/* 结果表格 */}
-      <Table
-        dataSource={registerResults}
-        columns={columns}
-        rowKey={(record, index) => `${record.accountId || ''}${index}`}
-        pagination={false}
-        scroll={{ y: 400 }}
-        loading={batchRunning}
-      />
-    </div>
-  );
-  
   return (
-    <div>
-      <Title level={3}>
-        账户批量注册机
-        {batchRunning && <span style={{ marginLeft: 8, fontSize: '0.9em', color: '#1890ff' }}>(进行中...)</span>}
-        {registrationComplete && <span style={{ marginLeft: 8, fontSize: '0.9em', color: '#52c41a' }}>(已完成)</span>}
-      </Title>
-      
-      <div style={{ display: 'flex', gap: '24px' }}>
-        {/* 左侧表单区域 */}
-        <GlassCard style={{ width: batchRunning || registerResults.length > 0 ? '30%' : '100%' }}>
-          <Spin spinning={loading && !batchRunning}>
-            {renderRegisterForm()}
-          </Spin>
-        </GlassCard>
-        
-        {/* 右侧结果区域 - 有进度或结果时才显示 */}
-        {(batchRunning || registerResults.length > 0) && (
-          <GlassCard style={{ width: '70%', maxHeight: '80vh', overflowY: 'auto' }}>
-            {renderProcessingUI()}
-          </GlassCard>
+    <Modal
+      title={
+        <div>
+          <span>批量注册随机用户</span>
+          {batchRunning && <span style={{ marginLeft: 8, fontSize: '0.9em', color: '#1890ff' }}>(进行中...)</span>}
+          {registrationComplete && <span style={{ marginLeft: 8, fontSize: '0.9em', color: '#52c41a' }}>(已完成)</span>}
+        </div>
+      }
+      open={visible}
+      onCancel={handleClose}
+      footer={
+        batchRunning ? (
+          // 正在进行批量注册时显示取消按钮
+          <Button onClick={handleClose}>取消批量注册</Button>
+        ) : registerResults.length > 0 ? (
+          // 批量注册完成后显示关闭按钮
+          <Button type="primary" onClick={handleClose}>关闭</Button>
+        ) : (
+          // 初始状态显示取消和开始按钮
+          <>
+            <Button onClick={handleClose}>取消</Button>
+            <Button 
+              type="primary" 
+              onClick={() => form.submit()}
+              loading={loading}
+            >
+              开始批量注册
+            </Button>
+          </>
+        )
+      }
+      width={700}
+    >
+      <Spin spinning={loading && !batchRunning}>
+        {!batchRunning && registerResults.length === 0 ? (
+          // 如果还没有开始注册，显示表单
+          renderForm()
+        ) : (
+          // 如果正在注册或已有结果，显示进度和结果
+          <div>
+            {/* 进度显示区域 */}
+            {renderBatchProgress()}
+            
+            {/* 完成状态显示 */}
+            {renderCompletionStatus()}
+            
+            {/* 结果列表区域 */}
+            <Divider>注册结果</Divider>
+            {renderResultList()}
+          </div>
         )}
-      </div>
-    </div>
+      </Spin>
+    </Modal>
   );
 };
 
-export default AccountRegister;
+export default BatchRegisterModal;

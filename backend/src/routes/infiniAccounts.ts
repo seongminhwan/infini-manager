@@ -29,6 +29,7 @@ import {
   createCard,
   getCardList,
   update2faInfo,
+  oneClickAccountSetup,
   // 账户分组相关控制器
   getAllAccountGroups,
   getAccountGroupById,
@@ -1507,5 +1508,99 @@ router.post('/groups/account/remove', removeAccountFromGroup);
  *         description: 服务器错误
  */
 router.post('/groups/accounts/remove', removeAccountsFromGroup);
+
+/**
+ * @swagger
+ * /api/infini-accounts/one-click-setup:
+ *   post:
+ *     summary: 一键式账户设置
+ *     description: 自动执行随机用户注册、2FA认证、KYC验证和开卡流程，其中注册用户是必须的，其他三个过程互相独立
+ *     tags: [InfiniAccounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               setupOptions:
+ *                 type: object
+ *                 properties:
+ *                   enable2fa:
+ *                     type: boolean
+ *                     description: 是否启用2FA认证
+ *                     example: true
+ *                   enableKyc:
+ *                     type: boolean
+ *                     description: 是否启用KYC验证
+ *                     example: true
+ *                   enableCard:
+ *                     type: boolean
+ *                     description: 是否启用开卡
+ *                     example: true
+ *                   cardType:
+ *                     type: integer
+ *                     description: 卡片类型，默认为3
+ *                     example: 3
+ *                 required:
+ *                   - enable2fa
+ *                   - enableKyc
+ *                   - enableCard
+ *               userData:
+ *                 type: object
+ *                 properties:
+ *                   email_suffix:
+ *                     type: string
+ *                     description: 邮箱后缀
+ *                     example: "example.com"
+ *                 required:
+ *                   - email_suffix
+ *             required:
+ *               - setupOptions
+ *               - userData
+ *     responses:
+ *       201:
+ *         description: 一键式账户设置成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 accountId:
+ *                   type: string
+ *                   example: "123"
+ *                 randomUser:
+ *                   type: object
+ *                   description: 生成的随机用户信息
+ *                 account:
+ *                   type: object
+ *                   description: 创建的Infini账户信息
+ *                 steps:
+ *                   type: object
+ *                   properties:
+ *                     register:
+ *                       type: object
+ *                       properties:
+ *                         success:
+ *                           type: boolean
+ *                           example: true
+ *                     twoFa:
+ *                       type: object
+ *                       description: 2FA设置结果
+ *                     kyc:
+ *                       type: object
+ *                       description: KYC验证结果
+ *                     card:
+ *                       type: object
+ *                       description: 开卡结果
+ *       400:
+ *         description: 请求参数错误
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/one-click-setup', oneClickAccountSetup);
 
 export default router;
