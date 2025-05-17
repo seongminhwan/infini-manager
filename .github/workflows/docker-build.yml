@@ -8,13 +8,16 @@ on:
     branches: [ main, master ]
 
 env:
-  FRONTEND_IMAGE: gcr.io/${{ github.repository }}/frontend
-  BACKEND_IMAGE: gcr.io/${{ github.repository }}/backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
 
 jobs:
   build-and-push:
-    name: 构建并推送Docker镜像到GCR
+    name: 构建并推送Docker镜像到GitHub Packages
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     
     steps:
       - name: 检出代码
@@ -27,21 +30,13 @@ jobs:
       - name: 设置 Docker Buildx
         uses: docker/setup-buildx-action@v2
       
-      # 登录到 Google Cloud
-      - id: 'auth'
-        name: 'Google Cloud认证'
-        uses: 'google-github-actions/auth@v1'
+      # 登录到 GitHub Container Registry
+      - name: 登录到 GHCR
+        uses: docker/login-action@v2
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
-      
-      # 安装 gcloud CLI
-      - name: 设置 Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-      
-      # 配置 Docker 使用 gcloud 作为认证器
-      - name: 配置 Docker
-        run: |
-          gcloud auth configure-docker gcr.io
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       
       # 设置镜像标签
       - name: 提取镜像元数据
@@ -91,4 +86,4 @@ jobs:
           echo "前端镜像: \`${{ env.FRONTEND_IMAGE }}:sha-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "后端镜像: \`${{ env.BACKEND_IMAGE }}:sha-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "这些镜像在PR合并后会被推送到GCR。" >> $GITHUB_STEP_SUMMARY
+          echo "这些镜像在PR合并后会被推送到GitHub Packages。" >> $GITHUB_STEP_SUMMARY
