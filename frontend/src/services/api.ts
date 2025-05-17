@@ -1370,6 +1370,21 @@ export const infiniCardApi = {
       console.error('提交KYC基础信息失败:', error);
       throw error;
     }
+  },
+  
+  // 提交KYC生日信息
+  submitKycBirthday: async (accountId: string, birthday: string) => {
+    try {
+      console.log(`提交KYC生日信息，账户ID: ${accountId}，生日: ${birthday}`);
+      const response = await api.post(`${apiBaseUrl}/api/infini-cards/kyc/birthday`, {
+        accountId,
+        birthday
+      });
+      return response.data;
+    } catch (error) {
+      console.error('提交KYC生日信息失败:', error);
+      throw error;
+    }
   }
 };
 
