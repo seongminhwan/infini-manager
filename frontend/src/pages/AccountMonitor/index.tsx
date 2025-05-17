@@ -2216,6 +2216,8 @@ const AccountMonitor: React.FC = () => {
       if (response.data.success) {
         message.success('批量同步KYC信息成功');
         fetchPaginatedAccounts(); // 使用分页API刷新账户列表
+      } else {
+        message.error(response.data.message || '批量同步KYC信息失败');
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || error.message || '批量同步KYC信息失败');
