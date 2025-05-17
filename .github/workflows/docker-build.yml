@@ -21,6 +21,29 @@ jobs:
     
     steps:
       - name: 检出代码
+name: 构建并发布Docker镜像
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
+
+jobs:
+  build-and-push:
+    name: 构建并推送Docker镜像到GitHub Packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: 检出代码
         uses: actions/checkout@v3
       
       # 设置 QEMU 和 Docker Buildx
@@ -30,8 +53,9 @@ jobs:
       - name: 设置 Docker Buildx
         uses: docker/setup-buildx-action@v2
       
-      # 登录到 GitHub Container Registry
+      # 只在打标签时登录到 GitHub Container Registry
       - name: 登录到 GHCR
+        if: startsWith(github.ref, 'refs/tags/')
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
@@ -59,7 +83,7 @@ jobs:
         with:
           context: ./backend
           file: ./backend/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ startsWith(github.ref, 'refs/tags/') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -71,19 +95,29 @@ jobs:
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ startsWith(github.ref, 'refs/tags/') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
-      # 在 PR 中显示镜像信息
+      # 在构建完成后显示镜像信息
       - name: 输出镜像信息
-        if: github.event_name == 'pull_request'
         run: |
           echo "### Docker镜像构建完成 :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "前端镜像: \`${{ env.FRONTEND_IMAGE }}:sha-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "后端镜像: \`${{ env.BACKEND_IMAGE }}:sha-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "这些镜像在PR合并后会被推送到GitHub Packages。" >> $GITHUB_STEP_SUMMARY
+          
+          if ${{ startsWith(github.ref, 'refs/tags/') }}; then
+            echo "✅ 标签构建: 镜像已推送到GitHub Packages" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "前端镜像: \`${{ env.FRONTEND_IMAGE }}:${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "后端镜像: \`${{ env.BACKEND_IMAGE }}:${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ 分支构建或PR: 镜像仅构建但未推送" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "要推送镜像，请创建标签并推送。例如:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+            echo "git tag v1.0.0" >> $GITHUB_STEP_SUMMARY
+            echo "git push origin v1.0.0" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
