@@ -8,6 +8,8 @@
 import axios, { AxiosResponse, AxiosError, AxiosRequestConfig, AxiosInstance } from 'axios';
 import { message } from 'antd';
 import { showGlobalError } from '../context/ErrorContext';
+// 从配置文件导入API基础URL
+import { API_BASE_URL } from '../config';
 
 // 创建axios实例
 const api: AxiosInstance = axios.create({
