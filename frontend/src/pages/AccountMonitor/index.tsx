@@ -3336,6 +3336,104 @@ const AccountMonitor: React.FC = () => {
     setFilteredAccounts(filtered);
   };
 
+  // 服务器端分页数据获取
+  const fetchPaginatedAccounts = async (
+    paginationParams = pagination,
+    filtersParams = filters, 
+    sorterParams = sortInfo
+  ) => {
+    try {
+      setLoading(true);
+      console.log('获取分页数据，参数:', {
+        page: paginationParams.current,
+        pageSize: paginationParams.pageSize,
+        filters: filtersParams,
+        sortField: sorterParams.field,
+        sortOrder: sorterParams.order
+      });
+
+      const response = await infiniAccountApi.getPaginatedInfiniAccounts(
+        paginationParams.current,
+        paginationParams.pageSize,
+        filtersParams,
+        sorterParams.field,
+        sorterParams.order
+      );
+
+      if (response.success) {
+        setAccounts(response.data.accounts);
+        setPagination({
+          ...paginationParams,
+          total: response.data.pagination.total
+        });
+      } else {
+        message.error(response.message || '获取账户列表失败');
+      }
+    } catch (error: any) {
+      message.error(error.message || '获取账户列表失败');
+      console.error('获取分页账户列表失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 表格变化处理 - 处理分页、筛选和排序
+  const handleTableChange = (newPagination: any, newFilters: any, sorter: any) => {
+    console.log('表格变化:', { newPagination, newFilters, sorter });
+    
+    // 处理筛选条件
+    const formattedFilters: Record<string, any> = {};
+    Object.entries(newFilters).forEach(([key, values]: [string, any]) => {
+      if (values && values.length > 0) {
+        // 处理卡片数量的特殊筛选格式
+        if (key === 'cardCount' && values[0]) {
+          formattedFilters.cardCount = values[0];
+        } else {
+          formattedFilters[key] = values[0];
+        }
+      }
+    });
+    
+    // 处理排序
+    const newSortInfo = {
+      field: undefined as string | undefined,
+      order: undefined as 'asc' | 'desc' | undefined
+    };
+    
+    if (sorter && sorter.field) {
+      newSortInfo.field = sorter.field;
+      newSortInfo.order = sorter.order === 'ascend' ? 'asc' : 
+                          sorter.order === 'descend' ? 'desc' : 
+                          undefined;
+    }
+    
+    // 更新状态
+    setFilters(formattedFilters);
+    setSortInfo(newSortInfo);
+    setPagination({
+      ...pagination,
+      current: newPagination.current,
+      pageSize: newPagination.pageSize
+    });
+    
+    // 获取新数据
+    fetchPaginatedAccounts(
+      {
+        current: newPagination.current,
+        pageSize: newPagination.pageSize,
+        total: pagination.total
+      },
+      formattedFilters,
+      newSortInfo
+    );
+  };
+
+  // 首次加载时使用分页API
+  useEffect(() => {
+    fetchPaginatedAccounts();
+    fetchGroups();
+  }, []);
+
   return (
     <div>
       <StyledCard
@@ -3358,7 +3456,7 @@ const AccountMonitor: React.FC = () => {
               type="default"
               icon={<SyncOutlined spin={loading || loadingGroups} />}
               onClick={() => {
-                fetchAccounts();
+                fetchPaginatedAccounts();
                 fetchGroups();
               }}
               loading={loading || loadingGroups}
