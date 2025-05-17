@@ -66,6 +66,31 @@ start-front:
 backend: start-backend
 front: start-front
 
+# 使用MySQL启动后端
+start-mysql:
+	@echo "使用MySQL启动后端服务..."
+	@# 检查MySQL Docker是否运行，如果没有就启动
+	@if ! docker ps | grep -q infini-mysql; then \
+		echo "MySQL Docker实例未运行，正在启动..."; \
+		$(MAKE) mysql-start; \
+	fi
+	@# 复制MySQL环境配置
+	@echo "复制MySQL环境配置文件..."
+	@cp backend/.env.mysql backend/.env
+	@echo "环境配置已切换到MySQL"
+	@# 启动后端服务
+	@$(MAKE) start-backend
+
+# 使用MySQL启动所有服务（后端和前端）
+start-mysql-all:
+	@echo "使用MySQL启动所有服务..."
+	@# 首先启动MySQL后端
+	@$(MAKE) start-mysql
+	@sleep 5  # 等待后端完全启动
+	@# 启动前端
+	@$(MAKE) start-front
+	@echo "所有服务已启动 (使用MySQL数据库)"
+
 # 停止所有服务
 stop:
 	@echo "正在停止所有服务..."
@@ -160,10 +185,14 @@ mysql-stop:
 help:
 	@echo "Infini Manager 使用说明:"
 	@echo "本地服务命令:"
-	@echo "  make start        - 启动所有服务 (先后端，再前端)"
-	@echo "  make backend      - 仅启动后端服务"
+	@echo "  make start        - 启动所有服务 (先后端，再前端，使用SQLite)"
+	@echo "  make backend      - 仅启动后端服务 (使用SQLite)"
 	@echo "  make front        - 仅启动前端服务"
 	@echo "  make stop         - 停止所有服务"
+	@echo ""
+	@echo "MySQL服务命令:"
+	@echo "  make start-mysql      - 使用MySQL启动后端服务"
+	@echo "  make start-mysql-all  - 使用MySQL启动所有服务 (先后端，再前端)"
 	@echo ""
 	@echo "Docker服务命令:"
 	@echo "  make docker-start - 使用Docker Compose启动所有服务"
@@ -178,4 +207,4 @@ help:
 	@echo "其他命令:"
 	@echo "  make help         - 显示帮助信息"
 
-.PHONY: start start-backend start-front backend front stop help docker-start docker-stop docker-build docker-logs mysql-start mysql-stop
+.PHONY: start start-backend start-front backend front stop help docker-start docker-stop docker-build docker-logs mysql-start mysql-stop start-mysql start-mysql-all
