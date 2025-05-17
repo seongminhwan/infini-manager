@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # 后端服务
+  # 后端服务 - 使用SQLite数据库
   backend:
     build:
       context: ./backend
@@ -12,10 +12,11 @@ services:
       - "33201:3000"
     environment:
       - NODE_ENV=production
-      # 数据库和其他环境变量可从.env文件加载
+      - DB_TYPE=sqlite
+      # 其他环境变量将从.env文件中读取
     volumes:
       - ./backend/.env:/app/.env
-      - ./backend/db:/app/db
+      - ./backend/db:/app/db  # SQLite数据库文件持久化存储
     networks:
       - infini-network
 
