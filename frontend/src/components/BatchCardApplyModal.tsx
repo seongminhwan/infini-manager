@@ -44,7 +44,8 @@ const StyledCard = styled(Card)`
   margin-bottom: 16px;
 `;
 
-const StyledTable = styled(Table)`
+// 明确指定泛型类型为InfiniAccount
+const StyledTable = styled(Table)<{ dataSource?: InfiniAccount[] }>`
   .ant-table-row-selected {
     background-color: #e6f7ff;
   }
@@ -666,9 +667,17 @@ const BatchCardApplyModal: React.FC<BatchCardApplyModalProps> = ({
         <StyledCard>
           <Title level={5}>账户列表</Title>
           {filteredAccounts.length > 0 ? (
-            <StyledTable
-              rowSelection={rowSelection}
-              columns={columns}
+            <StyledTable<InfiniAccount>
+              rowSelection={{
+                selectedRowKeys: selectedAccountIds,
+                onChange: (selectedRowKeys: React.Key[]) => {
+                  setSelectedAccountIds(selectedRowKeys as number[]);
+                },
+                getCheckboxProps: (record: InfiniAccount) => ({
+                  disabled: excludeCardOwners && record.hasCard, // 如果排除已有卡片的账户，则禁用它们的选择
+                }),
+              }}
+              columns={columns as any}
               dataSource={filteredAccounts}
               rowKey="id"
               pagination={{ pageSize: 10 }}
