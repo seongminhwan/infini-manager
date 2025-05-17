@@ -3376,6 +3376,31 @@ const AccountMonitor: React.FC = () => {
     }
   };
 
+  // 驼峰式字段名到下划线分隔字段名的映射
+  const fieldNameMapping: Record<string, string> = {
+    'availableBalance': 'available_balance',
+    'redPacketBalance': 'red_packet_balance',
+    'totalConsumptionAmount': 'total_consumption_amount',
+    'totalEarnBalance': 'total_earn_balance',
+    'dailyConsumption': 'daily_consumption',
+    'lastSyncAt': 'last_sync_at',
+    'verificationLevel': 'verification_level',
+    'cardCount': 'card_count',
+    'userId': 'user_id',
+    'cookieExpiresAt': 'cookie_expires_at',
+    'infiniCreatedAt': 'infini_created_at',
+    'googlePasswordIsSet': 'google_password_is_set',
+    'google2faIsBound': 'google_2fa_is_bound',
+    'mockUserId': 'mock_user_id',
+    'invitationCode': 'invitation_code'
+  };
+  
+  // 将驼峰字段名转换为下划线分隔字段名
+  const convertFieldName = (field?: string): string | undefined => {
+    if (!field) return undefined;
+    return fieldNameMapping[field] || field;
+  };
+
   // 表格变化处理 - 处理分页、筛选和排序
   const handleTableChange = (newPagination: any, newFilters: any, sorter: any) => {
     console.log('表格变化:', { newPagination, newFilters, sorter });
@@ -3400,10 +3425,13 @@ const AccountMonitor: React.FC = () => {
     };
     
     if (sorter && sorter.field) {
-      newSortInfo.field = sorter.field;
+      // 将驼峰字段名转换为下划线分隔的字段名供后端使用
+      newSortInfo.field = convertFieldName(sorter.field);
       newSortInfo.order = sorter.order === 'ascend' ? 'asc' : 
                           sorter.order === 'descend' ? 'desc' : 
                           undefined;
+      
+      console.log(`字段名映射: ${sorter.field} -> ${newSortInfo.field}`);
     }
     
     // 更新状态
