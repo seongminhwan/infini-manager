@@ -17,10 +17,12 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// 统一使用相对路径访问API - 最简单的解决方案，适用于所有环境
-// 不依赖环境变量或环境检测，确保最大兼容性
-const apiBaseUrl = '';
-console.log('API路径模式: 使用相对路径');
+// 从配置文件导入API基础URL
+import { API_BASE_URL } from '../config';
+
+// 使用配置文件中定义的API基础URL
+const apiBaseUrl = API_BASE_URL;
+console.log(`API路径模式: 使用配置文件设置 - ${apiBaseUrl || '相对路径'}`);
 
 /**
  * 配置API服务
