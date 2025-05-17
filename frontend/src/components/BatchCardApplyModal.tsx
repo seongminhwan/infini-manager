@@ -44,8 +44,11 @@ const StyledCard = styled(Card)`
   margin-bottom: 16px;
 `;
 
-// 定义样式表格组件，不指定泛型
-const StyledTable = styled(Table)`
+// 使用TableProps定义类型
+import { TableProps } from 'antd/lib/table';
+
+// 定义样式表格组件，使用TableProps指定泛型
+const StyledCardTable = styled(Table)<TableProps<InfiniAccount>>`
   .ant-table-row-selected {
     background-color: #e6f7ff;
   }
@@ -667,7 +670,7 @@ const BatchCardApplyModal: React.FC<BatchCardApplyModalProps> = ({
         <StyledCard>
           <Title level={5}>账户列表</Title>
           {filteredAccounts.length > 0 ? (
-            <Table
+            <StyledCardTable
               rowSelection={{
                 selectedRowKeys: selectedAccountIds,
                 onChange: (selectedRowKeys: React.Key[]) => {
@@ -678,7 +681,6 @@ const BatchCardApplyModal: React.FC<BatchCardApplyModalProps> = ({
                 }),
               }}
               columns={columns as any}
-              className={StyledTable.className}
               dataSource={filteredAccounts}
               rowKey="id"
               pagination={{ pageSize: 10 }}
