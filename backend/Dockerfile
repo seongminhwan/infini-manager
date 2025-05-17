@@ -18,8 +18,6 @@ COPY package*.json ./
 
 # 安装依赖 - 确保sqlite3模块在容器中正确编译
 RUN npm install && \
-    npm uninstall sqlite3 && \
-    npm install sqlite3 --build-from-source && \
     npm rebuild && \
     # 清理构建依赖，减小镜像体积
     apk del .build-deps
