@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # 后端服务 - 使用SQLite数据库
+  # 后端服务 - 使用MySQL数据库
   backend:
     build:
       context: ./backend
@@ -12,13 +12,16 @@ services:
       - "33201:3000"
     environment:
       - NODE_ENV=production
-      - DB_TYPE=sqlite
+      - DB_TYPE=mysql
+      - DB_HOST=infini-mysql
+      - DB_PORT=3306
       # 其他环境变量将从.env文件中读取
     volumes:
       - ./backend/.env:/app/.env
-      - ./backend/db:/app/db  # SQLite数据库文件持久化存储
     networks:
       - infini-network
+    depends_on:
+      - mysql
 
   # 前端服务
   frontend:
@@ -31,6 +34,22 @@ services:
       - "33202:80"
     depends_on:
       - backend
+    networks:
+      - infini-network
+
+  # MySQL数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: infini-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=infini_manager
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+      - ./backend/init-mysql.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - infini-network
 
