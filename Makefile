@@ -111,6 +111,51 @@ docker-logs:
 	@echo "查看Docker Compose日志..."
 	@docker-compose logs -f
 
+# MySQL Docker相关命令
+# 启动MySQL Docker实例
+mysql-start:
+	@echo "启动MySQL Docker实例..."
+	@# 创建MySQL数据持久化目录
+	@mkdir -p ./data/mysql
+	@# 检查MySQL容器是否已存在
+	@if docker ps -a | grep -q infini-mysql; then \
+		echo "MySQL容器已存在，正在停止并移除..."; \
+		docker stop infini-mysql || true; \
+		docker rm infini-mysql || true; \
+	fi
+	@# 启动MySQL容器
+	@echo "正在启动MySQL容器..."
+	@docker run --name infini-mysql \
+		-e MYSQL_ROOT_PASSWORD=password \
+		-e MYSQL_DATABASE=infini_manager \
+		-p 3306:3306 \
+		-v $(shell pwd)/data/mysql:/var/lib/mysql \
+		-d mysql:8.0 \
+		--character-set-server=utf8mb4 \
+		--collation-server=utf8mb4_unicode_ci
+	@echo "MySQL容器已启动，正在等待服务就绪..."
+	@# 等待MySQL服务就绪
+	@sleep 10
+	@echo "MySQL服务已启动"
+	@echo "连接信息:"
+	@echo "  主机: localhost"
+	@echo "  端口: 3306"
+	@echo "  用户: root"
+	@echo "  密码: password"
+	@echo "  数据库: infini_manager"
+	@echo ""
+	@echo "在.env文件中设置DB_TYPE=mysql以使用MySQL数据库"
+
+# 停止MySQL Docker实例
+mysql-stop:
+	@echo "停止MySQL Docker实例..."
+	@if docker ps -a | grep -q infini-mysql; then \
+		docker stop infini-mysql; \
+		echo "MySQL实例已停止"; \
+	else \
+		echo "MySQL实例未运行"; \
+	fi
+
 # 帮助说明
 help:
 	@echo "Infini Manager 使用说明:"
@@ -126,7 +171,11 @@ help:
 	@echo "  make docker-build - 构建Docker Compose镜像"
 	@echo "  make docker-logs  - 查看Docker Compose日志"
 	@echo ""
+	@echo "MySQL Docker命令:"
+	@echo "  make mysql-start  - 启动MySQL Docker实例 (数据持久化到./data/mysql目录)"
+	@echo "  make mysql-stop   - 停止MySQL Docker实例"
+	@echo ""
 	@echo "其他命令:"
 	@echo "  make help         - 显示帮助信息"
 
-.PHONY: start start-backend start-front backend front stop help docker-start docker-stop docker-build docker-logs
+.PHONY: start start-backend start-front backend front stop help docker-start docker-stop docker-build docker-logs mysql-start mysql-stop
