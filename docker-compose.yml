@@ -15,6 +15,7 @@ services:
       - DB_TYPE=mysql
       - DB_HOST=infini-mysql
       - DB_PORT=3306
+      - DISABLE_IP_CHECK=true  # 禁用IP检查，允许Docker网络内部通信
       # 其他环境变量将从.env文件中读取
     volumes:
       - ./backend/.env:/app/.env
@@ -31,7 +32,7 @@ services:
     container_name: infini-frontend
     restart: unless-stopped
     ports:
-      - "33202:80"
+      - "80:80"
     depends_on:
       - backend
     networks:
