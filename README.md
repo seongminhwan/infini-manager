@@ -168,9 +168,9 @@ make stop
 make help
 ```
 
-### 方式三：使用Docker部署（服务器部署推荐）
+### 方式三：使用Docker部署
 
-这种方式适合不想在本地安装Node.js或者想要在服务器上部署的用户。
+这种方式适合不想在本地安装Node.js或需要在隔离环境中运行的用户。
 
 1. **准备工作**
 ```bash
@@ -187,7 +187,7 @@ docker-compose up -d
 ```
 
 3. **访问系统**
-   - 前端界面：http://localhost:33202
+   - 前端界面：http://localhost 或 http://localhost:80
    - 后端API：http://localhost:33201
 
 4. **查看日志**
