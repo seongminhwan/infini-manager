@@ -18,7 +18,9 @@ const api: AxiosInstance = axios.create({
 });
 
 // API基础URL
-const apiBaseUrl = 'http://localhost:33201';
+// 使用相对路径，让请求通过Nginx代理转发
+const apiBaseUrl = '';  // 空字符串，使请求从根路径开始
+console.log('apiBaseUrl', apiBaseUrl || '(使用相对路径)');
 
 /**
  * 配置API服务
