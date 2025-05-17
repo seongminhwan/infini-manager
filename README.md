@@ -63,113 +63,280 @@
 
 ---
 
+# 使用手册 (面向小白用户)
+
 ## 系统简介
 
 这是一个用于监测和维护Infini账号的系统，系统主要分为两个部分:
-1. 账号情况监控，管理，转账，包括账户余额监控，账户状态监控，账户信息查询
-2. 通知系统，可以通过tg/email方式通知用户，后续还会扩展
+1. 账号情况监控、管理、转账，包括账户余额监控、账户状态监控、账户信息查询
+2. 通知系统，可以通过TG/Email方式通知用户，后续还会扩展
 
-## 系统架构
+## 环境准备（小白必读）
 
-项目在架构上分为前端和后端两个部分：
-- 前端基于React提供一个现代化美观的UI视图
-- 后端通过nodejs+express提供接口和定时任务
-- 支持Docker容器化部署，便于快速搭建和迁移
+在开始安装之前，请确保您的电脑已安装以下软件：
 
-## 安装与配置
+### 必需软件
 
-### 方式一：本地安装
+1. **Node.js**：JavaScript运行环境
+   - 下载地址：https://nodejs.org/
+   - 推荐版本：14.x或更高版本
+   - 安装后，打开命令行窗口输入`node -v`确认安装成功
 
-#### 前端安装
+2. **npm**：Node.js包管理器（Node.js安装时会自动安装）
+   - 命令行输入`npm -v`确认安装成功
+
+### 可选软件（使用Docker部署时必需）
+
+1. **Docker**：容器化平台
+   - 下载地址：https://www.docker.com/products/docker-desktop/
+   - 安装后，打开命令行窗口输入`docker -v`确认安装成功
+
+2. **Docker Compose**：容器编排工具（通常Docker Desktop会自带）
+   - 命令行输入`docker-compose -v`确认安装成功
+
+## 安装与启动（三种方式）
+
+### 方式一：本地安装（入门级）
+
+这种方式适合开发者或者想要了解系统内部工作原理的用户。
+
+1. **获取源代码**
 ```bash
-cd frontend
-npm install
-npm start
+# 使用Git克隆项目
+git clone <项目Git地址>
+# 进入项目目录
+cd infini-manager
 ```
 
-#### 后端安装
+2. **安装和启动后端**
 ```bash
+# 进入后端目录
 cd backend
+# 安装依赖
 npm install
+# 复制环境配置文件（首次使用需要）
+cp .env.example .env
+# 启动后端服务
 npm run dev
 ```
 
-#### 环境配置
-1. 在后端目录下复制`.env.example`文件并重命名为`.env`
-2. 编辑`.env`文件，配置您的邮箱和其他必要信息
-3. 重启后端服务使配置生效
+3. **安装和启动前端**（在新的命令行窗口中）
+```bash
+# 进入前端目录
+cd frontend
+# 安装依赖
+npm install
+# 启动前端服务
+npm start
+```
 
-### 方式二：使用Makefile快速启动
+4. **访问系统**
+   - 前端界面：http://localhost:33202
+   - 后端API：http://localhost:33201
+
+### 方式二：使用Makefile一键启动（推荐）
+
+这种方式是最简单的，它会自动检查和安装所需的依赖。
 
 ```bash
-# 启动所有服务（后端+前端）
+# 一键启动所有服务（前端+后端+SQLite数据库）
 make start
 
-# 仅启动后端服务
+# 或者仅启动后端
 make backend
 
-# 仅启动前端服务
+# 或者仅启动前端
 make front
+```
 
-# 停止所有服务
+如果要使用MySQL数据库：
+```bash
+# 启动MySQL服务和后端
+make start-mysql
+
+# 启动所有服务（前端+后端+MySQL数据库）
+make start-mysql-all
+```
+
+停止服务：
+```bash
 make stop
+```
 
-# 查看所有可用命令
+查看所有可用命令：
+```bash
 make help
 ```
 
-### 方式三：使用Docker部署
+### 方式三：使用Docker部署（服务器部署推荐）
 
-#### 前提条件
-- 已安装Docker和Docker Compose
-- 确保端口33201和33202未被占用
+这种方式适合不想在本地安装Node.js或者想要在服务器上部署的用户。
 
-#### 使用Docker Compose启动
+1. **准备工作**
 ```bash
-# 使用Makefile启动
-make docker-start
+# 复制后端配置文件（首次使用需要）
+cp backend/.env.example backend/.env
+```
 
-# 或直接使用Docker Compose命令
+2. **启动服务**
+```bash
+# 使用Docker Compose启动所有服务
+make docker-start
+# 或者直接使用Docker Compose命令
 docker-compose up -d
 ```
 
-#### 手动构建和启动
+3. **访问系统**
+   - 前端界面：http://localhost:33202
+   - 后端API：http://localhost:33201
+
+4. **查看日志**
 ```bash
-# 构建镜像
-docker-compose build
-
-# 启动服务
-docker-compose up -d
-
-# 服务访问地址
-# 前端：http://localhost:33202
-# 后端：http://localhost:33201
-
-# 查看日志
+make docker-logs
+# 或者
 docker-compose logs -f
+```
 
-# 停止服务
+5. **停止服务**
+```bash
+make docker-stop
+# 或者
 docker-compose down
 ```
 
-#### Docker环境配置
-1. 在backend目录下复制`.env.example`文件并重命名为`.env`
-2. 编辑`.env`文件，配置所需的环境变量
-3. Docker Compose会自动加载此配置文件
+## 数据库选择
 
-## 使用指南
+本系统支持两种数据库：
 
-1. 首先确保完成邮箱配置和验证
-2. 登录系统进入账户监控模块
-3. 按照界面提示添加和监控账户
+### 1. SQLite（默认）
 
-## 常见问题
+- **优点**：无需安装其他软件，开箱即用
+- **缺点**：性能较弱，不适合高并发场景
+- **适用场景**：个人使用，测试环境
+- **数据文件位置**：`backend/db/infini.sqlite3`
 
-如遇问题，请先检查：
-- 邮箱配置是否正确
-- 后端服务是否正常运行
-- 数据库连接是否正常
-- Docker环境下，确保容器正常运行：`docker-compose ps`
-- Docker部署时，可通过以下地址访问服务：
-  - 前端界面：http://localhost:33202
-  - 后端API：http://localhost:33201
+### 2. MySQL
+
+- **优点**：性能较好，适合多用户访问
+- **缺点**：需要额外安装MySQL服务器，配置较复杂
+- **适用场景**：生产环境，多用户使用
+- **默认配置**：主机localhost，端口3307，用户名root，密码password，数据库名infini_manager
+
+## 如何切换数据库类型（小白教程）
+
+### 方法一：修改配置文件
+
+1. 打开`backend/.env`文件
+2. 找到`DB_TYPE=sqlite`这一行
+3. 修改为`DB_TYPE=mysql`即可切换到MySQL
+4. 如果要切回SQLite，则改为`DB_TYPE=sqlite`
+
+### 方法二：使用Makefile命令（最简单）
+
+```bash
+# 使用SQLite数据库启动
+make start
+
+# 使用MySQL数据库启动
+make start-mysql
+```
+
+## 目录结构说明
+
+本项目分为前端和后端两个部分：
+
+```
+infini-manager/
+├── backend/           # 后端代码目录
+│   ├── src/           # 源代码
+│   │   ├── controllers/  # 控制器
+│   │   ├── db/           # 数据库相关
+│   │   ├── routes/       # 路由定义
+│   │   ├── service/      # 服务层
+│   │   ├── types/        # 类型定义
+│   │   └── utils/        # 工具函数
+│   ├── .env           # 环境配置
+│   └── knexfile.ts    # 数据库配置
+│
+├── frontend/           # 前端代码目录
+│   ├── public/         # 静态资源
+│   ├── src/            # 源代码
+│   │   ├── components/   # 组件
+│   │   ├── pages/        # 页面
+│   │   ├── services/     # API服务
+│   │   └── config.*.ts   # 配置文件
+│   └── nginx.conf     # Nginx配置（Docker环境使用）
+│
+├── docker-compose.yml  # Docker配置
+└── Makefile           # 快速命令脚本
+```
+
+## 常见问题与解决方案
+
+### 1. 启动时提示端口被占用
+
+**问题**: 启动服务时提示端口33201或33202已被占用。
+
+**解决方案**:
+```bash
+# 查找占用端口的进程
+lsof -i :33201
+# 或
+lsof -i :33202
+
+# 停止占用端口的进程
+kill -9 <进程ID>
+
+# 或者使用make命令停止所有服务
+make stop
+```
+
+### 2. MySQL连接失败
+
+**问题**: 使用MySQL时连接失败。
+
+**解决方案**:
+1. 确认MySQL服务是否启动
+2. 检查`backend/.env`中的数据库配置是否正确
+3. 如果使用Docker的MySQL，可以重启容器：
+   ```bash
+   make mysql-stop
+   make mysql-start
+   ```
+
+### 3. 前端无法连接后端API
+
+**问题**: 前端界面加载成功，但无法获取数据。
+
+**解决方案**:
+1. 确认后端服务是否正常运行
+2. 打开浏览器控制台（F12），查看是否有请求错误
+3. 确认前端配置文件中的API地址是否正确：
+   - 开发环境：`frontend/src/config.dev.ts`
+   - Docker环境：`frontend/src/config.docker.ts`
+
+### 4. Docker环境数据丢失
+
+**问题**: 使用Docker重启后数据丢失。
+
+**解决方案**:
+- 确保数据卷正确配置，Docker数据应该存储在：
+  - MySQL数据：`./data/mysql`
+  - SQLite数据：`./backend/db`
+
+### 5. 无法发送通知
+
+**问题**: 系统无法发送电子邮件或TG通知。
+
+**解决方案**:
+1. 检查后端`.env`文件中的邮箱和TG配置
+2. 确保配置的邮箱账户可用且允许第三方应用访问
+3. 对于Gmail，需要生成应用专用密码
+
+## 更多帮助
+
+如果您在使用过程中遇到其他问题，可以：
+
+1. 查阅详细的开发文档：`DEVELOPMENT.md`
+2. 提交Issue到项目仓库
+3. 联系开发团队获取支持
