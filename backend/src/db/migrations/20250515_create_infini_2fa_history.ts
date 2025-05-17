@@ -7,7 +7,7 @@ import { Knex } from 'knex';
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.createTable('infini_2fa_history', (table) => {
     table.increments('id').primary();
-    table.integer('infini_account_id').notNullable().references('id').inTable('infini_accounts').onDelete('CASCADE');
+    table.integer('infini_account_id').unsigned().notNullable().references('id').inTable('infini_accounts').onDelete('CASCADE');
     table.text('qr_code_url').nullable();
     table.string('secret_key', 255).nullable();
     table.text('recovery_codes').nullable(); // 恢复码存储为JSON字符串
