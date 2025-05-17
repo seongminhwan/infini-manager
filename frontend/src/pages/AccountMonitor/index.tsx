@@ -2192,7 +2192,7 @@ const AccountMonitor: React.FC = () => {
         setBatchSyncResult(result);
         setBatchResultModalVisible(true);
         message.success(`批量同步完成: 总计${result.total}个账户, 成功${result.success}个, 失败${result.failed}个`);
-        fetchAccounts(); // 刷新账户列表
+        fetchPaginatedAccounts(); // 使用分页API刷新账户列表
       } else {
         message.error(response.data.message || '批量同步失败');
       }
