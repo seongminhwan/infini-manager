@@ -3555,19 +3555,22 @@ const AccountMonitor: React.FC = () => {
             dataSource={searchText ? filteredAccounts : accounts}
             rowKey="id"
             loading={loading || loadingGroups}
-            pagination={{ pageSize: 10 }}
+            pagination={{
+              ...pagination,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total) => `共 ${total} 条数据`
+            }}
             scroll={{ x: 1400 }}
-  onChange={(pagination, filters, sorter) => {
-    console.log('Table changed:', { pagination, filters, sorter });
-  }}
-  components={{
-    header: {
-      cell: ResizableTitle,
-    },
-    body: {
-      row: (props) => <tr {...props} className="hover:bg-gray-50 dark:hover:bg-gray-800" />,
-    }
-  }}
+            onChange={handleTableChange}
+            components={{
+              header: {
+                cell: ResizableTitle,
+              },
+              body: {
+                row: (props) => <tr {...props} className="hover:bg-gray-50 dark:hover:bg-gray-800" />,
+              }
+            }}
           />
         </TableContainer>
       </StyledCard>
