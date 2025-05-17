@@ -927,10 +927,11 @@ export class InfiniCardService {
           success: true,
           data: {
             total: statementData.total,
-            items: savedStatements.data,
+            items: savedStatements.data.statements,
             page,
             size,
-            card_id: cardId
+            card_id: cardId,
+            pagination: savedStatements.data.pagination
           },
           message: '成功获取卡片流水记录'
         };
