@@ -803,4 +803,314 @@ export class InfiniCardService {
       };
     }
   }
+
+  /**
+   * 获取卡片流水记录
+   * @param accountId Infini账户ID
+   * @param cardId 卡片ID (API卡片ID)
+   * @param startTime 开始时间戳（毫秒）
+   * @param endTime 结束时间戳（毫秒）
+   * @param page 页码，默认为1
+   * @param size 每页记录数，默认为20
+   * @returns 流水记录结果
+   */
+  async getCardStatements(
+    accountId: string,
+    cardId: string,
+    startTime: number,
+    endTime: number,
+    page: number = 1,
+    size: number = 20
+  ): Promise<ApiResponse> {
+    try {
+      console.log(`开始获取卡片流水记录，账户ID: ${accountId}, 卡片ID: ${cardId}, 时间范围: ${startTime} - ${endTime}`);
+
+      // 查找账户
+      const account = await db('infini_accounts')
+        .where('id', accountId)
+        .first();
+
+      if (!account) {
+        return {
+          success: false,
+          message: '找不到指定的Infini账户'
+        };
+      }
+
+      // 查找卡片
+      const card = await db('infini_cards')
+        .where({
+          infini_account_id: accountId,
+          card_id: cardId
+        })
+        .first();
+
+      if (!card) {
+        return {
+          success: false,
+          message: '找不到指定的卡片'
+        };
+      }
+
+      // 获取有效Cookie
+      const { cookie } = await this.infiniAccountService.getAccountCookie(accountId, '获取卡片流水记录失败，');
+
+      if (!cookie) {
+        return {
+          success: false,
+          message: '获取卡片流水记录失败，无法获取有效的登录凭证'
+        };
+      }
+
+      // 调用API获取卡片流水记录
+      const response = await httpClient.post(
+        `${INFINI_API_BASE_URL}/user/statement/record`,
+        {
+          page,
+          size,
+          start_time: startTime,
+          end_time: endTime,
+          card_id: cardId
+        },
+        {
+          headers: {
+            'Cookie': cookie,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+            'Referer': 'https://app.infini.money/',
+            'Origin': 'https://app.infini.money',
+            'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'Priority': 'u=1, i'
+          }
+        }
+      );
+
+      console.log('Infini 卡片流水记录API响应:', response.data);
+
+      if (response.data.code === 0) {
+        // API调用成功，保存流水记录到数据库
+        const statementData = response.data.data;
+        const items = statementData.items || [];
+        
+        console.log(`获取到${items.length}条流水记录，总计${statementData.total}条`);
+
+        // 保存流水记录到数据库
+        await this.saveCardStatements(card.id, items);
+        
+        // 更新卡片的流水同步信息
+        let updateData: any = {
+          last_statement_sync_at: new Date()
+        };
+        
+        // 如果是第一页，记录起始时间
+        if (page === 1) {
+          updateData.statement_last_sync_end_time = endTime;
+          
+          // 仅当没有记录过第一次同步开始时间时才更新
+          if (!card.statement_first_sync_start_time) {
+            updateData.statement_first_sync_start_time = startTime;
+          }
+        }
+        
+        await db('infini_cards')
+          .where('id', card.id)
+          .update(updateData);
+
+        // 从数据库获取已保存的流水记录，包括元数据
+        const savedStatements = await this.getLocalCardStatements(card.id, page, size);
+
+        return {
+          success: true,
+          data: {
+            total: statementData.total,
+            items: savedStatements.data,
+            page,
+            size,
+            card_id: cardId
+          },
+          message: '成功获取卡片流水记录'
+        };
+      } else {
+        return {
+          success: false,
+          message: `获取卡片流水记录失败: ${response.data.message || '未知错误'}`
+        };
+      }
+    } catch (error) {
+      console.error('获取卡片流水记录失败:', error);
+      return {
+        success: false,
+        message: `获取卡片流水记录失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 保存卡片流水记录到数据库
+   * @param cardId 本地卡片ID
+   * @param statements 流水记录数组
+   */
+  private async saveCardStatements(cardId: number, statements: any[]): Promise<void> {
+    try {
+      console.log(`开始保存${statements.length}条流水记录到数据库，卡片ID: ${cardId}`);
+
+      // 使用事务确保数据完整性
+      await db.transaction(async (trx) => {
+        for (const statement of statements) {
+          // 检查流水记录是否已存在
+          const existingStatement = await trx('infini_card_statements')
+            .where({
+              card_id: cardId,
+              statement_id: statement.id.toString()
+            })
+            .first();
+
+          let statementId: number;
+
+          if (existingStatement) {
+            // 更新现有记录
+            await trx('infini_card_statements')
+              .where('id', existingStatement.id)
+              .update({
+                tx_id: statement.tx_id,
+                field: statement.field,
+                change_type: statement.change_type,
+                change: statement.change,
+                status: statement.status,
+                pre_balance: statement.pre_balance,
+                balance: statement.balance,
+                created_at_timestamp: statement.created_at,
+                updated_at: new Date()
+              });
+            
+            statementId = existingStatement.id;
+            console.log(`更新流水记录，ID: ${statementId}`);
+          } else {
+            // 创建新记录
+            const [newStatementId] = await trx('infini_card_statements').insert({
+              card_id: cardId,
+              statement_id: statement.id.toString(),
+              tx_id: statement.tx_id,
+              field: statement.field,
+              change_type: statement.change_type,
+              change: statement.change,
+              status: statement.status,
+              pre_balance: statement.pre_balance,
+              balance: statement.balance,
+              created_at_timestamp: statement.created_at,
+              created_at: new Date(),
+              updated_at: new Date()
+            });
+            
+            statementId = newStatementId;
+            console.log(`创建新流水记录，ID: ${statementId}`);
+          }
+
+          // 处理元数据
+          if (statement.metadata && typeof statement.metadata === 'object') {
+            // 先删除现有元数据
+            await trx('infini_card_statement_metadata')
+              .where('statement_id', statementId)
+              .delete();
+            
+            // 保存新元数据
+            const metadataEntries = Object.entries(statement.metadata);
+            for (const [key, value] of metadataEntries) {
+              await trx('infini_card_statement_metadata').insert({
+                statement_id: statementId,
+                meta_key: key,
+                meta_value: typeof value === 'object' ? JSON.stringify(value) : String(value),
+                created_at: new Date(),
+                updated_at: new Date()
+              });
+            }
+            
+            console.log(`为流水记录 ${statementId} 保存了 ${metadataEntries.length} 个元数据项`);
+          }
+        }
+      });
+
+      console.log(`成功保存所有流水记录到数据库`);
+    } catch (error) {
+      console.error('保存卡片流水记录到数据库失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取本地卡片流水记录
+   * @param cardId 本地卡片ID
+   * @param page 页码，默认为1
+   * @param pageSize 每页记录数，默认为20
+   * @returns 本地流水记录结果
+   */
+  async getLocalCardStatements(
+    cardId: number | string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<ApiResponse> {
+    try {
+      // 查询总记录数
+      const countResult = await db('infini_card_statements')
+        .where('card_id', cardId)
+        .count('id as total')
+        .first();
+      
+      const total = countResult ? parseInt(countResult.total as string, 10) : 0;
+      
+      // 获取分页数据
+      const offset = (page - 1) * pageSize;
+      const statements = await db('infini_card_statements')
+        .where('card_id', cardId)
+        .orderBy('created_at_timestamp', 'desc')
+        .limit(pageSize)
+        .offset(offset);
+      
+      // 获取关联的元数据
+      const statementsWithMetadata = await Promise.all(statements.map(async (statement) => {
+        const metadata = await db('infini_card_statement_metadata')
+          .where('statement_id', statement.id)
+          .select('meta_key', 'meta_value');
+        
+        // 将元数据转换为对象格式
+        const metadataObj: Record<string, any> = {};
+        metadata.forEach(item => {
+          try {
+            // 尝试将JSON字符串解析为对象
+            metadataObj[item.meta_key] = JSON.parse(item.meta_value);
+          } catch (e) {
+            // 如果解析失败，直接使用原始值
+            metadataObj[item.meta_key] = item.meta_value;
+          }
+        });
+        
+        return {
+          ...statement,
+          metadata: metadataObj
+        };
+      }));
+      
+      return {
+        success: true,
+        data: statementsWithMetadata,
+        pagination: {
+          total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(total / pageSize)
+        },
+        message: '成功获取本地卡片流水记录'
+      };
+    } catch (error) {
+      console.error('获取本地卡片流水记录失败:', error);
+      return {
+        success: false,
+        message: `获取本地卡片流水记录失败: ${(error as Error).message}`
+      };
+    }
+  }
 }
