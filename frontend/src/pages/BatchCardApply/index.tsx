@@ -158,7 +158,7 @@ const BatchCardApply: React.FC = () => {
     maxBalance?: number;
     username?: string;
     usernameRegex?: string;
-    registerDate?: [moment.Moment, moment.Moment];
+    registerDate?: any; // DatePicker.RangePicker的返回值
     minRedPacket?: number;
     maxRedPacket?: number;
     verificationLevels?: number[];
