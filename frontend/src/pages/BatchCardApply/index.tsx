@@ -577,16 +577,28 @@ const BatchCardApply: React.FC = () => {
             continue;
           }
           
-          // 提交KYC基础信息
-          const kycSuccess = await submitKycBasic(accountId, kycData);
+          // 提交KYC基础信息，并捕获异常
+          let kycSuccess = false;
+          try {
+            kycSuccess = await submitKycBasic(accountId, kycData);
+          } catch (error) {
+            console.error(`提交KYC信息时发生异常, 账户ID: ${accountId}:`, error);
+            // 记录KYC提交失败，但不中断流程
+            updateAccountStatus(i, 'kyc-failed', '提交KYC信息失败，仍继续开卡');
+          }
           
           if (kycSuccess) {
             updateAccountStatus(i, 'kyc-success');
-            
-            // 申请新卡
-            updateAccountStatus(i, 'card-applying');
-            
-            const cardSuccess = await applyNewCard(accountId);
+          } else {
+            updateAccountStatus(i, 'kyc-failed', '提交KYC信息失败，仍继续开卡');
+          }
+          
+          // 无论KYC成功与否，都继续申请新卡
+          updateAccountStatus(i, 'card-applying');
+          
+          let cardSuccess = false;
+          try {
+            cardSuccess = await applyNewCard(accountId);
             
             if (cardSuccess) {
               updateAccountStatus(i, 'card-success', '开卡成功');
@@ -595,8 +607,9 @@ const BatchCardApply: React.FC = () => {
               updateAccountStatus(i, 'card-failed', '申请卡片失败');
               setFailedCount(prev => prev + 1);
             }
-          } else {
-            updateAccountStatus(i, 'kyc-failed', '提交KYC信息失败');
+          } catch (error) {
+            console.error(`申请卡片时发生异常, 账户ID: ${accountId}:`, error);
+            updateAccountStatus(i, 'card-failed', '申请卡片失败');
             setFailedCount(prev => prev + 1);
           }
         }
@@ -981,6 +994,7 @@ const BatchCardApply: React.FC = () => {
             <List
               itemLayout="horizontal"
               dataSource={updatedAccounts}
+              style={{ maxHeight: '500px', overflow: 'auto' }}
               renderItem={(account, index) => (
                 <List.Item>
                   <List.Item.Meta
