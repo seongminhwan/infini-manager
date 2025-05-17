@@ -8,7 +8,7 @@ RUN apk add --no-cache --virtual .build-deps \
     make \
     g++ \
     build-base \
-    && apk add --no-cache sqlite
+    && apk add --no-cache sqlite-dev
 
 # 设置工作目录
 WORKDIR /app
@@ -16,8 +16,11 @@ WORKDIR /app
 # 复制package.json和package-lock.json
 COPY package*.json ./
 
-# 安装依赖
-RUN npm install
+# 安装依赖 - 确保sqlite3模块在容器中正确编译
+RUN npm install && \
+    npm uninstall sqlite3 && \
+    npm install sqlite3 --build-from-source && \
+    npm rebuild
 
 # 复制其余源代码
 COPY . .
