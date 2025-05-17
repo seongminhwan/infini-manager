@@ -17,12 +17,13 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// API基础URL - 统一使用相对路径，适用于所有环境
-// 相对路径将根据当前环境自动处理：
-// - 本地开发环境：通过package.json中的proxy配置转发到后端
-// - Docker环境：通过Nginx配置转发到后端
-const apiBaseUrl = '';
-console.log('API路径模式: 使用相对路径（通过代理/Nginx转发）');
+// 直接使用完整URL访问API，避免依赖代理
+// 根据运行环境自动检测URL
+const isDockerEnv = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+const apiBaseUrl = isDockerEnv 
+  ? '' // Docker环境使用相对路径，由Nginx处理
+  : 'http://localhost:33201'; // 本地开发环境直接访问后端
+console.log(`API路径模式: ${isDockerEnv ? '相对路径(Docker环境)' : '直接访问后端(开发环境) - ' + apiBaseUrl}`);
 
 /**
  * 配置API服务
