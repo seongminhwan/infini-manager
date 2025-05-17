@@ -600,20 +600,121 @@ const BatchCardApply: React.FC = () => {
       <>
         <StyledCard>
           <Space direction="vertical" style={{ width: '100%' }}>
-            <Title level={5}>账户筛选</Title>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Title level={5}>账户筛选</Title>
+              <Button 
+                onClick={handleRefresh}
+                loading={loading}
+                size="small"
+              >
+                刷新账户列表
+              </Button>
+            </div>
+            
             <Checkbox 
               checked={excludeCardOwners} 
               onChange={(e) => setExcludeCardOwners(e.target.checked)}
+              style={{ marginBottom: 8 }}
             >
               排除已有卡片的账户
             </Checkbox>
-            <Button 
-              onClick={handleRefresh}
-              loading={loading}
-              style={{ marginTop: 8 }}
-            >
-              刷新账户列表
-            </Button>
+            
+            <Divider orientation="left" style={{ margin: '12px 0' }}>高级筛选</Divider>
+            
+            <Row gutter={[16, 16]}>
+              {/* 余额筛选 */}
+              <Col span={12}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>余额</Title>
+                <Space>
+                  <InputNumber 
+                    placeholder="最小余额" 
+                    min={0} 
+                    style={{ width: 120 }} 
+                    onChange={(value) => handleFilterChange('minBalance', value)}
+                  />
+                  <span>至</span>
+                  <InputNumber 
+                    placeholder="最大余额" 
+                    min={0} 
+                    style={{ width: 120 }} 
+                    onChange={(value) => handleFilterChange('maxBalance', value)}
+                  />
+                </Space>
+              </Col>
+              
+              {/* 用户名筛选 */}
+              <Col span={12}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>用户名</Title>
+                <Input 
+                  placeholder="输入关键字搜索用户名" 
+                  allowClear 
+                  style={{ width: 240 }} 
+                  onChange={(e) => handleFilterChange('username', e.target.value)}
+                />
+              </Col>
+              
+              {/* 用户名正则筛选 */}
+              <Col span={12}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>用户名正则</Title>
+                <Input 
+                  placeholder="输入正则表达式" 
+                  allowClear 
+                  style={{ width: 240 }} 
+                  onChange={(e) => handleFilterChange('usernameRegex', e.target.value)}
+                />
+              </Col>
+              
+              {/* 注册时间筛选 */}
+              <Col span={12}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>注册时间</Title>
+                <DatePicker.RangePicker 
+                  style={{ width: 240 }} 
+                  onChange={(dates) => handleFilterChange('registerDate', dates)}
+                />
+              </Col>
+              
+              {/* 红包余额筛选 */}
+              <Col span={12}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>红包余额</Title>
+                <Space>
+                  <InputNumber 
+                    placeholder="最小红包" 
+                    min={0} 
+                    style={{ width: 120 }} 
+                    onChange={(value) => handleFilterChange('minRedPacket', value)}
+                  />
+                  <span>至</span>
+                  <InputNumber 
+                    placeholder="最大红包" 
+                    min={0} 
+                    style={{ width: 120 }} 
+                    onChange={(value) => handleFilterChange('maxRedPacket', value)}
+                  />
+                </Space>
+              </Col>
+              
+              {/* 认证状态筛选 */}
+              <Col span={12}>
+                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>认证状态</Title>
+                <Select
+                  mode="multiple"
+                  placeholder="选择认证状态"
+                  style={{ width: 240 }}
+                  onChange={(values) => handleFilterChange('verificationLevels', values)}
+                  options={[
+                    { value: 0, label: '未认证' },
+                    { value: 1, label: '基础认证' },
+                    { value: 2, label: '已完成KYC' },
+                    { value: 3, label: '认证中' },
+                  ]}
+                />
+              </Col>
+            </Row>
+            
+            <div style={{ marginTop: 16, textAlign: 'right' }}>
+              <Button type="primary" onClick={applyFilters} style={{ marginRight: 8 }}>应用筛选</Button>
+              <Button onClick={resetFilters}>重置筛选</Button>
+            </div>
           </Space>
         </StyledCard>
         
