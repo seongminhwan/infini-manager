@@ -196,10 +196,10 @@ const BatchCardApply: React.FC = () => {
     fetchAccounts();
   }, []);
   
-  // 当excludeCardOwners变化时，重新筛选账户
+  // 当筛选条件变化时，重新筛选账户
   useEffect(() => {
     filterAccounts();
-  }, [excludeCardOwners, accounts]);
+  }, [excludeCardOwners, accounts, filters]);
   
   // 获取卡片价格
   useEffect(() => {
@@ -319,6 +319,8 @@ const BatchCardApply: React.FC = () => {
   // 应用筛选条件
   const applyFilters = () => {
     filterAccounts();
+    // 清空已选账户，确保筛选后不保留不符合条件的账户
+    setTargetKeys([]);
     message.success('筛选条件已应用');
   };
   
