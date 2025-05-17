@@ -61,7 +61,7 @@ Docker部署是推荐的部署方式，它具有以下优点：
 
 1. 获取项目代码
    ```bash
-   git clone <项目Git地址>
+   git clone https://github.com/seongminhwan/infini-manager.git
    cd infini-manager
    ```
 
@@ -95,7 +95,7 @@ Docker部署是推荐的部署方式，它具有以下优点：
    
    services:
      backend:
-       image: ghcr.io/your-org/infini-manager/backend:v0.3
+       image: ghcr.io/seongminhwan/infini-manager/backend:v0.3
        ports:
          - "33201:3000"
        environment:
@@ -112,7 +112,7 @@ Docker部署是推荐的部署方式，它具有以下优点：
          - mysql
    
      frontend:
-       image: ghcr.io/your-org/infini-manager/frontend:v0.3
+       image: ghcr.io/seongminhwan/infini-manager/frontend:v0.3
        ports:
          - "80:80"
        restart: unless-stopped
@@ -180,7 +180,7 @@ Docker部署是推荐的部署方式，它具有以下优点：
 3. 使用新镜像进行部署
    ```bash
    # 修改docker-compose.yml中的镜像标签
-   # image: ghcr.io/your-org/infini-manager/backend:v0.3.1
+   # image: ghcr.io/seongminhwan/infini-manager/backend:v0.3.1
    
    # 重启服务
    docker-compose pull
