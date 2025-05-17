@@ -2079,6 +2079,11 @@ const AccountMonitor: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [syncingAccount, setSyncingAccount] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  
+  // 服务器端分页状态
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [sortInfo, setSortInfo] = useState<{field?: string, order?: 'asc' | 'desc'}>({});
   const [registerModalVisible, setRegisterModalVisible] = useState(false);
   const [randomUserRegisterModalVisible, setRandomUserRegisterModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
