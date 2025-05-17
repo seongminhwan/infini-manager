@@ -11,6 +11,7 @@ import { TotpToolService } from '../service/TotpToolService';
 import { InfiniAccountCreate } from '../types';
 import httpClient from '../utils/httpClient';
 import db from '../db/db';
+import { randomOrderBy } from '../utils/dbHelper';
 
 // 创建InfiniAccountService实例
 const infiniAccountService = new InfiniAccountService();
@@ -1483,7 +1484,9 @@ async function setupKycVerification(accountId: string, randomUser: any): Promise
     // 1. 获取随机KYC图片
     try {
       // 获取随机KYC图片,从数据库获取
-      const kycImageData = await db('kyc_images').orderByRaw('RANDOM()').limit(1).first();
+      // 使用dbHelper中的兼容函数确保跨MySQL/SQLite兼容
+      const kycQuery = db('kyc_images');
+      const kycImageData = await randomOrderBy(kycQuery).limit(1).first();
       
       if (!kycImageData) {
         throw new Error('数据库中没有可用的KYC图片');

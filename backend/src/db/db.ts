@@ -1,9 +1,17 @@
 /**
  * 数据库连接初始化模块
+ * 支持MySQL/SQLite动态切换
  */
 import knex, { Knex } from 'knex';
 import path from 'path';
 import fs from 'fs';
+import dotenv from 'dotenv';
+
+// 确保环境变量已加载
+dotenv.config();
+
+// 获取数据库类型环境变量
+const dbType = process.env.DB_TYPE || 'sqlite';
 
 // 使用最简单直接的方式加载配置文件
 // 直接查找当前目录中的knexfile.js
@@ -20,6 +28,10 @@ try {
   // 直接加载JavaScript格式的配置文件
   knexConfig = require(configPath);
   console.log('配置文件加载成功');
+  
+  // 输出数据库类型信息
+  const clientType = knexConfig.development.client;
+  console.log(`当前数据库类型: ${dbType} (客户端: ${clientType})`);
 } catch (error) {
   console.error('无法加载knexfile配置:', error);
   console.error('当前工作目录:', process.cwd());
@@ -40,6 +52,16 @@ const config = knexConfig[environment];
 // 创建数据库连接实例
 const db: Knex = knex(config);
 
+// 打印数据库连接信息
+const connectionInfo = db.client.config.connection as any;
+if (typeof connectionInfo === 'string') {
+  console.log(`数据库连接: ${connectionInfo}`);
+} else if (connectionInfo.filename) {
+  console.log(`SQLite数据库文件: ${connectionInfo.filename}`);
+} else {
+  console.log(`MySQL数据库连接: ${connectionInfo.host}:${connectionInfo.port}/${connectionInfo.database}`);
+}
+
 // 初始化数据库
 export async function initializeDatabase(): Promise<void> {
   try {
@@ -54,7 +76,9 @@ export async function initializeDatabase(): Promise<void> {
       console.log('数据库种子数据已植入');
     }
     
-    console.log('数据库初始化成功');
+    // 输出详细的数据库初始化信息
+    const dbTypeInfo = db.client.config.client.includes('mysql') ? 'MySQL' : 'SQLite';
+    console.log(`数据库初始化成功 (类型: ${dbTypeInfo})`);
   } catch (error) {
     // 检查错误是否与迁移文件缺失有关
     const errorMessage = String(error);

@@ -8,8 +8,8 @@ export async function up(knex: Knex): Promise<void> {
   // 创建infini_card_applications表
   return knex.schema.createTable('infini_card_applications', (table) => {
     table.increments('id').primary();
-    table.integer('infini_account_id').notNullable().references('id').inTable('infini_accounts').onDelete('CASCADE');
-    table.integer('card_id').references('id').inTable('infini_cards').onDelete('SET NULL').comment('关联的卡片ID');
+    table.integer('infini_account_id').unsigned().notNullable().references('id').inTable('infini_accounts').onDelete('CASCADE');
+    table.integer('card_id').unsigned().references('id').inTable('infini_cards').onDelete('SET NULL').comment('关联的卡片ID');
     table.integer('application_id').comment('申请ID，从API返回');
     table.integer('card_type').notNullable().comment('卡片类型');
     table.decimal('price', 10, 6).comment('开卡费用');

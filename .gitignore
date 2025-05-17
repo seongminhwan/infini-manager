@@ -35,7 +35,9 @@ backend/*.log
 
 # 数据库文件忽略 (SQLite文件可以根据需要调整)
 backend/db/*.sqlite3
+data/*
 
 # 临时文件
 .tmp/
 temp/
+

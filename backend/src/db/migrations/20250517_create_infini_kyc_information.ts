@@ -11,6 +11,7 @@ export async function up(knex: Knex): Promise<void> {
     
     // 外键，关联到infini_accounts表
     table.integer('infini_account_id')
+      .unsigned() // 添加unsigned属性以匹配主表的id类型
       .notNullable()
       .comment('关联的Infini账户ID')
       .references('id')
