@@ -302,40 +302,8 @@ const BatchCardApply: React.FC = () => {
       });
     }
     
-    // 红包余额筛选 - 支持单边区间值
-    if (filters.minRedPacket !== undefined && filters.minRedPacket !== null) {
-      filtered = filtered.filter(account => 
-        account.redPacketBalance && parseFloat(account.redPacketBalance) >= filters.minRedPacket!
-      );
-    }
-    
-    if (filters.maxRedPacket !== undefined && filters.maxRedPacket !== null) {
-      filtered = filtered.filter(account => 
-        account.redPacketBalance && parseFloat(account.redPacketBalance) <= filters.maxRedPacket!
-      );
-    }
-    
-    // 注册时间筛选 - 支持单边区间值
-    if (filters.registerDate && filters.registerDate.length === 2) {
-      const startDate = filters.registerDate[0];
-      const endDate = filters.registerDate[1];
-      
-      if (startDate) {
-        filtered = filtered.filter(account => {
-          if (!account.registerDate) return false;
-          const date = new Date(account.registerDate);
-          return date >= startDate;
-        });
-      }
-      
-      if (endDate) {
-        filtered = filtered.filter(account => {
-          if (!account.registerDate) return false;
-          const date = new Date(account.registerDate);
-          return date <= endDate;
-        });
-      }
-    }
+    // 注意：红包余额和注册时间筛选仅作为UI展示
+    // 实际筛选需要后端支持或在InfiniAccount接口中添加相应属性
     
     setFilteredAccounts(filtered);
   };
