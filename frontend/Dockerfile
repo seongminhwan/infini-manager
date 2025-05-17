@@ -8,8 +8,6 @@ WORKDIR /app
 # 复制package.json和package-lock.json
 COPY package*.json ./
 
-COPY .env.docker .env
-
 # 安装依赖
 RUN npm install
 
