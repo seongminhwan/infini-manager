@@ -586,6 +586,44 @@ export const infiniAccountApi = {
       console.error('获取所有Infini账户失败:', error);
       throw error;
     }
+  },
+  
+  // 获取分页的Infini账户列表（支持筛选和排序，包含卡片数量）
+  getPaginatedInfiniAccounts: async (
+    page: number = 1,
+    pageSize: number = 10,
+    filters: Record<string, any> = {},
+    sortField?: string,
+    sortOrder?: 'asc' | 'desc',
+    groupId?: string
+  ) => {
+    try {
+      console.log(`获取分页Infini账户，页码: ${page}, 每页记录数: ${pageSize}`);
+      
+      const params: Record<string, any> = { page, pageSize };
+      
+      // 添加过滤器参数
+      if (Object.keys(filters).length > 0) {
+        params.filters = JSON.stringify(filters);
+      }
+      
+      // 添加排序参数
+      if (sortField) {
+        params.sortField = sortField;
+        params.sortOrder = sortOrder || 'asc';
+      }
+      
+      // 添加分组ID参数
+      if (groupId) {
+        params.groupId = groupId;
+      }
+      
+      const response = await api.get(`${apiBaseUrl}/api/infini-accounts/paginated`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('获取分页Infini账户列表失败:', error);
+      throw error;
+    }
   }
 };
 
