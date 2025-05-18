@@ -633,11 +633,11 @@ export class InfiniAccountService {
 
         // 特殊处理安全相关筛选
         if (filters.security !== undefined && filters.security !== null && filters.security !== '') {
-          // 处理2FA相关筛选 - 使用true/false替代1/0进行布尔值查询
+          // 处理2FA相关筛选 - 使用整数1/0进行查询，因为SQLite中布尔值是以整数存储的
           if (filters.security === '2fa_bound') {
-            query = query.where('infini_accounts.google_2fa_is_bound', true);
+            query = query.where('infini_accounts.google_2fa_is_bound', 1); // 使用1代替true
           } else if (filters.security === '2fa_unbound') {
-            query = query.where('infini_accounts.google_2fa_is_bound', false);
+            query = query.where('infini_accounts.google_2fa_is_bound', 0); // 使用0代替false
           }
           // 从filters中移除security属性，避免后续处理时尝试查询不存在的列
           delete filters.security;
