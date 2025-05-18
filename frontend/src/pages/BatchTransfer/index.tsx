@@ -641,13 +641,12 @@ const BatchTransfer = () => {
               
               <Divider style={{ margin: '8px 0' }} />
               
-              <Alert 
-                message="请选择要转账的源账户" 
-                description="从左侧列表中选择账户，点击箭头将其添加到右侧列表中。" 
-                type="info" 
-                showIcon
-                style={{ marginBottom: 8, padding: '8px 12px' }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', margin: '4px 0' }}>
+                <Text strong>请选择要转账的源账户</Text>
+                <Tooltip title="从左侧列表中选择账户，点击箭头将其添加到右侧列表中。">
+                  <QuestionCircleOutlined style={{ marginLeft: 4, color: '#1890ff' }} />
+                </Tooltip>
+              </div>
             </div>
           )}
           
