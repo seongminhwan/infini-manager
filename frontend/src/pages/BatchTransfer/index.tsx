@@ -54,25 +54,25 @@ const { Option } = Select;
 
 // 样式组件
 const PageContainer = styled.div`
-  padding: 24px;
+  padding: 12px;
 `;
 
 const StyledCard = styled(Card)`
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 `;
 
 const ProgressContainer = styled.div`
-  margin: 20px 0;
+  margin: 12px 0;
 `;
 
 const StepContainer = styled.div`
-  margin: 20px 0;
+  margin: 12px 0;
 `;
 
 const TransferContainer = styled.div`
-  margin-top: 20px;
+  margin-top: 12px;
 `;
 
 const AccountItem = styled.div`
