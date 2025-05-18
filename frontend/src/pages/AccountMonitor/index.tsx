@@ -158,10 +158,10 @@ interface InfiniAccount {
   dailyConsumption: number;
   status?: string;
   userType?: number;
-  google2faIsBound: boolean;
-  googlePasswordIsSet: boolean;
-  isKol: boolean;
-  isProtected: boolean;
+  google2faIsBound: boolean | number; // 兼容数值类型（0/1）和布尔类型
+  googlePasswordIsSet: boolean | number; // 兼容数值类型（0/1）和布尔类型
+  isKol: boolean | number;
+  isProtected: boolean | number;
   cookieExpiresAt?: string;
   infiniCreatedAt?: number;
   lastSyncAt: string;
@@ -2841,18 +2841,22 @@ const AccountMonitor: React.FC = () => {
     onFilter: (value: any, record: InfiniAccount) => {
       const strValue = value.toString();
       switch (strValue) {
-        case '2fa_bound': return record.google2faIsBound === true;
-        case '2fa_unbound': return record.google2faIsBound === false;
+        case '2fa_bound': return record.google2faIsBound === true || record.google2faIsBound === 1;
+        case '2fa_unbound': return record.google2faIsBound === false || record.google2faIsBound === 0;
         default: return true;
       }
     },
-    render: (record: InfiniAccount) => (
-      <Tooltip title={record.google2faIsBound ? "Google 2FA 已绑定" : "Google 2FA 未绑定"}>
-        <Tag color={record.google2faIsBound ? "green" : "orange"}>
-          {record.google2faIsBound ? "已绑定" : "未绑定"}
-        </Tag>
-      </Tooltip>
-    ),
+    render: (record: InfiniAccount) => {
+      // 判断2FA是否已绑定（兼容数值和布尔值类型）
+      const is2faBound = record.google2faIsBound === true || record.google2faIsBound === 1;
+      return (
+        <Tooltip title={is2faBound ? "Google 2FA 已绑定" : "Google 2FA 未绑定"}>
+          <Tag color={is2faBound ? "green" : "orange"}>
+            {is2faBound ? "已绑定" : "未绑定"}
+          </Tag>
+        </Tooltip>
+      );
+    },
   },
   {
     title: '所属分组',
