@@ -664,25 +664,51 @@ export class InfiniAccountService {
           console.log(`google_2fa_is_bound=1的记录数量: ${boundCount?.count || 0}`);
           console.log(`google_2fa_is_bound=0的记录数量: ${unboundCount?.count || 0}`);
           
-          // 处理2FA相关筛选 - 使用多种方式尝试查询，确保至少一种能正常工作
+          // 处理2FA相关筛选 - 尝试多种方法确保查询正确工作
           if (filters.security === '2fa_bound') {
-            console.log('应用2FA已绑定筛选条件');
+            console.log('应用2FA已绑定筛选条件 - security=2fa_bound');
             
-            // 方法1: 使用标准where条件，传入整数值1
-            query = query.where('infini_accounts.google_2fa_is_bound', 1);
-            
-            // 输出当前构建的SQL查询语句，用于调试
-            const sqlString = query.toString();
-            console.log(`方法1构建的SQL查询语句: ${sqlString}`);
+            try {
+              // 方法1: 使用标准where条件，尝试使用多种值类型
+              query = query.where(function() {
+                // 主要条件: google_2fa_is_bound = 1
+                this.where('infini_accounts.google_2fa_is_bound', 1)
+                  // 备选条件: 处理可能的布尔值存储
+                  .orWhere('infini_accounts.google_2fa_is_bound', '=', true)
+                  .orWhereRaw('infini_accounts.google_2fa_is_bound = ?', [1]);
+              });
+              
+              // 输出完整SQL查询以方便调试
+              const sqlString = query.toString();
+              console.log(`2FA已绑定筛选SQL: ${sqlString}`);
+            } catch (error) {
+              console.error('构建2FA已绑定筛选查询时出错:', error);
+              // 出错时使用最简单的查询以确保功能可用
+              query = query.where('infini_accounts.google_2fa_is_bound', 1);
+            }
           } else if (filters.security === '2fa_unbound') {
-            console.log('应用2FA未绑定筛选条件');
+            console.log('应用2FA未绑定筛选条件 - security=2fa_unbound');
             
-            // 方法1: 使用标准where条件，传入整数值0
-            query = query.where('infini_accounts.google_2fa_is_bound', 0);
-            
-            // 输出当前构建的SQL查询语句，用于调试
-            const sqlString = query.toString();
-            console.log(`方法1构建的SQL查询语句: ${sqlString}`);
+            try {
+              // 方法1: 使用标准where条件，尝试使用多种值类型
+              query = query.where(function() {
+                // 主要条件: google_2fa_is_bound = 0
+                this.where('infini_accounts.google_2fa_is_bound', 0)
+                  // 备选条件: 处理可能的布尔值存储
+                  .orWhere('infini_accounts.google_2fa_is_bound', '=', false)
+                  .orWhereRaw('infini_accounts.google_2fa_is_bound = ?', [0])
+                  // 处理可能的NULL值
+                  .orWhereNull('infini_accounts.google_2fa_is_bound');
+              });
+              
+              // 输出完整SQL查询以方便调试
+              const sqlString = query.toString();
+              console.log(`2FA未绑定筛选SQL: ${sqlString}`);
+            } catch (error) {
+              console.error('构建2FA未绑定筛选查询时出错:', error);
+              // 出错时使用最简单的查询以确保功能可用
+              query = query.where('infini_accounts.google_2fa_is_bound', 0);
+            }
           }
           
           // 从filters中移除security属性，避免后续处理时尝试查询不存在的列
@@ -735,9 +761,12 @@ export class InfiniAccountService {
       const countQuery = query.clone();
       const countResult = await countQuery.count('infini_accounts.id as total').first();
       const total = countResult ? parseInt(countResult.total as string, 10) : 0;
+      
+      console.log(`查询结果总数: ${total}条记录`);
 
       // 应用排序
       if (sortField && sortOrder) {
+        console.log(`应用排序: 字段=${sortField}, 顺序=${sortOrder}`);
         // 特殊处理卡片数量排序
         if (sortField === 'cardCount') {
           query = query.orderBy('cardCount', sortOrder);
@@ -746,21 +775,36 @@ export class InfiniAccountService {
         }
       } else {
         // 默认排序
+        console.log('应用默认排序: created_at DESC');
         query = query.orderBy('infini_accounts.created_at', 'desc');
       }
 
       // 应用分页
       const offset = (page - 1) * pageSize;
       query = query.limit(pageSize).offset(offset);
+      console.log(`应用分页: offset=${offset}, limit=${pageSize}`);
 
-      // 执行查询获取分页数据
+      // 执行最终查询获取分页数据
+      console.log('执行最终查询...');
+      const finalSql = query.toString();
+      console.log(`最终执行的SQL查询: ${finalSql}`);
+      
       const accounts = await query;
+      console.log(`查询返回 ${accounts.length} 条记录`);
+
+      // 输出首条记录的关键字段用于调试（如果有记录）
+      if (accounts.length > 0) {
+        const firstAccount = accounts[0];
+        console.log(`首条记录示例: ID=${firstAccount.id}, Email=${firstAccount.email}, 2FA绑定状态=${firstAccount.google2faIsBound} (值类型: ${typeof firstAccount.google2faIsBound})`);
+      }
 
       // 获取所有账户的2FA信息
+      console.log(`获取 ${accounts.length} 个账户的2FA信息...`);
       const accountIds = accounts.map(account => account.id);
       const twoFaInfos = await db('infini_2fa_info')
         .whereIn('infini_account_id', accountIds)
         .select('*');
+      console.log(`找到 ${twoFaInfos.length} 条2FA信息记录`);
 
       // 创建一个快速查找映射，通过账户ID找到对应的2FA信息
       const twoFaInfoMap = new Map();
