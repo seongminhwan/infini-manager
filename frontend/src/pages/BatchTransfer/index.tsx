@@ -73,7 +73,7 @@ const StepContainer = styled.div`
 `;
 
 const TransferContainer = styled.div`
-  margin-top: 12px;
+  margin-top: 8px;
 `;
 
 const AccountItem = styled.div`
