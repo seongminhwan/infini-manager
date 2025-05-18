@@ -599,13 +599,12 @@ const BatchTransfer = () => {
             </div>
           ) : (
             <div style={{ marginBottom: 8 }}>
-              <Alert 
-                message="请选择要转账的目标账户" 
-                description="选择目标账户类型并输入相应信息。" 
-                type="info" 
-                showIcon
-                style={{ marginBottom: 8, padding: '8px 12px' }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', margin: '4px 0' }}>
+                <Text strong>请选择要转账的目标账户</Text>
+                <Tooltip title="选择目标账户类型并输入相应信息。">
+                  <QuestionCircleOutlined style={{ marginLeft: 4, color: '#1890ff' }} />
+                </Tooltip>
+              </div>
               
               <Radio.Group 
                 value={targetContactType}
