@@ -2837,6 +2837,7 @@ const AccountMonitor: React.FC = () => {
       { text: '2FA已绑定', value: '2fa_bound' },
       { text: '2FA未绑定', value: '2fa_unbound' },
     ],
+    filterMultiple: false,
     onFilter: (value: any, record: InfiniAccount) => {
       const strValue = value.toString();
       switch (strValue) {
