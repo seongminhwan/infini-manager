@@ -610,7 +610,7 @@ export class InfiniAccountService {
         // 左连接卡片计数子查询
         .leftJoin(cardCountSubquery, 'infini_accounts.id', 'card_counts.infini_account_id');
 
-      // 应用分组筛选
+      // 应用分组筛选（两种方式：通过groupId参数或filters.groups）
       if (groupId) {
         query = query
           .join('infini_account_group_relations', 'infini_accounts.id', 'infini_account_group_relations.infini_account_id')
@@ -619,6 +619,18 @@ export class InfiniAccountService {
 
       // 应用动态筛选条件
       if (filters) {
+        // 特殊处理分组筛选
+        if (filters.groups !== undefined && filters.groups !== null && filters.groups !== '') {
+          // 如果没有通过groupId参数筛选，则通过filters.groups筛选
+          if (!groupId) {
+            query = query
+              .join('infini_account_group_relations', 'infini_accounts.id', 'infini_account_group_relations.infini_account_id')
+              .where('infini_account_group_relations.group_id', filters.groups);
+          }
+          // 从filters中移除groups属性，避免后续处理时尝试查询不存在的列
+          delete filters.groups;
+        }
+
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== undefined && value !== null && value !== '') {
             // 特殊处理卡片数量筛选
