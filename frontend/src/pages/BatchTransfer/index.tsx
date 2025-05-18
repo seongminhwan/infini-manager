@@ -573,8 +573,8 @@ const BatchTransfer = () => {
           <Divider />
           
           {transferMode === 'one_to_many' ? (
-            <>
-              <Title level={4}>选择源账户</Title>
+            <div style={{ marginBottom: 8 }}>
+              <Title level={4} style={{ marginBottom: 4 }}>选择源账户</Title>
               <Select
                 style={{ width: '100%' }}
                 placeholder="选择源账户"
@@ -589,123 +589,187 @@ const BatchTransfer = () => {
                 ))}
               </Select>
               
-              <Divider />
+              <Divider style={{ margin: '8px 0' }} />
               
-              <Title level={4}>选择目标账户</Title>
-              <Alert
-                message="请选择要转账的目标账户"
-                description="从左侧列表中选择账户，点击箭头将其添加到右侧列表中。"
-                type="info"
-                showIcon
-                style={{ marginBottom: 16 }}
-              />
-            </>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                <Title level={4} style={{ margin: 0, marginRight: 8 }}>选择目标账户</Title>
+                <Tooltip title="从左侧列表中选择账户，点击箭头将其添加到右侧列表中">
+                  <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                </Tooltip>
+              </div>
+            </div>
           ) : (
-            <>
-              <Title level={4}>选择目标账户</Title>
-              <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
-                <Radio.Group 
-                  value={targetContactType}
-                  onChange={(e) => setTargetContactType(e.target.value)}
-                  style={{ marginBottom: 16 }}
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                <Title level={4} style={{ margin: 0, marginRight: 8 }}>选择目标账户</Title>
+                <Tooltip title="选择目标账户类型并输入相应信息">
+                  <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                </Tooltip>
+              </div>
+              
+              <Radio.Group 
+                value={targetContactType}
+                onChange={(e) => setTargetContactType(e.target.value)}
+                style={{ marginBottom: 8 }}
+              >
+                <Radio value="inner">内部账户</Radio>
+                <Radio value="uid">UID</Radio>
+                <Radio value="email">Email</Radio>
+              </Radio.Group>
+              
+              {targetContactType === 'inner' ? (
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder="选择内部目标账户"
+                  onChange={handleTargetAccountChange}
+                  optionFilterProp="children"
+                  showSearch
                 >
-                  <Radio value="inner">内部账户</Radio>
-                  <Radio value="uid">UID</Radio>
-                  <Radio value="email">Email</Radio>
-                </Radio.Group>
-                
-                {targetContactType === 'inner' ? (
-                  <Select
-                    style={{ width: '100%' }}
-                    placeholder="选择内部目标账户"
-                    onChange={handleTargetAccountChange}
-                    optionFilterProp="children"
-                    showSearch
-                  >
-                    {accounts.map(account => (
-                      <Option key={account.id} value={account.id.toString()}>
-                        {account.email} - UID: {account.uid} - 余额: {account.availableBalance || '未知'}
-                      </Option>
-                    ))}
-                  </Select>
-                ) : (
-                  <Input 
-                    placeholder={targetContactType === 'uid' ? "输入目标账户UID" : "输入目标账户Email"} 
-                    value={externalTargetId}
-                    onChange={(e) => setExternalTargetId(e.target.value)}
-                    style={{ width: '100%' }}
-                  />
-                )}
-              </Space>
+                  {accounts.map(account => (
+                    <Option key={account.id} value={account.id.toString()}>
+                      {account.email} - UID: {account.uid} - 余额: {account.availableBalance || '未知'}
+                    </Option>
+                  ))}
+                </Select>
+              ) : (
+                <Input 
+                  placeholder={targetContactType === 'uid' ? "输入目标账户UID" : "输入目标账户Email"} 
+                  value={externalTargetId}
+                  onChange={(e) => setExternalTargetId(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              )}
               
-              <Divider />
+              <Divider style={{ margin: '8px 0' }} />
               
-              <Title level={4}>选择源账户</Title>
-              <Alert
-                message="请选择要从中转出资金的源账户"
-                description="从左侧列表中选择账户，点击箭头将其添加到右侧列表中。"
-                type="info"
-                showIcon
-                style={{ marginBottom: 16 }}
-              />
-            </>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                <Title level={4} style={{ margin: 0, marginRight: 8 }}>选择源账户</Title>
+                <Tooltip title="从左侧列表中选择账户，点击箭头将其添加到右侧列表中">
+                  <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                </Tooltip>
+              </div>
+            </div>
           )}
           
           {/* 账户筛选条件 */}
-          <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
-            <Title level={5}>筛选条件</Title>
+          <Space direction="vertical" style={{ width: '100%', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+              <Title level={5} style={{ margin: 0, marginRight: 8 }}>筛选条件</Title>
+              <Tooltip title="选择筛选条件，点击应用筛选按钮进行过滤">
+                <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+              </Tooltip>
+            </div>
             <Row gutter={[8, 8]}>
               <Col span={8}>
-                <Input.Group compact>
-                  <Select
-                    style={{ width: '30%' }}
-                    value={balanceFilterType}
-                    onChange={(value) => setBalanceFilterType(value)}
-                  >
-                    <Option value="gt">{'>'}</Option>
-                    <Option value="lt">{'<'}</Option>
-                    <Option value="eq">{'='}</Option>
-                  </Select>
-                  <InputNumber
-                    style={{ width: '70%' }}
-                    placeholder="输入余额值"
-                    value={balanceFilterValue ? parseFloat(balanceFilterValue) : undefined}
-                    onChange={(value) => setBalanceFilterValue(value?.toString() || '')}
-                    min={0}
-                    precision={2}
-                  />
-                </Input.Group>
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder="按余额筛选"
+                  value={balanceFilterValue ? `${balanceFilterType}_${balanceFilterValue}` : undefined}
+                  onChange={(value) => {
+                    if (!value) {
+                      setBalanceFilterValue('');
+                      return;
+                    }
+                    
+                    if (value === 'custom') {
+                      // 显示自定义输入
+                      Modal.confirm({
+                        title: '设置余额筛选条件',
+                        content: (
+                          <div>
+                            <Select
+                              style={{ width: '30%', marginRight: 8 }}
+                              value={balanceFilterType}
+                              onChange={(type) => setBalanceFilterType(type)}
+                            >
+                              <Option value="gt">大于</Option>
+                              <Option value="lt">小于</Option>
+                              <Option value="eq">等于</Option>
+                            </Select>
+                            <InputNumber
+                              style={{ width: '60%' }}
+                              value={balanceFilterValue ? parseFloat(balanceFilterValue) : undefined}
+                              onChange={(val) => setBalanceFilterValue(val?.toString() || '')}
+                              min={0}
+                              precision={2}
+                            />
+                          </div>
+                        ),
+                        onOk() {},
+                      });
+                    } else {
+                      // 预设值
+                      const [type, amount] = value.split('_');
+                      setBalanceFilterType(type as 'gt' | 'lt' | 'eq');
+                      setBalanceFilterValue(amount);
+                    }
+                  }}
+                  allowClear
+                >
+                  <Option value="gt_100">余额 {'>'} 100</Option>
+                  <Option value="gt_1000">余额 {'>'} 1000</Option>
+                  <Option value="lt_100">余额 {'<'} 100</Option>
+                  <Option value="custom">自定义...</Option>
+                </Select>
               </Col>
               <Col span={8}>
-                <Input.Group compact>
-                  <Select
-                    style={{ width: '30%' }}
-                    value={redPacketFilterType}
-                    onChange={(value) => setRedPacketFilterType(value)}
-                  >
-                    <Option value="has">有</Option>
-                    <Option value="no">无</Option>
-                    <Option value="gt">{'>'}</Option>
-                    <Option value="lt">{'<'}</Option>
-                    <Option value="eq">{'='}</Option>
-                  </Select>
-                  {(redPacketFilterType === 'gt' || redPacketFilterType === 'lt' || redPacketFilterType === 'eq') ? (
-                    <InputNumber
-                      style={{ width: '70%' }}
-                      placeholder="输入红包余额值"
-                      value={redPacketFilterValue ? parseFloat(redPacketFilterValue) : undefined}
-                      onChange={(value) => setRedPacketFilterValue(value?.toString() || '')}
-                      min={0}
-                      precision={2}
-                    />
-                  ) : (
-                    <Input 
-                      style={{ width: '70%' }} 
-                      value="红包余额" 
-                      disabled 
-                    />
-                  )}
-                </Input.Group>
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder="按红包余额筛选"
+                  value={redPacketFilterValue ? `${redPacketFilterType}_${redPacketFilterValue}` : redPacketFilterType === 'has' ? 'has' : redPacketFilterType === 'no' ? 'no' : undefined}
+                  onChange={(value) => {
+                    if (!value) {
+                      setRedPacketFilterType('has');
+                      setRedPacketFilterValue('');
+                      return;
+                    }
+                    
+                    if (value === 'has') {
+                      setRedPacketFilterType('has');
+                      setRedPacketFilterValue('');
+                    } else if (value === 'no') {
+                      setRedPacketFilterType('no');
+                      setRedPacketFilterValue('');
+                    } else if (value === 'custom') {
+                      // 显示自定义输入
+                      Modal.confirm({
+                        title: '设置红包余额筛选条件',
+                        content: (
+                          <div>
+                            <Select
+                              style={{ width: '30%', marginRight: 8 }}
+                              value={redPacketFilterType}
+                              onChange={(type) => setRedPacketFilterType(type as any)}
+                            >
+                              <Option value="gt">大于</Option>
+                              <Option value="lt">小于</Option>
+                              <Option value="eq">等于</Option>
+                            </Select>
+                            <InputNumber
+                              style={{ width: '60%' }}
+                              value={redPacketFilterValue ? parseFloat(redPacketFilterValue) : undefined}
+                              onChange={(val) => setRedPacketFilterValue(val?.toString() || '')}
+                              min={0}
+                              precision={2}
+                            />
+                          </div>
+                        ),
+                        onOk() {},
+                      });
+                    } else {
+                      // 预设值
+                      const [type, amount] = value.split('_');
+                      setRedPacketFilterType(type as any);
+                      setRedPacketFilterValue(amount);
+                    }
+                  }}
+                  allowClear
+                >
+                  <Option value="has">有红包余额</Option>
+                  <Option value="no">无红包余额</Option>
+                  <Option value="gt_100">红包余额 {'>'} 100</Option>
+                  <Option value="custom">自定义...</Option>
+                </Select>
               </Col>
               <Col span={8}>
                 <Select
