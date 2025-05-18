@@ -654,32 +654,58 @@ const BatchTransfer = () => {
           {/* 账户筛选条件 */}
           <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
             <Title level={5}>筛选条件</Title>
-            <Row gutter={16}>
+            <Row gutter={[8, 8]}>
               <Col span={8}>
-                <Select
-                  style={{ width: '100%' }}
-                  placeholder="按余额筛选"
-                  onChange={(value) => setBalanceFilter(value)}
-                  allowClear
-                >
-                  <Option value="gt_100">余额 {'>'} 100</Option>
-                  <Option value="gt_1000">余额 {'>'} 1000</Option>
-                  <Option value="gt_10000">余额 {'>'} 10000</Option>
-                  <Option value="lt_100">余额 {'<'} 100</Option>
-                  <Option value="lt_10">余额 {'<'} 10</Option>
-                </Select>
+                <Input.Group compact>
+                  <Select
+                    style={{ width: '30%' }}
+                    value={balanceFilterType}
+                    onChange={(value) => setBalanceFilterType(value)}
+                  >
+                    <Option value="gt">{'>'}</Option>
+                    <Option value="lt">{'<'}</Option>
+                    <Option value="eq">{'='}</Option>
+                  </Select>
+                  <InputNumber
+                    style={{ width: '70%' }}
+                    placeholder="输入余额值"
+                    value={balanceFilterValue ? parseFloat(balanceFilterValue) : undefined}
+                    onChange={(value) => setBalanceFilterValue(value?.toString() || '')}
+                    min={0}
+                    precision={2}
+                  />
+                </Input.Group>
               </Col>
               <Col span={8}>
-                <Select
-                  style={{ width: '100%' }}
-                  placeholder="按红包余额筛选"
-                  onChange={(value) => setRedPacketFilter(value)}
-                  allowClear
-                >
-                  <Option value="has_redpacket">有红包余额</Option>
-                  <Option value="no_redpacket">无红包余额</Option>
-                  <Option value="gt_100">红包余额 {'>'} 100</Option>
-                </Select>
+                <Input.Group compact>
+                  <Select
+                    style={{ width: '30%' }}
+                    value={redPacketFilterType}
+                    onChange={(value) => setRedPacketFilterType(value)}
+                  >
+                    <Option value="has">有</Option>
+                    <Option value="no">无</Option>
+                    <Option value="gt">{'>'}</Option>
+                    <Option value="lt">{'<'}</Option>
+                    <Option value="eq">{'='}</Option>
+                  </Select>
+                  {(redPacketFilterType === 'gt' || redPacketFilterType === 'lt' || redPacketFilterType === 'eq') ? (
+                    <InputNumber
+                      style={{ width: '70%' }}
+                      placeholder="输入红包余额值"
+                      value={redPacketFilterValue ? parseFloat(redPacketFilterValue) : undefined}
+                      onChange={(value) => setRedPacketFilterValue(value?.toString() || '')}
+                      min={0}
+                      precision={2}
+                    />
+                  ) : (
+                    <Input 
+                      style={{ width: '70%' }} 
+                      value="红包余额" 
+                      disabled 
+                    />
+                  )}
+                </Input.Group>
               </Col>
               <Col span={8}>
                 <Select
