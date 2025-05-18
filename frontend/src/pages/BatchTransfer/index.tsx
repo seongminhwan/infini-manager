@@ -726,26 +726,35 @@ const BatchTransfer = () => {
                 // 根据筛选条件过滤账户
                 let filtered = [...accounts];
                 
-                if (balanceFilter) {
-                  switch (balanceFilter) {
-                    case 'gt_100':
-                      filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') > 100);
-                      break;
-                    case 'gt_1000':
-                      filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') > 1000);
-                      break;
-                    case 'gt_10000':
-                      filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') > 10000);
-                      break;
-                    case 'lt_100':
-                      filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') < 100);
-                      break;
-                    case 'lt_10':
-                      filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') < 10);
-                      break;
+                // 余额筛选
+                if (balanceFilterValue) {
+                  const balanceValue = parseFloat(balanceFilterValue);
+                  if (balanceFilterType === 'gt') {
+                    filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') > balanceValue);
+                  } else if (balanceFilterType === 'lt') {
+                    filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') < balanceValue);
+                  } else if (balanceFilterType === 'eq') {
+                    filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') === balanceValue);
                   }
                 }
                 
+                // 红包余额筛选
+                if (redPacketFilterType === 'has') {
+                  filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') > 0);
+                } else if (redPacketFilterType === 'no') {
+                  filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') === 0);
+                } else if (redPacketFilterValue) {
+                  const redPacketValue = parseFloat(redPacketFilterValue);
+                  if (redPacketFilterType === 'gt') {
+                    filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') > redPacketValue);
+                  } else if (redPacketFilterType === 'lt') {
+                    filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') < redPacketValue);
+                  } else if (redPacketFilterType === 'eq') {
+                    filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') === redPacketValue);
+                  }
+                }
+                
+                // 账户状态筛选
                 if (statusFilter) {
                   switch (statusFilter) {
                     case 'active':
@@ -785,7 +794,7 @@ const BatchTransfer = () => {
                   <div>{item.description}</div>
                 </AccountItem>
               )}
-              listStyle={{ width: 450, height: 400 }}
+              listStyle={{ width: '100%', height: 300 }}
               showSearch
             />
           </TransferContainer>
