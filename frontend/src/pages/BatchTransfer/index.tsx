@@ -567,62 +567,37 @@ const BatchTransfer = () => {
     return (
       <StyledCard>
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Title level={4}>选择转账模式</Title>
-          <Radio.Group onChange={handleModeChange} value={transferMode}>
-            <Radio value="one_to_many">一对多转账（一个账户转账给多个账户）</Radio>
-            <Radio value="many_to_one">多对一转账（多个账户转账给一个账户）</Radio>
-          </Radio.Group>
+          <Row align="middle" style={{ marginBottom: 12 }}>
+            <Col span={6}>
+              <Text strong>转账模式：</Text>
+            </Col>
+            <Col span={18}>
+              <Space align="center">
+                <Switch
+                  checked={transferMode === 'many_to_one'}
+                  onChange={(checked) => setTransferMode(checked ? 'many_to_one' : 'one_to_many')}
+                  checkedChildren="多对一"
+                  unCheckedChildren="一对多"
+                />
+                <Text type="secondary">
+                  {transferMode === 'one_to_many' ? '一个账户转账给多个账户' : '多个账户转账给一个账户'}
+                </Text>
+              </Space>
+            </Col>
+          </Row>
           
-          <Divider />
-          
-          {transferMode === 'one_to_many' ? (
-            <div style={{ marginBottom: 8 }}>
-              <Title level={4} style={{ marginBottom: 4 }}>选择源账户</Title>
-              <Select
-                style={{ width: '100%' }}
-                placeholder="选择源账户"
-                onChange={handleSourceAccountChange}
-                optionFilterProp="children"
-                showSearch
-              >
-                {accounts.map(account => (
-                  <Option key={account.id} value={account.id.toString()}>
-                    {account.email} - UID: {account.uid} - 余额: {account.availableBalance || '未知'}
-                  </Option>
-                ))}
-              </Select>
-              
-              <div style={{ display: 'flex', alignItems: 'center', margin: '4px 0' }}>
-                <Text strong>请选择要转账的目标账户</Text>
-                <Tooltip title="从左侧列表中选择账户，点击箭头将其添加到右侧列表中。">
-                  <QuestionCircleOutlined style={{ marginLeft: 4, color: '#1890ff' }} />
-                </Tooltip>
-              </div>
-            </div>
-          ) : (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', margin: '4px 0' }}>
-                <Text strong>请选择要转账的目标账户</Text>
-                <Tooltip title="选择目标账户类型并输入相应信息。">
-                  <QuestionCircleOutlined style={{ marginLeft: 4, color: '#1890ff' }} />
-                </Tooltip>
-              </div>
-              
-              <Radio.Group 
-                value={targetContactType}
-                onChange={(e) => setTargetContactType(e.target.value)}
-                style={{ marginBottom: 8 }}
-              >
-                <Radio value="inner">内部账户</Radio>
-                <Radio value="uid">UID</Radio>
-                <Radio value="email">Email</Radio>
-              </Radio.Group>
-              
-              {targetContactType === 'inner' ? (
+          <Row align="middle" style={{ marginBottom: 12 }}>
+            <Col span={6}>
+              <Text strong>
+                {transferMode === 'one_to_many' ? '源账户：' : '目标账户：'}
+              </Text>
+            </Col>
+            <Col span={18}>
+              {transferMode === 'one_to_many' ? (
                 <Select
                   style={{ width: '100%' }}
-                  placeholder="选择内部目标账户"
-                  onChange={handleTargetAccountChange}
+                  placeholder="选择源账户"
+                  onChange={handleSourceAccountChange}
                   optionFilterProp="children"
                   showSearch
                 >
@@ -633,204 +608,228 @@ const BatchTransfer = () => {
                   ))}
                 </Select>
               ) : (
-                <Input 
-                  placeholder={targetContactType === 'uid' ? "输入目标账户UID" : "输入目标账户Email"} 
-                  value={externalTargetId}
-                  onChange={(e) => setExternalTargetId(e.target.value)}
-                  style={{ width: '100%' }}
-                />
+                <Space.Compact style={{ width: '100%' }}>
+                  <Select 
+                    style={{ width: '25%' }} 
+                    value={targetContactType}
+                    onChange={(value) => setTargetContactType(value)}
+                    options={[
+                      { label: '内部账户', value: 'inner' },
+                      { label: 'UID', value: 'uid' },
+                      { label: 'Email', value: 'email' }
+                    ]}
+                  />
+                  {targetContactType === 'inner' ? (
+                    <Select
+                      style={{ width: '75%' }}
+                      placeholder="选择内部目标账户"
+                      onChange={handleTargetAccountChange}
+                      optionFilterProp="children"
+                      showSearch
+                    >
+                      {accounts.map(account => (
+                        <Option key={account.id} value={account.id.toString()}>
+                          {account.email} - UID: {account.uid} - 余额: {account.availableBalance || '未知'}
+                        </Option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Input 
+                      style={{ width: '75%' }}
+                      placeholder={targetContactType === 'uid' ? "输入目标账户UID" : "输入目标账户Email"} 
+                      value={externalTargetId}
+                      onChange={(e) => setExternalTargetId(e.target.value)}
+                    />
+                  )}
+                </Space.Compact>
               )}
-              
-              <Divider style={{ margin: '8px 0' }} />
-              
-              <div style={{ display: 'flex', alignItems: 'center', margin: '4px 0' }}>
-                <Text strong>请选择要转账的源账户</Text>
-                <Tooltip title="从左侧列表中选择账户，点击箭头将其添加到右侧列表中。">
-                  <QuestionCircleOutlined style={{ marginLeft: 4, color: '#1890ff' }} />
-                </Tooltip>
-              </div>
-            </div>
-          )}
+            </Col>
+          </Row>
           
-          {/* 账户搜索与高级筛选 */}
-          <Space direction="vertical" style={{ width: '100%', marginBottom: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Input.Search 
-                placeholder="搜索账户" 
-                onSearch={(value) => {
-                  if (value) {
-                    const searchText = value.toLowerCase();
-                    const filtered = accounts.filter(account => 
-                      account.email.toLowerCase().includes(searchText) || 
-                      (account.uid && account.uid.toLowerCase().includes(searchText))
-                    );
-                    setFilteredAccounts(filtered);
-                  } else {
-                    setFilteredAccounts(accounts);
-                  }
-                }}
-                style={{ width: '60%' }}
-              />
-              
-              <Button 
-                type="link" 
-                onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
-              >
-                {showAdvancedFilter ? '隐藏高级筛选' : '显示高级筛选'}
-              </Button>
-            </div>
+          <Divider style={{ margin: '8px 0' }} />
             
-            <Collapse 
-              activeKey={showAdvancedFilter ? ['1'] : []}
-              bordered={false}
-              ghost
-            >
-              <Collapse.Panel 
-                key="1" 
-                header={null}
-                showArrow={false}
-                style={{ padding: 0 }}
-              >
-                <div style={{ background: '#f5f5f5', padding: '12px', borderRadius: '4px' }}>
-                  <Space direction="vertical" style={{ width: '100%' }}>
-                    <Row gutter={[16, 16]}>
-                      <Col span={24}>
-                        <div style={{ marginBottom: 8 }}>
-                          <Text strong>余额区间：</Text>
-                        </div>
-                        <Space>
-                          <InputNumber
-                            style={{ width: 120 }}
-                            placeholder="0"
-                            value={balanceMinValue ? parseFloat(balanceMinValue) : undefined}
-                            onChange={(val) => setBalanceMinValue(val?.toString() || '')}
-                            min={0}
-                            precision={2}
-                          />
-                          <Text>至</Text>
-                          <InputNumber
-                            style={{ width: 120 }}
-                            placeholder="不限"
-                            value={balanceMaxValue ? parseFloat(balanceMaxValue) : undefined}
-                            onChange={(val) => setBalanceMaxValue(val?.toString() || '')}
-                            min={0}
-                            precision={2}
-                          />
-                        </Space>
-                      </Col>
-                      
-                      <Col span={24}>
-                        <div style={{ marginBottom: 8 }}>
-                          <Text strong>红包余额区间：</Text>
-                        </div>
-                        <Space>
-                          <InputNumber
-                            style={{ width: 120 }}
-                            placeholder="0"
-                            value={redPacketMinValue ? parseFloat(redPacketMinValue) : undefined}
-                            onChange={(val) => setRedPacketMinValue(val?.toString() || '')}
-                            min={0}
-                            precision={2}
-                          />
-                          <Text>至</Text>
-                          <InputNumber
-                            style={{ width: 120 }}
-                            placeholder="不限"
-                            value={redPacketMaxValue ? parseFloat(redPacketMaxValue) : undefined}
-                            onChange={(val) => setRedPacketMaxValue(val?.toString() || '')}
-                            min={0}
-                            precision={2}
-                          />
-                        </Space>
-                      </Col>
-                      
-                      <Col span={24}>
-                        <div style={{ marginBottom: 8 }}>
-                          <Text strong>账户状态：</Text>
-                        </div>
-                        <Select
-                          style={{ width: 200 }}
-                          placeholder="全部"
-                          onChange={(value) => setStatusFilter(value)}
+          <Row style={{ marginBottom: 8 }}>
+            <Col flex="auto">
+              <Text strong>
+                {transferMode === 'one_to_many' ? '选择目标账户' : '选择源账户'}
+              </Text>
+              <Tooltip title="从列表中选择账户，点击箭头将其添加到右侧。">
+                <QuestionCircleOutlined style={{ marginLeft: 4, color: '#1890ff' }} />
+              </Tooltip>
+            </Col>
+            <Col>
+              <Space>
+                <Dropdown 
+                  overlay={
+                    <div style={{ background: '#fff', padding: 16, boxShadow: '0 3px 6px rgba(0,0,0,0.16)', borderRadius: 4, width: 350 }}>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Input.Search 
+                          placeholder="搜索账户" 
                           allowClear
-                        >
-                          <Option value="active">活跃账户</Option>
-                          <Option value="inactive">非活跃账户</Option>
-                          <Option value="locked">已锁定账户</Option>
-                        </Select>
-                      </Col>
-                    </Row>
-                    
-                    <Button 
-                      type="primary"
-                      onClick={() => {
-                        // 根据筛选条件过滤账户
-                        let filtered = [...accounts];
+                          onSearch={(value) => {
+                            if (value) {
+                              const searchText = value.toLowerCase();
+                              const filtered = accounts.filter(account => 
+                                account.email.toLowerCase().includes(searchText) || 
+                                (account.uid && account.uid.toLowerCase().includes(searchText))
+                              );
+                              setFilteredAccounts(filtered);
+                            } else {
+                              setFilteredAccounts(accounts);
+                            }
+                          }}
+                        />
+                          
+                        <Collapse bordered={false}>
+                          <Collapse.Panel header="高级筛选" key="1">
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                              <div>
+                                <Text type="secondary">余额区间：</Text>
+                                <Space>
+                                  <InputNumber
+                                    style={{ width: 120 }}
+                                    placeholder="0"
+                                    value={balanceMinValue ? parseFloat(balanceMinValue) : undefined}
+                                    onChange={(val) => setBalanceMinValue(val?.toString() || '')}
+                                    min={0}
+                                    precision={2}
+                                  />
+                                  <Text>至</Text>
+                                  <InputNumber
+                                    style={{ width: 120 }}
+                                    placeholder="不限"
+                                    value={balanceMaxValue ? parseFloat(balanceMaxValue) : undefined}
+                                    onChange={(val) => setBalanceMaxValue(val?.toString() || '')}
+                                    min={0}
+                                    precision={2}
+                                  />
+                                </Space>
+                              </div>
+                              
+                              <div>
+                                <Text type="secondary">红包余额区间：</Text>
+                                <Space>
+                                  <InputNumber
+                                    style={{ width: 120 }}
+                                    placeholder="0"
+                                    value={redPacketMinValue ? parseFloat(redPacketMinValue) : undefined}
+                                    onChange={(val) => setRedPacketMinValue(val?.toString() || '')}
+                                    min={0}
+                                    precision={2}
+                                  />
+                                  <Text>至</Text>
+                                  <InputNumber
+                                    style={{ width: 120 }}
+                                    placeholder="不限"
+                                    value={redPacketMaxValue ? parseFloat(redPacketMaxValue) : undefined}
+                                    onChange={(val) => setRedPacketMaxValue(val?.toString() || '')}
+                                    min={0}
+                                    precision={2}
+                                  />
+                                </Space>
+                              </div>
+                              
+                              <div>
+                                <Text type="secondary">账户状态：</Text>
+                                <Select
+                                  style={{ width: '100%' }}
+                                  placeholder="全部"
+                                  onChange={(value) => setStatusFilter(value)}
+                                  allowClear
+                                >
+                                  <Option value="active">活跃账户</Option>
+                                  <Option value="inactive">非活跃账户</Option>
+                                  <Option value="locked">已锁定账户</Option>
+                                </Select>
+                              </div>
+                            </Space>
+                          </Collapse.Panel>
+                        </Collapse>
                         
-                        // 余额区间筛选
-                        if (balanceMinValue) {
-                          const minValue = parseFloat(balanceMinValue);
-                          filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') >= minValue);
-                        }
-                        
-                        if (balanceMaxValue) {
-                          const maxValue = parseFloat(balanceMaxValue);
-                          filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') <= maxValue);
-                        }
-                        
-                        // 红包余额区间筛选
-                        if (redPacketMinValue) {
-                          const minValue = parseFloat(redPacketMinValue);
-                          filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') >= minValue);
-                        }
-                        
-                        if (redPacketMaxValue) {
-                          const maxValue = parseFloat(redPacketMaxValue);
-                          filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') <= maxValue);
-                        }
-                
-                // 账户状态筛选
-                if (statusFilter) {
-                  switch (statusFilter) {
-                    case 'active':
-                      filtered = filtered.filter(a => a.status === 'active');
-                      break;
-                    case 'inactive':
-                      filtered = filtered.filter(a => a.status === 'inactive');
-                      break;
-                    case 'locked':
-                      filtered = filtered.filter(a => a.status === 'locked');
-                      break;
+                        <Row gutter={8}>
+                          <Col span={12}>
+                            <Button 
+                              block
+                              onClick={() => {
+                                // 重置筛选条件
+                                setBalanceMinValue('');
+                                setBalanceMaxValue('');
+                                setRedPacketMinValue('');
+                                setRedPacketMaxValue('');
+                                setStatusFilter('');
+                                setFilteredAccounts(accounts);
+                              }}
+                            >
+                              重置筛选
+                            </Button>
+                          </Col>
+                          <Col span={12}>
+                            <Button 
+                              type="primary"
+                              block
+                              onClick={() => {
+                                // 根据筛选条件过滤账户
+                                let filtered = [...accounts];
+                                
+                                // 余额区间筛选
+                                if (balanceMinValue) {
+                                  const minValue = parseFloat(balanceMinValue);
+                                  filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') >= minValue);
+                                }
+                                
+                                if (balanceMaxValue) {
+                                  const maxValue = parseFloat(balanceMaxValue);
+                                  filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') <= maxValue);
+                                }
+                                
+                                // 红包余额区间筛选
+                                if (redPacketMinValue) {
+                                  const minValue = parseFloat(redPacketMinValue);
+                                  filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') >= minValue);
+                                }
+                                
+                                if (redPacketMaxValue) {
+                                  const maxValue = parseFloat(redPacketMaxValue);
+                                  filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') <= maxValue);
+                                }
+                                
+                                // 账户状态筛选
+                                if (statusFilter) {
+                                  switch (statusFilter) {
+                                    case 'active':
+                                      filtered = filtered.filter(a => a.status === 'active');
+                                      break;
+                                    case 'inactive':
+                                      filtered = filtered.filter(a => a.status === 'inactive');
+                                      break;
+                                    case 'locked':
+                                      filtered = filtered.filter(a => a.status === 'locked');
+                                      break;
+                                  }
+                                }
+                                
+                                setFilteredAccounts(filtered);
+                              }}
+                            >
+                              应用筛选
+                            </Button>
+                          </Col>
+                        </Row>
+                      </Space>
+                    </div>
                   }
-                }
-                
-                setFilteredAccounts(filtered);
-                        
-                        // 关闭折叠面板
-                        setShowAdvancedFilter(false);
-                      }}
-                    >
-                      应用筛选
-                    </Button>
-                    
-                    <Button 
-                      onClick={() => {
-                        // 重置筛选条件
-                        setBalanceMinValue('');
-                        setBalanceMaxValue('');
-                        setRedPacketMinValue('');
-                        setRedPacketMaxValue('');
-                        setStatusFilter('');
-                        setFilteredAccounts(accounts);
-                      }}
-                    >
-                      重置筛选
-                    </Button>
-                  </Space>
-                </div>
-              </Collapse.Panel>
-            </Collapse>
-          </Space>
+                  trigger={['click']}
+                >
+                  <Button 
+                    icon={<SearchOutlined />}
+                    size="small"
+                  >
+                    搜索/筛选账户
+                  </Button>
+                </Dropdown>
+              </Space>
+            </Col>
+          </Row>
           
           <TransferContainer>
             <Transfer
