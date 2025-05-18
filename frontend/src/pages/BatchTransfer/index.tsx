@@ -131,8 +131,10 @@ const BatchTransfer = () => {
   const [externalTargetId, setExternalTargetId] = useState<string>('');
   
   // 筛选条件
-  const [balanceFilter, setBalanceFilter] = useState<string>('');
-  const [redPacketFilter, setRedPacketFilter] = useState<string>('');
+  const [balanceFilterType, setBalanceFilterType] = useState<'gt' | 'lt' | 'eq'>('gt');
+  const [balanceFilterValue, setBalanceFilterValue] = useState<string>('');
+  const [redPacketFilterType, setRedPacketFilterType] = useState<'has' | 'no' | 'gt' | 'lt' | 'eq'>('has');
+  const [redPacketFilterValue, setRedPacketFilterValue] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   
   // 金额配置
