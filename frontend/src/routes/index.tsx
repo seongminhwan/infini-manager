@@ -15,7 +15,7 @@ import AccountGroupManage from '../pages/AccountGroupManage';
 import AffCashback from '../pages/AffCashback';
 import AffHistory from '../pages/AffHistory';
 import BatchCardApply from '../pages/BatchCardApply';
-import { BatchTransfer } from '../pages/BatchTransfer';
+import BatchTransfer from '../pages/BatchTransfer/index.simple';
 
 /**
  * 应用路由配置
