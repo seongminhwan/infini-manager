@@ -635,14 +635,16 @@ export class InfiniAccountService {
         if (filters.security !== undefined && filters.security !== null && filters.security !== '') {
           console.log(`处理安全相关筛选: filters.security=${filters.security}`);
           
-          // 处理2FA相关筛选 - 使用原始SQL条件和整数值
+          // 处理2FA相关筛选 - 使用整数值(1/0)替代布尔值(true/false)
+          // 由于SQLite中布尔值是以整数形式存储的(1=true, 0=false)
           if (filters.security === '2fa_bound') {
             console.log('应用2FA已绑定筛选条件');
-            // 尝试使用whereRaw，避免可能的类型转换问题
-            query = query.whereRaw('infini_accounts.google_2fa_is_bound = 1');
+            // 使用标准where子句，但传入整数值1而不是布尔值true
+            query = query.where('infini_accounts.google_2fa_is_bound', 1);
           } else if (filters.security === '2fa_unbound') {
             console.log('应用2FA未绑定筛选条件');
-            query = query.whereRaw('infini_accounts.google_2fa_is_bound = 0');
+            // 使用标准where子句，但传入整数值0而不是布尔值false
+            query = query.where('infini_accounts.google_2fa_is_bound', 0);
           }
           
           // 从filters中移除security属性，避免后续处理时尝试查询不存在的列
