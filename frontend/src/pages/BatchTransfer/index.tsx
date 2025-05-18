@@ -415,10 +415,18 @@ const BatchTransfer = () => {
           amount = customAmounts[account.id.toString()] || '0';
         }
         
+        // 根据目标账户类型设置目标标识符
+        let targetId = '';
+        if (targetContactType === 'inner' && targetAccount) {
+          targetId = targetAccount.id.toString();
+        } else {
+          targetId = externalTargetId;
+        }
+        
         return {
           sourceAccountId: account.id,
-          contactType: 'inner',
-          targetIdentifier: targetAccount?.id.toString() || '',
+          contactType: targetContactType, // 使用选择的联系方式类型
+          targetIdentifier: targetId,     // 使用对应的目标标识符
           amount
         };
       });
