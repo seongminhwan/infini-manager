@@ -4,9 +4,15 @@
  */
 import { Response, NextFunction } from 'express';
 import { Request } from 'express';
+// 导入Express命名空间以便使用类型断言
+import { Express } from 'express';
 import { ApiResponse, ControllerMethod } from '../types';
 import db from '../db/db';
-import { BatchTransferService } from '../service/BatchTransferService';
+// 导入整个模块而不是解构导入
+import * as BatchTransferServiceModule from '../service/BatchTransferService';
+
+// 使用模块中的类
+const BatchTransferService = BatchTransferServiceModule.BatchTransferService;
 
 // 创建BatchTransferService实例
 const batchTransferService = new BatchTransferService();
@@ -65,7 +71,7 @@ export const createBatchTransfer: ControllerMethod = async (req: Request, res: R
       targetAccountId,
       relations,
       remarks,
-      createdBy: req.user?.id || null
+      createdBy: (req as Express.Request).user?.id || null
     });
     
     if (response.success) {
