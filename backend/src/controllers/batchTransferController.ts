@@ -61,8 +61,6 @@ export const createBatchTransfer: ControllerMethod = async (req: Request, res: R
       });
     }
 
-    const createdBy = (req['user']?.id || '' )as unknown as '';
-    
     // 调用服务创建批量转账
     const response = await batchTransferService.createBatchTransfer({
       name,
@@ -72,7 +70,7 @@ export const createBatchTransfer: ControllerMethod = async (req: Request, res: R
       relations,
       remarks,
       // 使用索引访问语法绕过TypeScript类型检查
-      createdBy:createdBy
+      createdBy: req['user']?.id || null
     });
     
     if (response.success) {
