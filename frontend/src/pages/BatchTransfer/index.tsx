@@ -665,56 +665,26 @@ const BatchTransfer = () => {
             </div>
             <Row gutter={[8, 8]}>
               <Col span={8}>
-                <Select
-                  style={{ width: '100%' }}
-                  placeholder="按余额筛选"
-                  value={balanceFilterValue ? `${balanceFilterType}_${balanceFilterValue}` : undefined}
-                  onChange={(value) => {
-                    if (!value) {
-                      setBalanceFilterValue('');
-                      return;
-                    }
-                    
-                    if (value === 'custom') {
-                      // 显示自定义输入
-                      Modal.confirm({
-                        title: '设置余额筛选条件',
-                        content: (
-                          <div>
-                            <Select
-                              style={{ width: '30%', marginRight: 8 }}
-                              value={balanceFilterType}
-                              onChange={(type) => setBalanceFilterType(type)}
-                            >
-                              <Option value="gt">大于</Option>
-                              <Option value="lt">小于</Option>
-                              <Option value="eq">等于</Option>
-                            </Select>
-                            <InputNumber
-                              style={{ width: '60%' }}
-                              value={balanceFilterValue ? parseFloat(balanceFilterValue) : undefined}
-                              onChange={(val) => setBalanceFilterValue(val?.toString() || '')}
-                              min={0}
-                              precision={2}
-                            />
-                          </div>
-                        ),
-                        onOk() {},
-                      });
-                    } else {
-                      // 预设值
-                      const [type, amount] = value.split('_');
-                      setBalanceFilterType(type as 'gt' | 'lt' | 'eq');
-                      setBalanceFilterValue(amount);
-                    }
-                  }}
-                  allowClear
-                >
-                  <Option value="gt_100">余额 {'>'} 100</Option>
-                  <Option value="gt_1000">余额 {'>'} 1000</Option>
-                  <Option value="lt_100">余额 {'<'} 100</Option>
-                  <Option value="custom">自定义...</Option>
-                </Select>
+                <Input.Group compact>
+                  <Select
+                    style={{ width: '30%' }}
+                    placeholder="余额"
+                    value={balanceFilterType}
+                    onChange={(type) => setBalanceFilterType(type)}
+                  >
+                    <Option value="gt">{'>'}</Option>
+                    <Option value="lt">{'<'}</Option>
+                    <Option value="eq">{'='}</Option>
+                  </Select>
+                  <InputNumber
+                    style={{ width: '70%' }}
+                    placeholder="输入余额值"
+                    value={balanceFilterValue ? parseFloat(balanceFilterValue) : undefined}
+                    onChange={(val) => setBalanceFilterValue(val?.toString() || '')}
+                    min={0}
+                    precision={2}
+                  />
+                </Input.Group>
               </Col>
               <Col span={8}>
                 <Select
