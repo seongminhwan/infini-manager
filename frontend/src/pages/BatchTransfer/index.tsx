@@ -31,7 +31,9 @@ import {
   Table,
   Modal,
   Tooltip,
-  Collapse
+  Collapse,
+  Switch,
+  Dropdown
 } from 'antd';
 import { 
   SwapOutlined, 
@@ -43,7 +45,8 @@ import {
   UserOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
-  SyncOutlined
+  SyncOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import { TransferDirection } from 'antd/lib/transfer';
@@ -575,7 +578,7 @@ const BatchTransfer = () => {
               <Space align="center">
                 <Switch
                   checked={transferMode === 'many_to_one'}
-                  onChange={(checked) => setTransferMode(checked ? 'many_to_one' : 'one_to_many')}
+                  onChange={(checked: boolean) => setTransferMode(checked ? 'many_to_one' : 'one_to_many')}
                   checkedChildren="多对一"
                   unCheckedChildren="一对多"
                 />
