@@ -338,10 +338,19 @@ const BatchTransfer = () => {
           return false;
         }
       } else {
-        if (!targetAccount) {
-          message.error('请选择目标账户');
-          return false;
+        // 多对一模式的验证
+        if (targetContactType === 'inner') {
+          if (!targetAccount) {
+            message.error('请选择内部目标账户');
+            return false;
+          }
+        } else {
+          if (!externalTargetId) {
+            message.error(`请输入目标账户${targetContactType === 'uid' ? 'UID' : 'Email'}`);
+            return false;
+          }
         }
+        
         if (targetKeys.length === 0) {
           message.error('请选择至少一个源账户');
           return false;
@@ -639,6 +648,97 @@ const BatchTransfer = () => {
               />
             </>
           )}
+          
+          {/* 账户筛选条件 */}
+          <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
+            <Title level={5}>筛选条件</Title>
+            <Row gutter={16}>
+              <Col span={8}>
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder="按余额筛选"
+                  onChange={(value) => setBalanceFilter(value)}
+                  allowClear
+                >
+                  <Option value="gt_100">余额 > 100</Option>
+                  <Option value="gt_1000">余额 > 1000</Option>
+                  <Option value="gt_10000">余额 > 10000</Option>
+                  <Option value="lt_100">余额 < 100</Option>
+                  <Option value="lt_10">余额 < 10</Option>
+                </Select>
+              </Col>
+              <Col span={8}>
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder="按红包余额筛选"
+                  onChange={(value) => setRedPacketFilter(value)}
+                  allowClear
+                >
+                  <Option value="has_redpacket">有红包余额</Option>
+                  <Option value="no_redpacket">无红包余额</Option>
+                  <Option value="gt_100">红包余额 > 100</Option>
+                </Select>
+              </Col>
+              <Col span={8}>
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder="按账户状态筛选"
+                  onChange={(value) => setStatusFilter(value)}
+                  allowClear
+                >
+                  <Option value="active">活跃账户</Option>
+                  <Option value="inactive">非活跃账户</Option>
+                  <Option value="locked">已锁定账户</Option>
+                </Select>
+              </Col>
+            </Row>
+            <Button 
+              type="primary"
+              onClick={() => {
+                // 根据筛选条件过滤账户
+                let filtered = [...accounts];
+                
+                if (balanceFilter) {
+                  switch (balanceFilter) {
+                    case 'gt_100':
+                      filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') > 100);
+                      break;
+                    case 'gt_1000':
+                      filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') > 1000);
+                      break;
+                    case 'gt_10000':
+                      filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') > 10000);
+                      break;
+                    case 'lt_100':
+                      filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') < 100);
+                      break;
+                    case 'lt_10':
+                      filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') < 10);
+                      break;
+                  }
+                }
+                
+                if (statusFilter) {
+                  switch (statusFilter) {
+                    case 'active':
+                      filtered = filtered.filter(a => a.status === 'active');
+                      break;
+                    case 'inactive':
+                      filtered = filtered.filter(a => a.status === 'inactive');
+                      break;
+                    case 'locked':
+                      filtered = filtered.filter(a => a.status === 'locked');
+                      break;
+                  }
+                }
+                
+                setFilteredAccounts(filtered);
+              }}
+              style={{ marginTop: 8 }}
+            >
+              应用筛选
+            </Button>
+          </Space>
           
           <TransferContainer>
             <Transfer
