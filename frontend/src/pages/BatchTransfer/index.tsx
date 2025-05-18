@@ -660,11 +660,11 @@ const BatchTransfer = () => {
                   onChange={(value) => setBalanceFilter(value)}
                   allowClear
                 >
-                  <Option value="gt_100">余额 > 100</Option>
-                  <Option value="gt_1000">余额 > 1000</Option>
-                  <Option value="gt_10000">余额 > 10000</Option>
-                  <Option value="lt_100">余额 < 100</Option>
-                  <Option value="lt_10">余额 < 10</Option>
+                  <Option value="gt_100">余额 {'>'} 100</Option>
+                  <Option value="gt_1000">余额 {'>'} 1000</Option>
+                  <Option value="gt_10000">余额 {'>'} 10000</Option>
+                  <Option value="lt_100">余额 {'<'} 100</Option>
+                  <Option value="lt_10">余额 {'<'} 10</Option>
                 </Select>
               </Col>
               <Col span={8}>
@@ -676,7 +676,7 @@ const BatchTransfer = () => {
                 >
                   <Option value="has_redpacket">有红包余额</Option>
                   <Option value="no_redpacket">无红包余额</Option>
-                  <Option value="gt_100">红包余额 > 100</Option>
+                  <Option value="gt_100">红包余额 {'>'} 100</Option>
                 </Select>
               </Col>
               <Col span={8}>
