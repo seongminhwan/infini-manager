@@ -687,63 +687,36 @@ const BatchTransfer = () => {
                 </Input.Group>
               </Col>
               <Col span={8}>
-                <Select
-                  style={{ width: '100%' }}
-                  placeholder="按红包余额筛选"
-                  value={redPacketFilterValue ? `${redPacketFilterType}_${redPacketFilterValue}` : redPacketFilterType === 'has' ? 'has' : redPacketFilterType === 'no' ? 'no' : undefined}
-                  onChange={(value) => {
-                    if (!value) {
-                      setRedPacketFilterType('has');
-                      setRedPacketFilterValue('');
-                      return;
-                    }
-                    
-                    if (value === 'has') {
-                      setRedPacketFilterType('has');
-                      setRedPacketFilterValue('');
-                    } else if (value === 'no') {
-                      setRedPacketFilterType('no');
-                      setRedPacketFilterValue('');
-                    } else if (value === 'custom') {
-                      // 显示自定义输入
-                      Modal.confirm({
-                        title: '设置红包余额筛选条件',
-                        content: (
-                          <div>
-                            <Select
-                              style={{ width: '30%', marginRight: 8 }}
-                              value={redPacketFilterType}
-                              onChange={(type) => setRedPacketFilterType(type as any)}
-                            >
-                              <Option value="gt">大于</Option>
-                              <Option value="lt">小于</Option>
-                              <Option value="eq">等于</Option>
-                            </Select>
-                            <InputNumber
-                              style={{ width: '60%' }}
-                              value={redPacketFilterValue ? parseFloat(redPacketFilterValue) : undefined}
-                              onChange={(val) => setRedPacketFilterValue(val?.toString() || '')}
-                              min={0}
-                              precision={2}
-                            />
-                          </div>
-                        ),
-                        onOk() {},
-                      });
-                    } else {
-                      // 预设值
-                      const [type, amount] = value.split('_');
-                      setRedPacketFilterType(type as any);
-                      setRedPacketFilterValue(amount);
-                    }
-                  }}
-                  allowClear
-                >
-                  <Option value="has">有红包余额</Option>
-                  <Option value="no">无红包余额</Option>
-                  <Option value="gt_100">红包余额 {'>'} 100</Option>
-                  <Option value="custom">自定义...</Option>
-                </Select>
+                <Input.Group compact>
+                  <Select
+                    style={{ width: '30%' }}
+                    placeholder="红包"
+                    value={redPacketFilterType}
+                    onChange={(type) => setRedPacketFilterType(type)}
+                  >
+                    <Option value="has">有</Option>
+                    <Option value="no">无</Option>
+                    <Option value="gt">{'>'}</Option>
+                    <Option value="lt">{'<'}</Option>
+                    <Option value="eq">{'='}</Option>
+                  </Select>
+                  {(redPacketFilterType === 'gt' || redPacketFilterType === 'lt' || redPacketFilterType === 'eq') ? (
+                    <InputNumber
+                      style={{ width: '70%' }}
+                      placeholder="输入红包余额值"
+                      value={redPacketFilterValue ? parseFloat(redPacketFilterValue) : undefined}
+                      onChange={(val) => setRedPacketFilterValue(val?.toString() || '')}
+                      min={0}
+                      precision={2}
+                    />
+                  ) : (
+                    <Input 
+                      style={{ width: '70%', backgroundColor: '#f5f5f5' }} 
+                      value={redPacketFilterType === 'has' ? "有红包余额" : "无红包余额"} 
+                      disabled 
+                    />
+                  )}
+                </Input.Group>
               </Col>
               <Col span={8}>
                 <Select
