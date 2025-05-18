@@ -46,7 +46,8 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   SyncOutlined,
-  SearchOutlined
+  SearchOutlined,
+  SettingOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import { TransferDirection } from 'antd/lib/transfer';
