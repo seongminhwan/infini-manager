@@ -631,6 +631,22 @@ export class InfiniAccountService {
           delete filters.groups;
         }
 
+        // 特殊处理安全相关筛选
+        if (filters.security !== undefined && filters.security !== null && filters.security !== '') {
+          // 处理2FA相关筛选
+          if (filters.security === '2fa_bound') {
+            query = query.where('infini_accounts.google_2fa_is_bound', true);
+          } else if (filters.security === '2fa_unbound') {
+            query = query.where('infini_accounts.google_2fa_is_bound', false);
+          } else if (filters.security === 'protected') {
+            query = query.where('infini_accounts.is_protected', true);
+          } else if (filters.security === 'unprotected') {
+            query = query.where('infini_accounts.is_protected', false);
+          }
+          // 从filters中移除security属性，避免后续处理时尝试查询不存在的列
+          delete filters.security;
+        }
+
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== undefined && value !== null && value !== '') {
             // 特殊处理卡片数量筛选
