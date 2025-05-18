@@ -1021,7 +1021,7 @@ const AccountDetailModal: React.FC<{
             visible={twoFaModalVisible}
             onClose={handleClose2faModal}
             twoFaInfo={account.twoFaInfo}
-            twoFaEnabled={account.google2faIsBound}
+            twoFaEnabled={!!account.google2faIsBound}
             accountId={account.id.toString()}
             onSuccess={onSuccess}
           />
@@ -1058,7 +1058,10 @@ const AccountDetailModal: React.FC<{
             visible={cardApplyModalVisible}
             onClose={handleCloseCardApply}
             onSuccess={onSuccess}
-            account={account}
+            account={{
+              ...account,
+              google2faIsBound: !!account.google2faIsBound
+            }}
           />
         </>
       )}
