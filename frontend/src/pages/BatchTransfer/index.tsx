@@ -127,6 +127,13 @@ const BatchTransfer = () => {
   // 源账户和目标账户
   const [sourceAccount, setSourceAccount] = useState<InfiniAccount | null>(null);
   const [targetAccount, setTargetAccount] = useState<InfiniAccount | null>(null);
+  const [targetContactType, setTargetContactType] = useState<'inner' | 'uid' | 'email'>('inner');
+  const [externalTargetId, setExternalTargetId] = useState<string>('');
+  
+  // 筛选条件
+  const [balanceFilter, setBalanceFilter] = useState<string>('');
+  const [redPacketFilter, setRedPacketFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
   
   // 金额配置
   const [amountType, setAmountType] = useState<'equal' | 'fixed' | 'custom'>('equal');
