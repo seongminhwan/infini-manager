@@ -8,11 +8,10 @@ import { Request } from 'express';
 import { Express } from 'express';
 import { ApiResponse, ControllerMethod } from '../types';
 import db from '../db/db';
-// 导入整个模块而不是解构导入
-import * as BatchTransferServiceModule from '../service/BatchTransferService';
 
-// 使用模块中的类
-const BatchTransferService = BatchTransferServiceModule.BatchTransferService;
+// 使用require导入BatchTransferService服务类
+// @ts-ignore
+const { BatchTransferService } = require('../service/BatchTransferService');
 
 // 创建BatchTransferService实例
 const batchTransferService = new BatchTransferService();
