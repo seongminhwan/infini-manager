@@ -570,6 +570,9 @@ export class InfiniAccountService {
     groupId?: string
   ): Promise<ApiResponse> {
     try {
+      console.log(`执行分页查询: page=${page}, pageSize=${pageSize}, sortField=${sortField}, sortOrder=${sortOrder}`);
+      console.log(`传入的筛选条件:`, JSON.stringify(filters, null, 2));
+      
       // 使用子查询计算每个账户的卡片数量
       const cardCountSubquery = db('infini_cards')
         .select('infini_account_id')
@@ -612,6 +615,7 @@ export class InfiniAccountService {
 
       // 应用分组筛选（两种方式：通过groupId参数或filters.groups）
       if (groupId) {
+        console.log(`通过groupId参数筛选分组: ${groupId}`);
         query = query
           .join('infini_account_group_relations', 'infini_accounts.id', 'infini_account_group_relations.infini_account_id')
           .where('infini_account_group_relations.group_id', groupId);
@@ -623,6 +627,7 @@ export class InfiniAccountService {
         if (filters.groups !== undefined && filters.groups !== null && filters.groups !== '') {
           // 如果没有通过groupId参数筛选，则通过filters.groups筛选
           if (!groupId) {
+            console.log(`通过filters.groups筛选分组: ${filters.groups}`);
             query = query
               .join('infini_account_group_relations', 'infini_accounts.id', 'infini_account_group_relations.infini_account_id')
               .where('infini_account_group_relations.group_id', filters.groups);
@@ -635,28 +640,60 @@ export class InfiniAccountService {
         if (filters.security !== undefined && filters.security !== null && filters.security !== '') {
           console.log(`处理安全相关筛选: filters.security=${filters.security}`);
           
-          // 处理2FA相关筛选 - 使用整数值(1/0)替代布尔值(true/false)
-          // 由于SQLite中布尔值是以整数形式存储的(1=true, 0=false)
+          // 检查数据库中google_2fa_is_bound字段的实际值，帮助调试
+          console.log('执行简单测试查询以检查google_2fa_is_bound字段值分布:');
+          const testQuery = await db('infini_accounts')
+            .select('id', 'email', 'google_2fa_is_bound')
+            .limit(5);
+          console.log('样本记录google_2fa_is_bound值:', testQuery.map(r => ({ 
+            id: r.id, 
+            email: r.email, 
+            google_2fa_is_bound: r.google_2fa_is_bound,
+            valueType: typeof r.google_2fa_is_bound
+          })));
+          
+          // 获取google_2fa_is_bound为true和false的记录数量，用于调试
+          const boundCount = await db('infini_accounts')
+            .where('google_2fa_is_bound', 1)
+            .count('id as count')
+            .first();
+          const unboundCount = await db('infini_accounts')
+            .where('google_2fa_is_bound', 0)
+            .count('id as count')
+            .first();
+          console.log(`google_2fa_is_bound=1的记录数量: ${boundCount?.count || 0}`);
+          console.log(`google_2fa_is_bound=0的记录数量: ${unboundCount?.count || 0}`);
+          
+          // 处理2FA相关筛选 - 使用多种方式尝试查询，确保至少一种能正常工作
           if (filters.security === '2fa_bound') {
             console.log('应用2FA已绑定筛选条件');
-            // 使用标准where子句，但传入整数值1而不是布尔值true
+            
+            // 方法1: 使用标准where条件，传入整数值1
             query = query.where('infini_accounts.google_2fa_is_bound', 1);
+            
+            // 输出当前构建的SQL查询语句，用于调试
+            const sqlString = query.toString();
+            console.log(`方法1构建的SQL查询语句: ${sqlString}`);
           } else if (filters.security === '2fa_unbound') {
             console.log('应用2FA未绑定筛选条件');
-            // 使用标准where子句，但传入整数值0而不是布尔值false
+            
+            // 方法1: 使用标准where条件，传入整数值0
             query = query.where('infini_accounts.google_2fa_is_bound', 0);
+            
+            // 输出当前构建的SQL查询语句，用于调试
+            const sqlString = query.toString();
+            console.log(`方法1构建的SQL查询语句: ${sqlString}`);
           }
           
           // 从filters中移除security属性，避免后续处理时尝试查询不存在的列
           delete filters.security;
-          
-          // 输出当前构建的SQL查询语句，用于调试
-          const sqlString = query.toString();
-          console.log(`构建的SQL查询语句: ${sqlString}`);
         }
 
+        // 处理其他筛选条件
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== undefined && value !== null && value !== '') {
+            console.log(`应用筛选条件: ${key}=${value}`);
+            
             // 特殊处理卡片数量筛选
             if (key === 'cardCount') {
               // 支持 '>5', '<10', '=3' 等格式
