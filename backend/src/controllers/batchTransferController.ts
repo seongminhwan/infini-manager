@@ -69,8 +69,8 @@ export const createBatchTransfer: ControllerMethod = async (req: Request, res: R
       targetAccountId,
       relations,
       remarks,
-      // 使用索引访问语法绕过TypeScript类型检查
-      createdBy: req['user']?.id || null
+      // 使用完全类型断言绕过TypeScript类型检查
+      createdBy: ((req as any).user?.id) || null
     });
     
     if (response.success) {
