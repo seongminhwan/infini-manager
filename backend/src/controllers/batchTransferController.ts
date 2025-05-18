@@ -9,9 +9,8 @@ import { Express } from 'express';
 import { ApiResponse, ControllerMethod } from '../types';
 import db from '../db/db';
 
-// 使用require导入BatchTransferService服务类
-// @ts-ignore
-const { BatchTransferService } = require('../service/BatchTransferService');
+// 导入BatchTransferService
+import { BatchTransferService } from '../service/BatchTransferService';
 
 // 创建BatchTransferService实例
 const batchTransferService = new BatchTransferService();
@@ -61,6 +60,8 @@ export const createBatchTransfer: ControllerMethod = async (req: Request, res: R
         message: '多对一模式必须提供目标账户ID'
       });
     }
+
+    const createdBy = (req['user']?.id || '' )as unknown as '';
     
     // 调用服务创建批量转账
     const response = await batchTransferService.createBatchTransfer({
@@ -71,7 +72,7 @@ export const createBatchTransfer: ControllerMethod = async (req: Request, res: R
       relations,
       remarks,
       // 使用索引访问语法绕过TypeScript类型检查
-      createdBy: req['user']?.id || null
+      createdBy:createdBy
     });
     
     if (response.success) {
