@@ -584,19 +584,40 @@ const BatchTransfer = () => {
           ) : (
             <>
               <Title level={4}>选择目标账户</Title>
-              <Select
-                style={{ width: '100%' }}
-                placeholder="选择目标账户"
-                onChange={handleTargetAccountChange}
-                optionFilterProp="children"
-                showSearch
-              >
-                {accounts.map(account => (
-                  <Option key={account.id} value={account.id.toString()}>
-                    {account.email} - UID: {account.uid} - 余额: {account.availableBalance || '未知'}
-                  </Option>
-                ))}
-              </Select>
+              <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
+                <Radio.Group 
+                  value={targetContactType}
+                  onChange={(e) => setTargetContactType(e.target.value)}
+                  style={{ marginBottom: 16 }}
+                >
+                  <Radio value="inner">内部账户</Radio>
+                  <Radio value="uid">UID</Radio>
+                  <Radio value="email">Email</Radio>
+                </Radio.Group>
+                
+                {targetContactType === 'inner' ? (
+                  <Select
+                    style={{ width: '100%' }}
+                    placeholder="选择内部目标账户"
+                    onChange={handleTargetAccountChange}
+                    optionFilterProp="children"
+                    showSearch
+                  >
+                    {accounts.map(account => (
+                      <Option key={account.id} value={account.id.toString()}>
+                        {account.email} - UID: {account.uid} - 余额: {account.availableBalance || '未知'}
+                      </Option>
+                    ))}
+                  </Select>
+                ) : (
+                  <Input 
+                    placeholder={targetContactType === 'uid' ? "输入目标账户UID" : "输入目标账户Email"} 
+                    value={externalTargetId}
+                    onChange={(e) => setExternalTargetId(e.target.value)}
+                    style={{ width: '100%' }}
+                  />
+                )}
+              </Space>
               
               <Divider />
               
