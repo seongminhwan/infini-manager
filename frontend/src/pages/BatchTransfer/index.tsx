@@ -851,7 +851,7 @@ const BatchTransfer = () => {
                   <div>{item.description}</div>
                 </AccountItem>
               )}
-              listStyle={{ width: '100%', height: 180 }}
+              listStyle={{ width: '100%', height: 400 }}
               showSearch
             />
           </TransferContainer>
