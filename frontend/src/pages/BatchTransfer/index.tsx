@@ -153,9 +153,9 @@ const BatchTransfer = () => {
     redPacket: boolean;
   }>({
     email: true,
-    uid: true,
+    uid: false,
     balance: true,
-    redPacket: false
+    redPacket: true
   });
   
   // 金额配置
@@ -910,11 +910,16 @@ const BatchTransfer = () => {
                     <div>
                       {displaySettings.email && account?.email}
                     </div>
-                    <div>
-                      {displaySettings.uid && account?.uid ? `UID: ${account.uid}` : ''}
-                      {displaySettings.uid && displaySettings.balance && ' - '}
-                      {displaySettings.balance && account?.availableBalance ? `余额: ${account.availableBalance}` : ''}
-                      {displaySettings.redPacket && account?.redPacketBalance ? ` - 红包: ${account.redPacketBalance}` : ''}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {displaySettings.uid && account?.uid && (
+                        <Tag color="blue">{`UID: ${account.uid}`}</Tag>
+                      )}
+                      {displaySettings.balance && account?.availableBalance && (
+                        <Tag color="green">{`余额: ${account.availableBalance}`}</Tag>
+                      )}
+                      {displaySettings.redPacket && account?.redPacketBalance && (
+                        <Tag color="red">{`红包: ${account.redPacketBalance}`}</Tag>
+                      )}
                     </div>
                   </AccountItem>
                 );
