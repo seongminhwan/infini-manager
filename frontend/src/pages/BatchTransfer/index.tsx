@@ -897,7 +897,7 @@ const BatchTransfer = () => {
               dataSource={filteredAccounts.map(account => ({
                 key: account.id.toString(),
                 title: account.email,
-                description: `UID: ${account.uid} - 余额: ${account.availableBalance || '未知'}`,
+                description: `UID: ${account.uid} - 余额: ${account.availableBalance || '未知'}${account.redPacketBalance ? ` - 红包: ${account.redPacketBalance}` : ''}`,
                 disabled: false
               }))}
               titles={transferMode === 'one_to_many' ? ['可选目标账户', '已选目标账户'] : ['可选源账户', '已选源账户']}
