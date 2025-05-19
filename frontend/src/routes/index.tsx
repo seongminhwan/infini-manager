@@ -17,6 +17,7 @@ import AffHistory from '../pages/AffHistory';
 import BatchCardApply from '../pages/BatchCardApply';
 import BatchTransfer from '../pages/BatchTransfer';
 import TaskManage from '../pages/TaskManage';
+import ApiLogMonitor from '../pages/ApiLogMonitor';
 
 /**
  * 应用路由配置
@@ -49,6 +50,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/batch-transfer" element={<BatchTransfer />} />
         {/* 定时任务管理路由 */}
         <Route path="/task-manage" element={<TaskManage />} />
+        {/* API日志监控路由 */}
+        <Route path="/api-log-monitor" element={<ApiLogMonitor />} />
       </Route>
     </Routes>
   );
