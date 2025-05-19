@@ -146,18 +146,18 @@ export class BatchTransferService {
         
         await trx('infini_batch_transfer_relations').insert(relationRecords);
         
-        // 添加历史记录
-        await trx('infini_batch_transfer_histories').insert({
-          batch_id: batchId,
-          status: 'pending',
-          message: '批量转账已创建',
-          details: JSON.stringify({
-            type: data.type,
-            totalAmount,
-            relationsCount: data.relations.length
-          }),
-          created_at: new Date()
-        });
+        // 移除历史记录操作，因为表不存在
+        // await trx('infini_batch_transfer_histories').insert({
+        //   batch_id: batchId,
+        //   status: 'pending',
+        //   message: '批量转账已创建',
+        //   details: JSON.stringify({
+        //     type: data.type,
+        //     totalAmount,
+        //     relationsCount: data.relations.length
+        //   }),
+        //   created_at: new Date()
+        // });
         
         // 提交事务
         await trx.commit();
