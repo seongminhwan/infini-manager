@@ -110,16 +110,17 @@ export class BatchTransferService {
           updated_at: new Date()
         });
         
-        // 创建转账关系记录
+        // 创建转账关系记录 - 调整适配实际数据库表结构
         const relationRecords = data.relations.map(relation => {
           // 一对多模式：使用指定的源账户ID
           if (data.type === 'one_to_many') {
             return {
               batch_id: batchId,
               source_account_id: data.sourceAccountId,
-              target_account_id: relation.targetAccountId,
+              // 不使用target_account_id字段，该字段在实际数据库中不存在
+              matched_account_id: relation.targetAccountId, // 使用matched_account_id代替
               contact_type: relation.contactType || 'inner',
-              target_identifier: relation.targetIdentifier,
+              target_identifier: relation.targetIdentifier || '',
               amount: relation.amount,
               status: 'pending',
               created_at: new Date(),
@@ -131,9 +132,10 @@ export class BatchTransferService {
             return {
               batch_id: batchId,
               source_account_id: relation.sourceAccountId,
-              target_account_id: data.targetAccountId,
+              // 使用matched_account_id存储目标账户ID
+              matched_account_id: data.targetAccountId,
               contact_type: relation.contactType || 'inner',
-              target_identifier: relation.targetIdentifier,
+              target_identifier: relation.targetIdentifier || '',
               amount: relation.amount,
               status: 'pending',
               created_at: new Date(),
