@@ -125,6 +125,7 @@ app.use('/api/configs', configsRoutes);
 app.use('/api/aff', affRoutes);
 app.use('/api/batch-transfers', batchTransferRoutes);
 app.use('/api/tasks', tasksRoutes);
+app.use('/api/axios-logs', axiosLogsRoutes);
 
 // 404错误处理
 app.use((req: Request, res: Response, next: NextFunction) => {
