@@ -145,6 +145,10 @@ const BatchTransfer = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [showAdvancedFilter, setShowAdvancedFilter] = useState<boolean>(false);
   
+  // 排序设置
+  const [sortField, setSortField] = useState<'balance' | 'redPacket' | ''>('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  
   // 显示设置
   const [displaySettings, setDisplaySettings] = useState<{
     email: boolean;
@@ -678,6 +682,63 @@ const BatchTransfer = () => {
             </Col>
             <Col>
               <Space>
+                <Button 
+                  size="small" 
+                  style={{ marginRight: 8 }}
+                >
+                  {sortField && sortOrder ? 
+                    `按 ${sortField === 'balance' ? '余额' : '红包'} ${sortOrder === 'asc' ? '正序' : '倒序'}排列` : 
+                    '默认排序'
+                  }
+                </Button>
+                <Dropdown
+                  overlay={
+                    <div style={{ background: '#fff', padding: 16, boxShadow: '0 3px 6px rgba(0,0,0,0.16)', borderRadius: 4, width: 200 }}>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Text strong>排序方式</Text>
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ marginBottom: 4 }}>
+                            <Text>排序字段</Text>
+                          </div>
+                          <Radio.Group 
+                            value={sortField}
+                            onChange={(e) => setSortField(e.target.value)}
+                            style={{ width: '100%' }}
+                          >
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                              <Radio value="">默认</Radio>
+                              <Radio value="balance">余额</Radio>
+                              <Radio value="redPacket">红包余额</Radio>
+                            </Space>
+                          </Radio.Group>
+                        </div>
+                        <div>
+                          <div style={{ marginBottom: 4 }}>
+                            <Text>排序顺序</Text>
+                          </div>
+                          <Radio.Group 
+                            value={sortOrder}
+                            onChange={(e) => setSortOrder(e.target.value)}
+                            style={{ width: '100%' }}
+                          >
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                              <Radio value="asc">正序（从小到大）</Radio>
+                              <Radio value="desc">倒序（从大到小）</Radio>
+                            </Space>
+                          </Radio.Group>
+                        </div>
+                      </Space>
+                    </div>
+                  }
+                  trigger={['click']}
+                >
+                  <Button 
+                    size="small"
+                    style={{ marginRight: 8 }}
+                  >
+                    排序设置
+                  </Button>
+                </Dropdown>
                 <Dropdown
                   overlay={
                     <div style={{ background: '#fff', padding: 16, boxShadow: '0 3px 6px rgba(0,0,0,0.16)', borderRadius: 4, width: 250 }}>
@@ -895,7 +956,26 @@ const BatchTransfer = () => {
           
           <TransferContainer>
             <Transfer
-              dataSource={filteredAccounts.map(account => ({
+              dataSource={filteredAccounts
+                .sort((a, b) => {
+                  if (!sortField) return 0;
+                  
+                  // 处理余额排序
+                  if (sortField === 'balance') {
+                    const aValue = parseFloat(a.availableBalance || '0');
+                    const bValue = parseFloat(b.availableBalance || '0');
+                    return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+                  } 
+                  // 处理红包余额排序
+                  else if (sortField === 'redPacket') {
+                    const aValue = parseFloat(a.redPacketBalance || '0');
+                    const bValue = parseFloat(b.redPacketBalance || '0');
+                    return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+                  }
+                  
+                  return 0;
+                })
+                .map(account => ({
                 key: account.id.toString(),
                 title: account.email,
                 description: `UID: ${account.uid} - 余额: ${account.availableBalance || '未知'}${account.redPacketBalance ? ` - 红包: ${account.redPacketBalance}` : ''}`,
