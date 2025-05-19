@@ -673,33 +673,12 @@ const BatchTransfer = () => {
             
           <Row style={{ marginBottom: 8 }}>
             <Col flex="auto">
-              <Space>
-                <Text>按</Text>
-                <Select
-                  size="small"
-                  value={sortField}
-                  onChange={(value) => setSortField(value)}
-                  style={{ width: 85 }}
-                >
-                  <Option value="balance">余额</Option>
-                  <Option value="redPacket">红包</Option>
-                </Select>
-                <Select
-                  size="small"
-                  value={sortOrder}
-                  onChange={(value) => setSortOrder(value)}
-                  style={{ width: 85 }}
-                >
-                  <Option value="desc">倒序</Option>
-                  <Option value="asc">正序</Option>
-                </Select>
-                <Text strong>
-                  {transferMode === 'one_to_many' ? '选择目标账户' : '选择源账户'}
-                </Text>
-                <Tooltip title="从列表中选择账户，点击箭头将其添加到右侧。">
-                  <QuestionCircleOutlined style={{ color: '#1890ff' }} />
-                </Tooltip>
-              </Space>
+              <Text strong>
+                {transferMode === 'one_to_many' ? '选择目标账户' : '选择源账户'}
+              </Text>
+              <Tooltip title="从列表中选择账户，点击箭头将其添加到右侧。">
+                <QuestionCircleOutlined style={{ color: '#1890ff', marginLeft: 4 }} />
+              </Tooltip>
             </Col>
             <Col>
               <Space>
@@ -914,6 +893,35 @@ const BatchTransfer = () => {
                     搜索/筛选账户
                   </Button>
                 </Dropdown>
+              </Space>
+            </Col>
+          </Row>
+          
+          <Row style={{ marginBottom: 8 }}>
+            <Col>
+              <Space>
+                <Text>按</Text>
+                <Select
+                  value={sortField}
+                  onChange={(value) => setSortField(value)}
+                  style={{ width: 80, color: '#1890ff' }}
+                  dropdownStyle={{ minWidth: 80 }}
+                  bordered={false}
+                >
+                  <Option value="balance">余额</Option>
+                  <Option value="redPacket">红包</Option>
+                </Select>
+                <Select
+                  value={sortOrder}
+                  onChange={(value) => setSortOrder(value)}
+                  style={{ width: 80, color: '#1890ff' }}
+                  dropdownStyle={{ minWidth: 80 }}
+                  bordered={false}
+                >
+                  <Option value="desc">倒序</Option>
+                  <Option value="asc">正序</Option>
+                </Select>
+                <Text>{transferMode === 'one_to_many' ? '选择目标账户' : '选择源账户'}</Text>
               </Space>
             </Col>
           </Row>
