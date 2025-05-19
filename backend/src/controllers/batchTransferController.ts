@@ -110,7 +110,7 @@ export const getBatchTransfers: ControllerMethod = async (req: Request, res: Res
     }
     
     if (type) {
-      query = query.where('type', type);
+      query = query.where('batch_type', type); // 修正字段名：type -> batch_type
     }
     
     // 获取总记录数
@@ -224,6 +224,7 @@ export const executeBatchTransfer: ControllerMethod = async (req: Request, res: 
           .where('id', id)
           .update({
             status: 'failed',
+            end_time: new Date(), // 添加end_time字段
             updated_at: new Date()
           })
           .catch(err => console.error('更新批量转账状态失败:', err));
