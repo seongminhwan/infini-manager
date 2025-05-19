@@ -902,12 +902,22 @@ const BatchTransfer = () => {
               titles={transferMode === 'one_to_many' ? ['可选目标账户', '已选目标账户'] : ['可选源账户', '已选源账户']}
               targetKeys={targetKeys}
               onChange={handleTransferChange}
-              render={item => (
-                <AccountItem>
-                  <div>{item.title}</div>
-                  <div>{item.description}</div>
-                </AccountItem>
-              )}
+              render={item => {
+                const account = accounts.find(a => a.id.toString() === item.key);
+                return (
+                  <AccountItem>
+                    <div>
+                      {displaySettings.email && account?.email}
+                    </div>
+                    <div>
+                      {displaySettings.uid && account?.uid ? `UID: ${account.uid}` : ''}
+                      {displaySettings.uid && displaySettings.balance && ' - '}
+                      {displaySettings.balance && account?.availableBalance ? `余额: ${account.availableBalance}` : ''}
+                      {displaySettings.redPacket && account?.availableBalance ? ` - 红包: ${account.availableBalance}` : ''}
+                    </div>
+                  </AccountItem>
+                );
+              }}
               listStyle={{ width: '100%', height: 400 }}
               showSearch
             />
