@@ -70,6 +70,9 @@ interface TaskDTO {
   description?: string;
 }
 
+// 处理器类型
+type HandlerType = 'function' | 'http' | 'service';
+
 interface Task {
   id: number;
   task_name: string;
@@ -136,7 +139,7 @@ const LogContainer = styled.div`
 `;
 
 // 常量定义
-const STATUS_COLORS = {
+const STATUS_COLORS: Record<string, string> = {
   enabled: 'success',
   disabled: 'default',
   deleted: 'error',
@@ -146,7 +149,7 @@ const STATUS_COLORS = {
   canceled: 'warning'
 };
 
-const HANDLER_TYPE_ICONS = {
+const HANDLER_TYPE_ICONS: Record<HandlerType, React.ReactNode> = {
   function: <CodeOutlined />,
   http: <ApiOutlined />,
   service: <RobotOutlined />
@@ -330,8 +333,8 @@ const TaskManage: React.FC = () => {
   };
   
   // 构建处理器配置
-  const buildHandlerConfig = (values: any) => {
-    switch (values.handlerType) {
+  const buildHandlerConfig = (values: any): { type: HandlerType; [key: string]: any } => {
+    switch (values.handlerType as HandlerType) {
       case 'function': {
         let params = {};
         try {
@@ -341,7 +344,7 @@ const TaskManage: React.FC = () => {
         }
         
         return {
-          type: 'function',
+          type: 'function' as HandlerType,
           functionName: values.functionName,
           params
         };
@@ -363,7 +366,7 @@ const TaskManage: React.FC = () => {
         }
         
         return {
-          type: 'http',
+          type: 'http' as HandlerType,
           method: values.httpMethod,
           url: values.httpUrl,
           headers,
@@ -381,7 +384,7 @@ const TaskManage: React.FC = () => {
         }
         
         return {
-          type: 'service',
+          type: 'service' as HandlerType,
           serviceName: values.serviceName,
           methodName: values.methodName,
           params
@@ -389,7 +392,7 @@ const TaskManage: React.FC = () => {
       }
       
       default:
-        return { type: 'function', functionName: '', params: {} };
+        return { type: 'function' as HandlerType, functionName: '', params: {} };
     }
   };
   
