@@ -897,35 +897,6 @@ const BatchTransfer = () => {
             </Col>
           </Row>
           
-          <Row style={{ marginBottom: 8 }}>
-            <Col>
-              <Space>
-                <Text>按</Text>
-                <Select
-                  value={sortField}
-                  onChange={(value) => setSortField(value)}
-                  style={{ width: 80, color: '#1890ff' }}
-                  dropdownStyle={{ minWidth: 80 }}
-                  bordered={false}
-                >
-                  <Option value="balance">余额</Option>
-                  <Option value="redPacket">红包</Option>
-                </Select>
-                <Select
-                  value={sortOrder}
-                  onChange={(value) => setSortOrder(value)}
-                  style={{ width: 80, color: '#1890ff' }}
-                  dropdownStyle={{ minWidth: 80 }}
-                  bordered={false}
-                >
-                  <Option value="desc">倒序</Option>
-                  <Option value="asc">正序</Option>
-                </Select>
-                <Text>{transferMode === 'one_to_many' ? '选择目标账户' : '选择源账户'}</Text>
-              </Space>
-            </Col>
-          </Row>
-          
           <TransferContainer>
             <Transfer
               dataSource={filteredAccounts
@@ -953,7 +924,53 @@ const BatchTransfer = () => {
                 description: `UID: ${account.uid} - 余额: ${account.availableBalance || '未知'}${account.redPacketBalance ? ` - 红包: ${account.redPacketBalance}` : ''}`,
                 disabled: false
               }))}
-              titles={transferMode === 'one_to_many' ? ['可选目标账户', '已选目标账户'] : ['可选源账户', '已选源账户']}
+              titles={
+              [
+          <Row style={{display: 'flex',justifyContent: 'flex-end',alignItems: 'center',fontSize: '12px'}}>
+            <Col>
+                <Text>按</Text>
+                <Select
+                   size='small'
+                  value={sortField}
+                  variant='borderless'
+                  suffixIcon={null}
+                  onChange={(value) => setSortField(value)}
+                  style={{ 
+                    width: 60, 
+                    color: '#1890ff', 
+                    textDecoration: 'underline',
+                    padding: 0,
+                    marginRight: -8
+                  }}
+                  dropdownStyle={{ minWidth: 80 }}
+                >
+                  <Option value="balance">余额</Option>
+                  <Option value="redPacket">红包</Option>
+                </Select>
+                <Select
+                  size='small'
+                  value={sortOrder}
+                  variant='borderless'
+                  suffixIcon={null}
+                  onChange={(value) => setSortOrder(value)}
+                  style={{ 
+                    width: 60, 
+                    color: '#1890ff', 
+                    textDecoration: 'underline',
+                    padding: 0
+                  }}
+                  dropdownStyle={{ minWidth: 80 }}
+                >
+                  <Option value="desc">倒序</Option>
+                  <Option value="asc">正序</Option>
+                </Select>
+                <Text>排列</Text>
+            </Col>
+            <Col>
+            <Text>{transferMode === 'one_to_many' ? '选择目标账户' : '选择源账户'}</Text>
+            </Col>
+          </Row>
+                ]}
               targetKeys={targetKeys}
               onChange={handleTransferChange}
               render={item => {
