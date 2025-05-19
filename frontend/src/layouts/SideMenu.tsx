@@ -100,7 +100,7 @@ const BetaBadge = styled.span`
   font-weight: bold;
 `;
 
-// 开发者标志
+// 开发中标志
 const DevBadge = styled.span`
   background-color: #722ed1;
   color: white;
