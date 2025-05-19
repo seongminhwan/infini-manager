@@ -1544,6 +1544,164 @@ const BatchTransfer = () => {
         
         {processStatus === 'idle' && renderStepActions()}
       </StyledCard>
+      
+      {/* 转账详情模态框 */}
+      <Modal
+        title="转账详情"
+        visible={detailModalVisible}
+        onCancel={() => setDetailModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setDetailModalVisible(false)}>
+            关闭
+          </Button>,
+          currentTransfer?.status === 'failed' && (
+            <Button 
+              key="retry" 
+              type="primary" 
+              danger
+              loading={retryLoading}
+              onClick={() => handleRetryTransfer(currentTransfer.id)}
+            >
+              重试此转账
+            </Button>
+          )
+        ].filter(Boolean)}
+        width={700}
+      >
+        {currentTransfer && (
+          <div>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Card size="small" title="基本信息" bordered={false}>
+                  <p><strong>ID:</strong> {currentTransfer.id}</p>
+                  <p><strong>批次ID:</strong> {currentTransfer.batch_id}</p>
+                  <p><strong>金额:</strong> <Text type="success">{currentTransfer.amount}</Text></p>
+                  <p><strong>创建时间:</strong> {new Date(currentTransfer.created_at).toLocaleString()}</p>
+                  <p><strong>更新时间:</strong> {new Date(currentTransfer.updated_at).toLocaleString()}</p>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card 
+                  size="small" 
+                  title="状态信息" 
+                  bordered={false}
+                  headStyle={{ 
+                    background: currentTransfer.status === 'completed' ? '#f6ffed' : 
+                               currentTransfer.status === 'failed' ? '#fff2f0' : 
+                               '#e6f7ff' 
+                  }}
+                >
+                  <div style={{ marginBottom: 12 }}>
+                    <Tag 
+                      icon={
+                        currentTransfer.status === 'completed' ? <CheckCircleOutlined /> :
+                        currentTransfer.status === 'failed' ? <ExclamationCircleOutlined /> :
+                        currentTransfer.status === 'processing' ? <SyncOutlined spin /> :
+                        <QuestionCircleOutlined />
+                      } 
+                      color={
+                        currentTransfer.status === 'completed' ? 'success' :
+                        currentTransfer.status === 'failed' ? 'error' :
+                        currentTransfer.status === 'processing' ? 'processing' :
+                        'warning'
+                      }
+                      style={{ padding: '4px 8px', fontSize: '14px' }}
+                    >
+                      {
+                        currentTransfer.status === 'completed' ? '成功' :
+                        currentTransfer.status === 'failed' ? '失败' :
+                        currentTransfer.status === 'processing' ? '处理中' :
+                        '等待中'
+                      }
+                    </Tag>
+                  </div>
+                  
+                  {currentTransfer.status === 'failed' && currentTransfer.error_message && (
+                    <Alert
+                      message="失败原因"
+                      description={currentTransfer.error_message}
+                      type="error"
+                      showIcon
+                      style={{ marginBottom: 12 }}
+                    />
+                  )}
+                </Card>
+              </Col>
+            </Row>
+            
+            <Divider style={{ margin: '16px 0' }} />
+            
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Card size="small" title="源账户信息" bordered={false}>
+                  {currentTransfer.source_account_id ? (
+                    <>
+                      {/* 查找源账户信息 */}
+                      {(() => {
+                        const sourceAccount = accounts.find(a => a.id === currentTransfer.source_account_id);
+                        return (
+                          <>
+                            <p><strong>账户ID:</strong> {currentTransfer.source_account_id}</p>
+                            {sourceAccount && (
+                              <>
+                                <p><strong>邮箱:</strong> {sourceAccount.email}</p>
+                                <p><strong>UID:</strong> {sourceAccount.uid}</p>
+                                <p><strong>余额:</strong> {sourceAccount.availableBalance}</p>
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <Empty description="无源账户信息" />
+                  )}
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small" title="目标账户信息" bordered={false}>
+                  {currentTransfer.contact_type && (
+                    <>
+                      <p><strong>联系类型:</strong> {currentTransfer.contact_type}</p>
+                      <p><strong>目标标识符:</strong> {currentTransfer.target_identifier}</p>
+                      
+                      {/* 如果是内部账户，显示更多信息 */}
+                      {currentTransfer.contact_type === 'inner' && (() => {
+                        const targetAccountId = currentTransfer.matched_account_id || 
+                                             currentTransfer.target_account_id || 
+                                             currentTransfer.target_identifier;
+                        const targetAccount = accounts.find(a => a.id === parseInt(targetAccountId));
+                        
+                        return targetAccount ? (
+                          <>
+                            <p><strong>邮箱:</strong> {targetAccount.email}</p>
+                            <p><strong>UID:</strong> {targetAccount.uid}</p>
+                          </>
+                        ) : null;
+                      })()}
+                    </>
+                  )}
+                </Card>
+              </Col>
+            </Row>
+            
+            {/* 转账历史记录或相关信息 */}
+            {currentTransfer.transfer_id && (
+              <>
+                <Divider style={{ margin: '16px 0' }} />
+                <Card 
+                  size="small" 
+                  title="关联转账信息" 
+                  bordered={false}
+                >
+                  <p><strong>关联转账ID:</strong> {currentTransfer.transfer_id}</p>
+                  {/* 这里可以添加查看转账详情的按钮 */}
+                </Card>
+              </>
+            )}
+          </div>
+        )}
+      </Modal>
     </PageContainer>
   );
 };
