@@ -16,6 +16,7 @@ import {
   TeamOutlined,
   DollarOutlined,
   CreditCardOutlined,
+  ScheduleOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -113,6 +114,10 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
           label: '账户转账',
         },
         {
+          key: '/batch-transfer',
+          label: '批量转账',
+        },
+        {
           key: '/account-details',
           label: '账户明细',
         }
@@ -152,6 +157,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       key: '/trigger-manage',
       icon: <ThunderboltOutlined />,
       label: '触发器管理',
+    },
+    {
+      key: '/task-manage',
+      icon: <ScheduleOutlined />,
+      label: '定时任务管理',
     },
     {
       key: '/email-manage',
