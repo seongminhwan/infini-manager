@@ -2,7 +2,8 @@
  * 定时任务服务
  */
 import * as cron from 'node-cron';
-import parser from 'cron-parser';
+// 使用CommonJS的方式导入cron-parser，避免TypeScript类型错误
+const parser = require('cron-parser');
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../db/db';
