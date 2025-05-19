@@ -146,7 +146,7 @@ const BatchTransfer = () => {
   const [showAdvancedFilter, setShowAdvancedFilter] = useState<boolean>(false);
   
   // 排序设置
-  const [sortField, setSortField] = useState<'balance' | 'redPacket' | ''>('');
+  const [sortField, setSortField] = useState<'balance' | 'redPacket' | ''>('balance');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
   // 显示设置
@@ -673,72 +673,36 @@ const BatchTransfer = () => {
             
           <Row style={{ marginBottom: 8 }}>
             <Col flex="auto">
-              <Text strong>
-                {transferMode === 'one_to_many' ? '选择目标账户' : '选择源账户'}
-              </Text>
-              <Tooltip title="从列表中选择账户，点击箭头将其添加到右侧。">
-                <QuestionCircleOutlined style={{ marginLeft: 4, color: '#1890ff' }} />
-              </Tooltip>
+              <Space>
+                <Text>按</Text>
+                <Select
+                  size="small"
+                  value={sortField}
+                  onChange={(value) => setSortField(value)}
+                  style={{ width: 85 }}
+                >
+                  <Option value="balance">余额</Option>
+                  <Option value="redPacket">红包</Option>
+                </Select>
+                <Select
+                  size="small"
+                  value={sortOrder}
+                  onChange={(value) => setSortOrder(value)}
+                  style={{ width: 85 }}
+                >
+                  <Option value="desc">倒序</Option>
+                  <Option value="asc">正序</Option>
+                </Select>
+                <Text strong>
+                  {transferMode === 'one_to_many' ? '选择目标账户' : '选择源账户'}
+                </Text>
+                <Tooltip title="从列表中选择账户，点击箭头将其添加到右侧。">
+                  <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                </Tooltip>
+              </Space>
             </Col>
             <Col>
               <Space>
-                <Button 
-                  size="small" 
-                  style={{ marginRight: 8 }}
-                >
-                  {sortField && sortOrder ? 
-                    `按 ${sortField === 'balance' ? '余额' : '红包'} ${sortOrder === 'asc' ? '正序' : '倒序'}排列` : 
-                    '默认排序'
-                  }
-                </Button>
-                <Dropdown
-                  overlay={
-                    <div style={{ background: '#fff', padding: 16, boxShadow: '0 3px 6px rgba(0,0,0,0.16)', borderRadius: 4, width: 200 }}>
-                      <Space direction="vertical" style={{ width: '100%' }}>
-                        <Text strong>排序方式</Text>
-                        <div style={{ marginBottom: 8 }}>
-                          <div style={{ marginBottom: 4 }}>
-                            <Text>排序字段</Text>
-                          </div>
-                          <Radio.Group 
-                            value={sortField}
-                            onChange={(e) => setSortField(e.target.value)}
-                            style={{ width: '100%' }}
-                          >
-                            <Space direction="vertical" style={{ width: '100%' }}>
-                              <Radio value="">默认</Radio>
-                              <Radio value="balance">余额</Radio>
-                              <Radio value="redPacket">红包余额</Radio>
-                            </Space>
-                          </Radio.Group>
-                        </div>
-                        <div>
-                          <div style={{ marginBottom: 4 }}>
-                            <Text>排序顺序</Text>
-                          </div>
-                          <Radio.Group 
-                            value={sortOrder}
-                            onChange={(e) => setSortOrder(e.target.value)}
-                            style={{ width: '100%' }}
-                          >
-                            <Space direction="vertical" style={{ width: '100%' }}>
-                              <Radio value="asc">正序（从小到大）</Radio>
-                              <Radio value="desc">倒序（从大到小）</Radio>
-                            </Space>
-                          </Radio.Group>
-                        </div>
-                      </Space>
-                    </div>
-                  }
-                  trigger={['click']}
-                >
-                  <Button 
-                    size="small"
-                    style={{ marginRight: 8 }}
-                  >
-                    排序设置
-                  </Button>
-                </Dropdown>
                 <Dropdown
                   overlay={
                     <div style={{ background: '#fff', padding: 16, boxShadow: '0 3px 6px rgba(0,0,0,0.16)', borderRadius: 4, width: 250 }}>
