@@ -472,15 +472,13 @@ const BatchTransfer = () => {
       
       // 准备批量转账数据
       const relations = prepareRelations();
-      const batchName = `批量转账_${new Date().toLocaleString()}`;
-      
+      // 移除name字段，避免数据库字段不匹配错误
       const data = {
-        name: batchName,
         type: transferMode,
         sourceAccountId: transferMode === 'one_to_many' ? sourceAccount?.id : undefined,
         targetAccountId: transferMode === 'many_to_one' ? targetAccount?.id : undefined,
         relations,
-        remarks
+        remarks: remarks || `批量转账_${new Date().toLocaleString()}` // 使用remarks字段替代name
       };
       
       // 创建批量转账任务
