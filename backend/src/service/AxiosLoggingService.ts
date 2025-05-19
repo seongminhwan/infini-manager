@@ -15,6 +15,11 @@ export interface AxiosRequestLog {
   response_headers?: string;
   error_message?: string;
   success: boolean; // 修改字段名，与数据库列名保持一致
+  
+  // 业务上下文字段
+  business_module?: string;      // 业务模块名称
+  business_operation?: string;   // 业务操作类型
+  business_context?: string;     // 业务上下文数据(JSON字符串)
 }
 
 export class AxiosLoggingService {
