@@ -94,12 +94,12 @@ export class BatchTransferService {
       try {
         // 创建批量转账记录
         const [batchId] = await trx('infini_batch_transfers').insert({
-          name: data.name,
+          // 移除name字段，使用remarks字段代替，因为实际数据库表中不存在name字段
           type: data.type,
           status: 'pending',
           source: 'batch',
           total_amount: totalAmount,
-          remarks: data.remarks || null,
+          remarks: data.remarks || data.name || null, // 使用remarks或name作为备注
           created_by: data.createdBy || null,
           created_at: new Date(),
           updated_at: new Date()
