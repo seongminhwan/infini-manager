@@ -16,6 +16,7 @@ import AffCashback from '../pages/AffCashback';
 import AffHistory from '../pages/AffHistory';
 import BatchCardApply from '../pages/BatchCardApply';
 import BatchTransfer from '../pages/BatchTransfer';
+import TaskManage from '../pages/TaskManage';
 
 /**
  * 应用路由配置
@@ -46,6 +47,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/batch-card-apply" element={<BatchCardApply />} />
         {/* 批量转账相关路由 */}
         <Route path="/batch-transfer" element={<BatchTransfer />} />
+        {/* 定时任务管理路由 */}
+        <Route path="/task-manage" element={<TaskManage />} />
       </Route>
     </Routes>
   );
