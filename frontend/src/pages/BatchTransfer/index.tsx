@@ -1095,17 +1095,9 @@ const BatchTransfer = () => {
           />
           
           {processStatus === 'idle' ? (
-            <ButtonGroup>
-              <Button 
-                type="primary" 
-                size="large" 
-                icon={<SendOutlined />} 
-                onClick={handleExecuteTransfer}
-                loading={loading}
-              >
-                执行批量转账
-              </Button>
-            </ButtonGroup>
+            <div style={{ textAlign: 'center', margin: '24px 0' }}>
+              {/* 移除重复的执行批量转账按钮，使用renderStepActions中的按钮 */}
+            </div>
           ) : (
             <>
               {renderProgress()}
