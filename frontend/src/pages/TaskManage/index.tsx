@@ -484,9 +484,10 @@ const TaskManage: React.FC = () => {
         key: 'handler_type',
         render: (text: string, record: Task) => {
           const handler = JSON.parse(record.handler);
+          const handlerType = handler.type as HandlerType;
           return (
-            <Tag icon={HANDLER_TYPE_ICONS[handler.type]} color="blue">
-              {handler.type === 'function' ? '函数' : handler.type === 'http' ? 'HTTP请求' : '服务'}
+            <Tag icon={HANDLER_TYPE_ICONS[handlerType]} color="blue">
+              {handlerType === 'function' ? '函数' : handlerType === 'http' ? 'HTTP请求' : '服务'}
             </Tag>
           );
         }
@@ -927,7 +928,7 @@ const TaskManage: React.FC = () => {
             <StyledCard title="处理器配置">
               <Row gutter={[16, 16]}>
                 <Col span={24}>
-                  <Tag icon={HANDLER_TYPE_ICONS[handler.type]} color="blue">
+                  <Tag icon={HANDLER_TYPE_ICONS[handler.type as HandlerType]} color="blue">
                     {handler.type === 'function' ? '函数处理器' : handler.type === 'http' ? 'HTTP请求处理器' : '服务处理器'}
                   </Tag>
                 </Col>
