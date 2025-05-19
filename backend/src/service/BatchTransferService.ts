@@ -255,8 +255,8 @@ export class BatchTransferService {
         .update({
           status: finalStatus,
           success_count: successCount,
-          failed_count: failedCount,
-          completed_at: new Date(),
+          fail_count: failedCount, // 修正字段名：failed_count -> fail_count
+          end_time: new Date(), // 使用end_time代替completed_at
           updated_at: new Date()
         });
       
@@ -310,7 +310,7 @@ export class BatchTransferService {
       let contactType: 'uid' | 'email' | 'inner';
       let targetIdentifier: string;
       
-      if (batch.type === 'one_to_many') {
+      if (batch.batch_type === 'one_to_many') { // 修正字段名：type -> batch_type
         // 一对多模式：源账户固定，目标账户来自关系
         if (!relation.source_account_id) {
           throw new Error('缺少源账户ID');
@@ -319,7 +319,7 @@ export class BatchTransferService {
         sourceAccountId = relation.source_account_id.toString();
         contactType = (relation.contact_type || 'inner') as 'uid' | 'email' | 'inner';
         targetIdentifier = relation.target_identifier || '';
-      } else {
+      } else { // 多对一模式
         // 多对一模式：源账户来自关系，目标账户固定
         if (!relation.source_account_id) {
           throw new Error('缺少源账户ID');
@@ -346,7 +346,7 @@ export class BatchTransferService {
         relation.amount,
         'batch', // 来源为批量转账
         false, // 不强制执行
-        batch.remarks || undefined,
+        batch.error_message || undefined, // 使用error_message代替remarks
         auto2FA // 是否自动处理2FA验证
       );
       
@@ -465,7 +465,7 @@ export class BatchTransferService {
       
       // 更新批量转账状态和计数
       const totalSuccessCount = (currentCounts?.success_count || 0) + successCount;
-      const totalFailedCount = (currentCounts?.failed_count || 0) + failedCount;
+      const totalFailedCount = (currentCounts?.fail_count || 0) + failedCount; // 修正字段名：failed_count -> fail_count
       const finalStatus = await this.determineFinalStatus(batchId);
       
       await db('infini_batch_transfers')
@@ -473,8 +473,8 @@ export class BatchTransferService {
         .update({
           status: finalStatus,
           success_count: totalSuccessCount,
-          failed_count: totalFailedCount,
-          completed_at: finalStatus === 'completed' || finalStatus === 'failed' ? new Date() : null,
+          fail_count: totalFailedCount, // 修正字段名：failed_count -> fail_count
+          end_time: finalStatus === 'completed' || finalStatus === 'failed' ? new Date() : null, // 使用end_time代替completed_at
           updated_at: new Date()
         });
       
