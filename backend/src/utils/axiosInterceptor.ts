@@ -1,22 +1,37 @@
 /**
  * Axios全局拦截器
  * 用于记录所有axios请求和响应信息，确保金融交易数据不会丢失
+ * 支持业务上下文信息传递，类似于Java的ThreadLocal机制
  */
 import axios, { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { AxiosLoggingService } from '../service/AxiosLoggingService';
+import { BusinessContextManager } from './BusinessContextManager';
 
 /**
  * 配置Axios全局拦截器
  */
 export function setupAxiosInterceptors() {
-  console.log('正在配置Axios全局拦截器...');
-  
+  console.log('正在配置Axios全局拦截器（支持业务上下文）...');
+      // 获取当前业务上下文信息
+      const businessContext = BusinessContextManager.getContext();
+      if (businessContext) {
+        // 将业务上下文信息存储在请求配置中，以便在响应拦截器中使用
+        (config as any)._businessModule = businessContext.module;
+        (config as any)._businessOperation = businessContext.operation;
+        (config as any)._businessContext = BusinessContextManager.getContextString();
+        
+        // 输出业务上下文信息（仅调试用）
+        console.log(`业务上下文: 模块=${businessContext.module}, 操作=${businessContext.operation}`);
+      }
   // 请求拦截器
   axios.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
       // 为请求添加开始时间戳
       (config as any)._requestStartTime = Date.now();
-      
+        // 获取请求配置中的业务上下文信息
+        const businessModule = (response.config as any)._businessModule;
+        const businessOperation = (response.config as any)._businessOperation;
+        const businessContext = (response.config as any)._businessContext;
       // 打印请求信息
       console.log(`发送${config.method?.toUpperCase()}请求: ${config.url}`);
       
@@ -87,13 +102,20 @@ export function setupAxiosInterceptors() {
           request_body: requestBody,
           response_body: responseBody,
           request_headers: requestHeaders,
-          success: true
+          success: true,
+          // 添加业务上下文信息
+          business_module: businessModule,
+          business_operation: businessOperation,
+          business_context: businessContext
         });
       } catch (loggingError) {
         // 日志记录失败不应影响正常请求流程
         console.error('记录API请求日志失败:', loggingError);
       }
-      
+        // 获取请求配置中的业务上下文信息
+        const businessModule = (config as any)._businessModule;
+        const businessOperation = (config as any)._businessOperation;
+        const businessContext = (config as any)._businessContext;
       return response;
     },
     async (error: AxiosError) => {
@@ -146,7 +168,11 @@ export function setupAxiosInterceptors() {
           response_body: responseBody,
           request_headers: requestHeaders,
           error_message: error.message,
-          success: false
+          success: false,
+          // 添加业务上下文信息
+          business_module: businessModule,
+          business_operation: businessOperation,
+          business_context: businessContext
         });
       } catch (loggingError) {
         // 日志记录失败不应影响正常请求流程
