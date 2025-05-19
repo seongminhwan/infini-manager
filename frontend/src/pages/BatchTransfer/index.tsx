@@ -846,12 +846,12 @@ const BatchTransfer = () => {
                                 // 红包余额区间筛选
                                 if (redPacketMinValue) {
                                   const minValue = parseFloat(redPacketMinValue);
-                                  filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') >= minValue);
+                                  filtered = filtered.filter(a => parseFloat(a.redPacketBalance || '0') >= minValue);
                                 }
                                 
                                 if (redPacketMaxValue) {
                                   const maxValue = parseFloat(redPacketMaxValue);
-                                  filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') <= maxValue);
+                                  filtered = filtered.filter(a => parseFloat(a.redPacketBalance || '0') <= maxValue);
                                 }
                                 
                                 // 账户状态筛选
@@ -914,7 +914,7 @@ const BatchTransfer = () => {
                       {displaySettings.uid && account?.uid ? `UID: ${account.uid}` : ''}
                       {displaySettings.uid && displaySettings.balance && ' - '}
                       {displaySettings.balance && account?.availableBalance ? `余额: ${account.availableBalance}` : ''}
-                      {displaySettings.redPacket && account?.availableBalance ? ` - 红包: ${account.availableBalance}` : ''}
+                      {displaySettings.redPacket && account?.redPacketBalance ? ` - 红包: ${account.redPacketBalance}` : ''}
                     </div>
                   </AccountItem>
                 );
