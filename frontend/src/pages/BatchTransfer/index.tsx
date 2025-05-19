@@ -916,12 +916,12 @@ const BatchTransfer = () => {
                       )}
                       {displaySettings.balance && account?.availableBalance && (
                         <Tag color="green">
-                          余额: <span style={{ color: '#FFD700' }}>{account.availableBalance}</span> 💰
+                          余额💰: <span style={{ color: '#FFD700' }}>{account.availableBalance}</span>
                         </Tag>
                       )}
                       {displaySettings.redPacket && account?.redPacketBalance && (
                         <Tag color="red">
-                          红包: <span>{account.redPacketBalance}</span> 🧧
+                          红包🧧: <span style={{ color: '#FF0000' }}>{account.redPacketBalance}</span>
                         </Tag>
                       )}
                     </div>
