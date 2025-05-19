@@ -23,7 +23,7 @@ import configsRoutes from './routes/configs';
 import affRoutes from './routes/aff';
 import batchTransferRoutes from './routes/batchTransfers';
 import tasksRoutes from './routes/tasks';
-
+import axiosLogsRoutes from './routes/axiosLogs';
 // 导入类型
 import { ApiResponse } from './types';
 
