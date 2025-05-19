@@ -676,6 +676,49 @@ const BatchTransfer = () => {
             </Col>
             <Col>
               <Space>
+                <Dropdown
+                  overlay={
+                    <div style={{ background: '#fff', padding: 16, boxShadow: '0 3px 6px rgba(0,0,0,0.16)', borderRadius: 4, width: 250 }}>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Text strong>显示字段设置</Text>
+                        <Checkbox 
+                          checked={displaySettings.email} 
+                          onChange={(e) => setDisplaySettings({...displaySettings, email: e.target.checked})}
+                        >
+                          显示邮箱
+                        </Checkbox>
+                        <Checkbox 
+                          checked={displaySettings.uid} 
+                          onChange={(e) => setDisplaySettings({...displaySettings, uid: e.target.checked})}
+                        >
+                          显示UID
+                        </Checkbox>
+                        <Checkbox 
+                          checked={displaySettings.balance} 
+                          onChange={(e) => setDisplaySettings({...displaySettings, balance: e.target.checked})}
+                        >
+                          显示余额
+                        </Checkbox>
+                        <Checkbox 
+                          checked={displaySettings.redPacket} 
+                          onChange={(e) => setDisplaySettings({...displaySettings, redPacket: e.target.checked})}
+                        >
+                          显示红包余额
+                        </Checkbox>
+                      </Space>
+                    </div>
+                  }
+                  trigger={['click']}
+                >
+                  <Button 
+                    icon={<SettingOutlined />}
+                    size="small"
+                    style={{ marginRight: 8 }}
+                  >
+                    显示设置
+                  </Button>
+                </Dropdown>
+                
                 <Dropdown 
                   overlay={
                     <div style={{ background: '#fff', padding: 16, boxShadow: '0 3px 6px rgba(0,0,0,0.16)', borderRadius: 4, width: 350 }}>
