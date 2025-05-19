@@ -621,7 +621,7 @@ const BatchTransfer = () => {
                 >
                   {accounts.map(account => (
                     <Option key={account.id} value={account.id.toString()}>
-                      {account.email} - UID: {account.uid} - 余额: {account.availableBalance || '未知'}
+                      {account.email} - UID: {account.uid} - 余额: {account.availableBalance || '未知'}{account.redPacketBalance ? ` - 红包: ${account.redPacketBalance}` : ''}
                     </Option>
                   ))}
                 </Select>
