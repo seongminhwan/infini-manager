@@ -936,12 +936,12 @@ const BatchTransfer = () => {
                   suffixIcon={null}
                   onChange={(value) => setSortField(value)}
                   style={{ 
-                    width: 40, 
-                    color: '#1677ff', 
+                    width: 38, 
+                    color: '#1890ff', 
                     textDecoration: 'underline',
                     padding: 0,
                     margin: 0,
-                    marginRight: -10,
+                    marginRight: -12,
                     fontSize: '12px',
                     fontWeight: 600
                   }}
@@ -957,8 +957,8 @@ const BatchTransfer = () => {
                   suffixIcon={null}
                   onChange={(value) => setSortOrder(value)}
                   style={{ 
-                    width: 40, 
-                    color: '#1677ff', 
+                    width: 38, 
+                    color: '#1890ff', 
                     textDecoration: 'underline',
                     padding: 0,
                     margin: 0,
