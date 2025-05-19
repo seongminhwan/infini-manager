@@ -250,6 +250,150 @@ export const transferApi = {
 };
 
 /**
+ * 批量转账API
+ * 处理所有与批量转账相关的API请求
+ */
+export const batchTransferApi = {
+  // 创建批量转账任务
+  createBatchTransfer: async (data: {
+    name: string;
+    type: 'one_to_many' | 'many_to_one';
+    sourceAccountId?: string | number;
+    targetAccountId?: string | number;
+    relations: Array<{
+      sourceAccountId?: string | number;
+      targetAccountId?: string | number;
+      contactType?: 'uid' | 'email' | 'inner';
+      targetIdentifier?: string;
+      amount: string;
+    }>;
+    remarks?: string;
+  }) => {
+    try {
+      console.log('创建批量转账任务:', data);
+      const response = await api.post(`${apiBaseUrl}/api/batch-transfers`, data);
+      return response.data;
+    } catch (error) {
+      console.error('创建批量转账任务失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取批量转账列表
+  getBatchTransfers: async (params?: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    type?: string;
+  }) => {
+    try {
+      console.log('获取批量转账列表:', params);
+      const response = await api.get(`${apiBaseUrl}/api/batch-transfers`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('获取批量转账列表失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取批量转账详情
+  getBatchTransferById: async (id: string) => {
+    try {
+      console.log(`获取批量转账详情, ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/batch-transfers/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取批量转账详情失败:', error);
+      throw error;
+    }
+  },
+  
+  // 执行批量转账
+  executeBatchTransfer: async (id: string, auto2FA: boolean = false) => {
+    try {
+      console.log(`执行批量转账, ID: ${id}, 自动2FA: ${auto2FA}`);
+      const response = await api.post(`${apiBaseUrl}/api/batch-transfers/${id}/execute`, { auto2FA });
+      return response.data;
+    } catch (error) {
+      console.error('执行批量转账失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取批量转账历史记录
+  getBatchTransferHistory: async (id: string) => {
+    try {
+      console.log(`获取批量转账历史记录, ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/batch-transfers/${id}/history`);
+      return response.data;
+    } catch (error) {
+      console.error('获取批量转账历史记录失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取批量转账进度
+  getBatchTransferProgress: async (id: string) => {
+    try {
+      console.log(`获取批量转账进度, ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/batch-transfers/${id}/progress`);
+      return response.data;
+    } catch (error) {
+      console.error('获取批量转账进度失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取失败的转账关系列表
+  getFailedTransfers: async (id: string) => {
+    try {
+      console.log(`获取失败的转账关系列表, 批量转账ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/batch-transfers/${id}/failed`);
+      return response.data;
+    } catch (error) {
+      console.error('获取失败的转账关系列表失败:', error);
+      throw error;
+    }
+  },
+  
+  // 批量重试失败的转账
+  retryFailedTransfers: async (id: string, auto2FA: boolean = false) => {
+    try {
+      console.log(`批量重试失败的转账, 批量转账ID: ${id}, 自动2FA: ${auto2FA}`);
+      const response = await api.post(`${apiBaseUrl}/api/batch-transfers/${id}/retry-failed`, { auto2FA });
+      return response.data;
+    } catch (error) {
+      console.error('批量重试失败的转账失败:', error);
+      throw error;
+    }
+  },
+  
+  // 恢复未完成的批量转账
+  resumeBatchTransfer: async (id: string, auto2FA: boolean = false) => {
+    try {
+      console.log(`恢复未完成的批量转账, ID: ${id}, 自动2FA: ${auto2FA}`);
+      const response = await api.post(`${apiBaseUrl}/api/batch-transfers/${id}/resume`, { auto2FA });
+      return response.data;
+    } catch (error) {
+      console.error('恢复未完成的批量转账失败:', error);
+      throw error;
+    }
+  },
+  
+  // 重试单个失败的转账
+  retryTransferRelation: async (batchId: string, relationId: string, auto2FA: boolean = false) => {
+    try {
+      console.log(`重试单个失败的转账, 批量转账ID: ${batchId}, 关系ID: ${relationId}, 自动2FA: ${auto2FA}`);
+      const response = await api.post(`${apiBaseUrl}/api/batch-transfers/${batchId}/relations/${relationId}/retry`, { auto2FA });
+      return response.data;
+    } catch (error) {
+      console.error('重试单个失败的转账失败:', error);
+      throw error;
+    }
+  }
+};
+
+/**
  * Infini账户API
  * 使用统一的api实例处理所有请求
  */
@@ -1421,6 +1565,60 @@ export const infiniCardApi = {
       return response.data;
     } catch (error) {
       console.error('提交KYC生日信息失败:', error);
+      throw error;
+    }
+  }
+};
+
+/**
+ * API日志查询接口
+ * 用于查询Axios请求日志数据，支持按业务类型筛选
+ */
+export const axiosLogsApi = {
+  // 获取API日志列表
+  getLogs: async (params: {
+    startDate?: string | Date;
+    endDate?: string | Date;
+    businessModule?: string;
+    businessOperation?: string;
+    url?: string;
+    method?: string;
+    statusCode?: number;
+    success?: boolean;
+    page?: number;
+    pageSize?: number;
+  }) => {
+    try {
+      console.log('获取API日志列表:', params);
+      const response = await api.get(`${apiBaseUrl}/api/axios-logs`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('获取API日志列表失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取业务模块列表
+  getBusinessModules: async () => {
+    try {
+      console.log('获取业务模块列表');
+      const response = await api.get(`${apiBaseUrl}/api/axios-logs/business-modules`);
+      return response.data;
+    } catch (error) {
+      console.error('获取业务模块列表失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取业务操作类型列表
+  getBusinessOperations: async (businessModule?: string) => {
+    try {
+      console.log(`获取业务操作类型列表${businessModule ? '，业务模块: ' + businessModule : ''}`);
+      const params = businessModule ? { businessModule } : undefined;
+      const response = await api.get(`${apiBaseUrl}/api/axios-logs/business-operations`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('获取业务操作类型列表失败:', error);
       throw error;
     }
   }
