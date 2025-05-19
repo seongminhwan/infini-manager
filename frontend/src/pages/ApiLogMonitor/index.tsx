@@ -12,7 +12,6 @@ import {
   ClearOutlined, DownloadOutlined, 
   ApiOutlined, CodeOutlined, EyeOutlined 
 } from '@ant-design/icons';
-import ReactJson from 'react-json-view';
 import dayjs from 'dayjs';
 import { axiosLogsApi } from '../../services/api';
 
@@ -39,6 +38,21 @@ const methodColors: Record<string, string> = {
   PUT: 'orange',
   DELETE: 'red',
   PATCH: 'purple'
+};
+
+// JSON格式化展示组件
+const JsonDisplay: React.FC<{ data: any }> = ({ data }) => {
+  return (
+    <pre style={{ 
+      background: '#f5f5f5', 
+      padding: '8px', 
+      borderRadius: '4px',
+      maxHeight: '300px',
+      overflow: 'auto'
+    }}>
+      {JSON.stringify(data, null, 2)}
+    </pre>
+  );
 };
 
 const ApiLogMonitor: React.FC = () => {
@@ -458,13 +472,14 @@ const ApiLogMonitor: React.FC = () => {
                     <Col span={24}>
                       <Text strong>上下文数据：</Text>
                       <div style={{marginTop: 8}}>
-                        <ReactJson 
-                          src={JSON.parse(currentLog.business_context)} 
-                          name={false} 
-                          collapsed={1}
-                          enableClipboard={false}
-                          displayDataTypes={false}
-                        />
+                        {(() => {
+                          try {
+                            const jsonData = JSON.parse(currentLog.business_context);
+                            return <JsonDisplay data={jsonData} />;
+                          } catch {
+                            return <pre>{currentLog.business_context}</pre>;
+                          }
+                        })()}
                       </div>
                     </Col>
                   </Row>
@@ -485,13 +500,14 @@ const ApiLogMonitor: React.FC = () => {
                     <Col span={24}>
                       <Text strong>请求头：</Text>
                       <div style={{marginTop: 8}}>
-                        <ReactJson 
-                          src={JSON.parse(currentLog.request_headers)} 
-                          name={false} 
-                          collapsed={1}
-                          enableClipboard={false}
-                          displayDataTypes={false}
-                        />
+                        {(() => {
+                          try {
+                            const jsonData = JSON.parse(currentLog.request_headers);
+                            return <JsonDisplay data={jsonData} />;
+                          } catch {
+                            return <pre>{currentLog.request_headers}</pre>;
+                          }
+                        })()}
                       </div>
                     </Col>
                   </Row>
@@ -504,16 +520,8 @@ const ApiLogMonitor: React.FC = () => {
                       <div style={{marginTop: 8}}>
                         {(() => {
                           try {
-                            const jsonBody = JSON.parse(currentLog.request_body);
-                            return (
-                              <ReactJson 
-                                src={jsonBody} 
-                                name={false} 
-                                collapsed={1}
-                                enableClipboard={false}
-                                displayDataTypes={false}
-                              />
-                            );
+                            const jsonData = JSON.parse(currentLog.request_body);
+                            return <JsonDisplay data={jsonData} />;
                           } catch {
                             return <pre>{currentLog.request_body}</pre>;
                           }
@@ -542,13 +550,14 @@ const ApiLogMonitor: React.FC = () => {
                     <Col span={24}>
                       <Text strong>响应头：</Text>
                       <div style={{marginTop: 8}}>
-                        <ReactJson 
-                          src={JSON.parse(currentLog.response_headers)} 
-                          name={false} 
-                          collapsed={1}
-                          enableClipboard={false}
-                          displayDataTypes={false}
-                        />
+                        {(() => {
+                          try {
+                            const jsonData = JSON.parse(currentLog.response_headers);
+                            return <JsonDisplay data={jsonData} />;
+                          } catch {
+                            return <pre>{currentLog.response_headers}</pre>;
+                          }
+                        })()}
                       </div>
                     </Col>
                   </Row>
@@ -561,16 +570,8 @@ const ApiLogMonitor: React.FC = () => {
                       <div style={{marginTop: 8}}>
                         {(() => {
                           try {
-                            const jsonBody = JSON.parse(currentLog.response_body);
-                            return (
-                              <ReactJson 
-                                src={jsonBody} 
-                                name={false} 
-                                collapsed={1}
-                                enableClipboard={false}
-                                displayDataTypes={false}
-                              />
-                            );
+                            const jsonData = JSON.parse(currentLog.response_body);
+                            return <JsonDisplay data={jsonData} />;
                           } catch {
                             return <pre>{currentLog.response_body}</pre>;
                           }
