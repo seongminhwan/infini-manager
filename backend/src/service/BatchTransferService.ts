@@ -600,7 +600,7 @@ export class BatchTransferService {
     };
     
     if (status === 'completed' || status === 'failed') {
-      updateData.completed_at = new Date();
+      updateData.end_time = new Date(); // 使用end_time代替completed_at
     }
     
     await db('infini_batch_transfers')
