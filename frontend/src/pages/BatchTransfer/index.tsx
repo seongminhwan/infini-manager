@@ -105,6 +105,7 @@ interface InfiniAccount {
   email: string;
   uid?: string;
   availableBalance?: string;
+  redPacketBalance?: string; // 添加红包余额字段
   status?: string;
 }
 
