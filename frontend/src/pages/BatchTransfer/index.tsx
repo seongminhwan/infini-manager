@@ -144,6 +144,19 @@ const BatchTransfer = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [showAdvancedFilter, setShowAdvancedFilter] = useState<boolean>(false);
   
+  // 显示设置
+  const [displaySettings, setDisplaySettings] = useState<{
+    email: boolean;
+    uid: boolean;
+    balance: boolean;
+    redPacket: boolean;
+  }>({
+    email: true,
+    uid: true,
+    balance: true,
+    redPacket: false
+  });
+  
   // 金额配置
   const [amountType, setAmountType] = useState<'equal' | 'fixed' | 'custom'>('equal');
   const [totalAmount, setTotalAmount] = useState<string>('');
