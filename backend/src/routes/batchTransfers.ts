@@ -172,7 +172,8 @@ router.post('/',
     sourceAccount: req.body.sourceAccountId,
     targetAccount: req.body.targetAccountId,
     relationsCount: req.body.relations?.length || 0,
-    totalAmount: req.body.relations?.reduce((sum, rel) => sum + parseFloat(rel.amount || '0'), 0) || 0
+    totalAmount: req.body.relations?.reduce((sum: number, rel: {amount?: string}) => 
+      sum + parseFloat(rel.amount || '0'), 0) || 0
   })),
   batchTransferController.createBatchTransfer
 );
