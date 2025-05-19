@@ -202,7 +202,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       label: (
         <Space>
           定时任务管理
-          <DevBadge>开发者</DevBadge>
+          <DevBadge>开发中</DevBadge>
         </Space>
       ),
     },
@@ -212,7 +212,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       label: (
         <Space>
           触发器管理
-          <DevBadge>开发者</DevBadge>
+          <DevBadge>开发中</DevBadge>
         </Space>
       ),
     },
@@ -222,7 +222,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       label: (
         <Space>
           通知管理
-          <DevBadge>开发者</DevBadge>
+          <DevBadge>开发中</DevBadge>
         </Space>
       ),
     },
@@ -232,7 +232,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       label: (
         <Space>
           API日志监控
-          <DevBadge>开发者</DevBadge>
+          <DevBadge>开发中</DevBadge>
         </Space>
       ),
     },
