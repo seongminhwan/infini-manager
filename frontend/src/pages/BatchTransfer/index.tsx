@@ -1426,6 +1426,60 @@ const BatchTransfer = () => {
     );
   };
   
+  // 显示转账详情
+  const showTransferDetail = (record: any) => {
+    setCurrentTransfer(record);
+    setDetailModalVisible(true);
+  };
+  
+  // 重试单个转账
+  const handleRetryTransfer = async (relationId: number) => {
+    if (!batchId) {
+      message.error('批量转账ID不存在');
+      return;
+    }
+    
+    try {
+      setRetryLoading(true);
+      
+      const response = await batchTransferApi.retryTransferRelation(
+        batchId, 
+        relationId.toString(), 
+        auto2FA
+      );
+      
+      if (response.success) {
+        message.success('转账重试已开始');
+        
+        // 更新当前转账状态为处理中
+        setRecentTransfers(prevTransfers => 
+          prevTransfers.map(transfer => 
+            transfer.id === relationId 
+              ? { ...transfer, status: 'processing' } 
+              : transfer
+          )
+        );
+        
+        // 如果批量转账状态不是处理中，则设置为处理中
+        if (processStatus !== 'processing') {
+          setProcessStatus('processing');
+        }
+        
+        // 关闭详情模态框
+        if (currentTransfer?.id === relationId) {
+          setDetailModalVisible(false);
+        }
+      } else {
+        message.error(`重试失败: ${response.message}`);
+      }
+    } catch (error: any) {
+      console.error('重试单个转账失败:', error);
+      message.error(`重试失败: ${error.message}`);
+    } finally {
+      setRetryLoading(false);
+    }
+  };
+  
   // 重置状态
   const handleReset = () => {
     // 重置所有状态
@@ -1444,6 +1498,8 @@ const BatchTransfer = () => {
     setSuccessCount(0);
     setFailedCount(0);
     setRecentTransfers([]);
+    setDetailModalVisible(false);
+    setCurrentTransfer(null);
     
     // 清除定时器
     if (progressTimer) {
