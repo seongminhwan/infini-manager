@@ -93,8 +93,9 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // 菜单项配置
+  // 菜单项配置 - 重新组织为业务功能、资金操作、系统管理和工具等逻辑分组
   const menuItems = [
+    // ------------ 概览和监控 ------------
     {
       key: '/overview',
       icon: <DashboardOutlined />,
@@ -105,6 +106,33 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       icon: <MonitorOutlined />,
       label: '账户监控',
     },
+    
+    // ------------ 账户管理 ------------
+    {
+      key: '/account-register',
+      icon: <UserAddOutlined />,
+      label: '账户批量注册机',
+    },
+    {
+      key: '/account-group-manage',
+      icon: <TeamOutlined />,
+      label: '账户分组管理',
+    },
+    
+    // ------------ 卡片管理 ------------
+    {
+      key: 'card-ops',
+      icon: <CreditCardOutlined />,
+      label: '卡片管理',
+      children: [
+        {
+          key: '/batch-card-apply',
+          label: '批量开卡',
+        }
+      ]
+    },
+    
+    // ------------ 资金操作 ------------
     {
       key: 'account-ops',
       icon: <SwapOutlined />,
@@ -125,16 +153,6 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       ]
     },
     {
-      key: '/account-register',
-      icon: <UserAddOutlined />,
-      label: '账户批量注册机',
-    },
-    {
-      key: '/account-group-manage',
-      icon: <TeamOutlined />,
-      label: '账户分组管理',
-    },
-    {
       key: 'aff-ops',
       icon: <DollarOutlined />,
       label: 'AFF返现',
@@ -149,10 +167,12 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
         }
       ]
     },
+    
+    // ------------ 系统管理 ------------
     {
-      key: '/notification-manage',
-      icon: <BellOutlined />,
-      label: '通知管理',
+      key: '/task-manage',
+      icon: <ScheduleOutlined />,
+      label: '定时任务管理',
     },
     {
       key: '/trigger-manage',
@@ -160,15 +180,17 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       label: '触发器管理',
     },
     {
-      key: '/task-manage',
-      icon: <ScheduleOutlined />,
-      label: '定时任务管理',
+      key: '/notification-manage',
+      icon: <BellOutlined />,
+      label: '通知管理',
     },
     {
       key: '/api-log-monitor',
       icon: <ApiOutlined />,
       label: 'API日志监控',
     },
+    
+    // ------------ 辅助工具 ------------
     {
       key: '/email-manage',
       icon: <MailOutlined />,
@@ -178,17 +200,6 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       key: '/kyc-image-manage',
       icon: <FileImageOutlined />,
       label: 'KYC图片管理',
-    },
-    {
-      key: 'card-ops',
-      icon: <CreditCardOutlined />,
-      label: '卡片管理',
-      children: [
-        {
-          key: '/batch-card-apply',
-          label: '批量开卡',
-        }
-      ]
     },
     {
       key: '/random-user-manage',
