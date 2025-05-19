@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Menu, Button } from 'antd';
+import { Layout, Menu, Button, Space } from 'antd';
 import styled from 'styled-components';
 import {
   DashboardOutlined,
@@ -89,6 +89,28 @@ const StyledMenu = styled(Menu)`
   }
 `;
 
+// Beta标志
+const BetaBadge = styled.span`
+  background-color: #ff4d4f;
+  color: white;
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: bold;
+`;
+
+// 开发者标志
+const DevBadge = styled.span`
+  background-color: #722ed1;
+  color: white;
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: bold;
+`;
+
 const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -144,7 +166,12 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
         },
         {
           key: '/batch-transfer',
-          label: '批量转账',
+          label: (
+            <Space>
+              批量转账
+              <BetaBadge>Beta</BetaBadge>
+            </Space>
+          ),
         },
         {
           key: '/account-details',
@@ -172,22 +199,42 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
     {
       key: '/task-manage',
       icon: <ScheduleOutlined />,
-      label: '定时任务管理',
+      label: (
+        <Space>
+          定时任务管理
+          <DevBadge>开发者</DevBadge>
+        </Space>
+      ),
     },
     {
       key: '/trigger-manage',
       icon: <ThunderboltOutlined />,
-      label: '触发器管理',
+      label: (
+        <Space>
+          触发器管理
+          <DevBadge>开发者</DevBadge>
+        </Space>
+      ),
     },
     {
       key: '/notification-manage',
       icon: <BellOutlined />,
-      label: '通知管理',
+      label: (
+        <Space>
+          通知管理
+          <DevBadge>开发者</DevBadge>
+        </Space>
+      ),
     },
     {
       key: '/api-log-monitor',
       icon: <ApiOutlined />,
-      label: 'API日志监控',
+      label: (
+        <Space>
+          API日志监控
+          <DevBadge>开发者</DevBadge>
+        </Space>
+      ),
     },
     
     // ------------ 辅助工具 ------------
