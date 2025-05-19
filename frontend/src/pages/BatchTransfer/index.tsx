@@ -936,7 +936,7 @@ const BatchTransfer = () => {
                   suffixIcon={null}
                   onChange={(value) => setSortField(value)}
                   style={{ 
-                    width: 38, 
+                    width: 48, 
                     color: '#1890ff', 
                     textDecoration: 'underline',
                     padding: 0,
@@ -944,11 +944,15 @@ const BatchTransfer = () => {
                     marginRight: -12,
                     fontSize: '12px',
                     fontWeight: 600
+                    
+                  }}
+                  labelRender={(props) => {
+                    return <Text style={{color: '#1890ff'}}>{props.label}</Text>
                   }}
                   dropdownStyle={{ minWidth: 80 }}
                 >
-                  <Option value="balance">余额</Option>
-                  <Option value="redPacket">红包</Option>
+                  <Option value="balance" style={{color: '#1890ff'}}>余额</Option>
+                  <Option value="redPacket" style={{color: '#1890ff'}}>红包</Option>
                 </Select>
                 <Select
                   size='small'
@@ -957,7 +961,7 @@ const BatchTransfer = () => {
                   suffixIcon={null}
                   onChange={(value) => setSortOrder(value)}
                   style={{ 
-                    width: 38, 
+                    width: 48, 
                     color: '#1890ff', 
                     textDecoration: 'underline',
                     padding: 0,
@@ -966,14 +970,14 @@ const BatchTransfer = () => {
                     fontWeight: 600
                   }}
                   dropdownStyle={{ minWidth: 80 }}
+                  labelRender={(props) => {
+                    return <Text style={{color: '#1890ff'}}>{props.label}</Text>
+                  }}
                 >
-                  <Option value="desc">倒序</Option>
-                  <Option value="asc">正序</Option>
+                  <Option value="desc" style={{color: '#1890ff'}}>倒序</Option>
+                  <Option value="asc" style={{color: '#1890ff'}}>正序</Option>
                 </Select>
                 <Text>排列</Text>
-            </Col>
-            <Col>
-            <Text>{transferMode === 'one_to_many' ? '选择目标账户' : '选择源账户'}</Text>
             </Col>
           </Row>
                 ]}
@@ -1180,34 +1184,181 @@ const BatchTransfer = () => {
               
               {processStatus !== 'processing' && renderResultSummary()}
               
-              <Title level={4} style={{ marginTop: 24 }}>最近处理的转账</Title>
+              <Title level={4} style={{ marginTop: 24 }}>转账详情列表</Title>
               <Table
                 dataSource={recentTransfers}
                 rowKey="id"
+                size="small"
+                scroll={{ x: 1000 }}
+                pagination={{ pageSize: 10 }}
+                expandable={{
+                  expandedRowRender: (record) => (
+                    <div style={{ padding: 12, backgroundColor: '#f9f9f9', borderRadius: 4 }}>
+                      <Row gutter={[16, 16]}>
+                        <Col span={12}>
+                          <Card size="small" title="转账信息" bordered={false}>
+                            <p><strong>转账ID:</strong> {record.id}</p>
+                            <p><strong>创建时间:</strong> {new Date(record.created_at).toLocaleString()}</p>
+                            <p><strong>更新时间:</strong> {new Date(record.updated_at).toLocaleString()}</p>
+                            <p><strong>金额:</strong> <Text type="success">{record.amount}</Text></p>
+                            <p><strong>联系类型:</strong> {record.contact_type}</p>
+                          </Card>
+                        </Col>
+                        <Col span={12}>
+                          {record.status === 'failed' && (
+                            <Card size="small" title="失败原因" bordered={false} headStyle={{ background: '#fff2f0' }}>
+                              <Alert 
+                                message="转账失败" 
+                                description={record.error_message || "未知错误"} 
+                                type="error" 
+                                showIcon 
+                              />
+                              <Button 
+                                type="primary" 
+                                danger 
+                                style={{ marginTop: 16 }}
+                                onClick={() => handleRetryTransfer(record.id)}
+                              >
+                                重试此转账
+                              </Button>
+                            </Card>
+                          )}
+                          {record.status === 'completed' && (
+                            <Card size="small" title="转账结果" bordered={false} headStyle={{ background: '#f6ffed' }}>
+                              <Alert 
+                                message="转账成功" 
+                                description="转账已成功完成" 
+                                type="success" 
+                                showIcon 
+                              />
+                            </Card>
+                          )}
+                          {(record.status === 'pending' || record.status === 'processing') && (
+                            <Card size="small" title="处理状态" bordered={false} headStyle={{ background: '#e6f7ff' }}>
+                              <Alert 
+                                message={record.status === 'pending' ? "等待处理" : "处理中"} 
+                                description={record.status === 'pending' ? "转账等待处理中" : "转账正在处理中"} 
+                                type="info" 
+                                showIcon 
+                              />
+                            </Card>
+                          )}
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                }}
                 columns={[
                   {
                     title: '源账户',
-                    dataIndex: 'source_account_id',
-                    key: 'source_account_id',
+                    key: 'source',
+                    render: (_, record) => {
+                      // 查找源账户信息
+                      const account = accounts.find(a => a.id === record.source_account_id);
+                      return (
+                        <Space direction="vertical" size={0}>
+                          <Text>{account?.email || record.source_account_id}</Text>
+                          {account?.uid && <Text type="secondary" style={{ fontSize: '12px' }}>UID: {account.uid}</Text>}
+                        </Space>
+                      );
+                    },
                   },
                   {
-                    title: '目标账户',
-                    dataIndex: 'target_account_id',
-                    key: 'target_account_id',
+                    title: '目标',
+                    key: 'target',
+                    render: (_, record) => {
+                      // 根据联系类型展示目标信息
+                      if (record.contact_type === 'inner') {
+                        // 内部账户转账，查找目标账户信息
+                        const account = accounts.find(a => a.id === (record.matched_account_id || record.target_account_id));
+                        return (
+                          <Space direction="vertical" size={0}>
+                            <Text>{account?.email || record.target_identifier}</Text>
+                            {account?.uid && <Text type="secondary" style={{ fontSize: '12px' }}>UID: {account.uid}</Text>}
+                          </Space>
+                        );
+                      } else {
+                        // 外部转账，显示联系类型和标识符
+                        return (
+                          <Space direction="vertical" size={0}>
+                            <Text>{record.target_identifier}</Text>
+                            <Tag color="blue">{record.contact_type.toUpperCase()}</Tag>
+                          </Space>
+                        );
+                      }
+                    },
                   },
                   {
                     title: '金额',
                     dataIndex: 'amount',
                     key: 'amount',
+                    render: (amount) => (
+                      <Text strong style={{ color: '#389e0d' }}>{amount}</Text>
+                    ),
                   },
                   {
                     title: '状态',
                     dataIndex: 'status',
                     key: 'status',
-                    render: (status) => (
-                      <Tag color={status === 'completed' ? 'green' : 'red'}>
-                        {status === 'completed' ? '成功' : '失败'}
-                      </Tag>
+                    render: (status) => {
+                      let color = 'default';
+                      let text = '未知';
+                      let icon = null;
+                      
+                      switch (status) {
+                        case 'completed':
+                          color = 'success';
+                          text = '成功';
+                          icon = <CheckCircleOutlined />;
+                          break;
+                        case 'failed':
+                          color = 'error';
+                          text = '失败';
+                          icon = <ExclamationCircleOutlined />;
+                          break;
+                        case 'processing':
+                          color = 'processing';
+                          text = '处理中';
+                          icon = <SyncOutlined spin />;
+                          break;
+                        case 'pending':
+                          color = 'warning';
+                          text = '等待中';
+                          icon = <QuestionCircleOutlined />;
+                          break;
+                      }
+                      
+                      return (
+                        <Tag icon={icon} color={color}>
+                          {text}
+                        </Tag>
+                      );
+                    },
+                  },
+                  {
+                    title: '操作',
+                    key: 'action',
+                    width: 120,
+                    render: (_, record) => (
+                      <Space size="small">
+                        <Button 
+                          type="text" 
+                          size="small"
+                          onClick={() => showTransferDetail(record)}
+                        >
+                          详情
+                        </Button>
+                        {record.status === 'failed' && (
+                          <Button 
+                            type="link" 
+                            danger 
+                            size="small"
+                            onClick={() => handleRetryTransfer(record.id)}
+                          >
+                            重试
+                          </Button>
+                        )}
+                      </Space>
                     ),
                   },
                 ]}
