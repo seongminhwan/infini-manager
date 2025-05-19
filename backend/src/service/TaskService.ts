@@ -2,7 +2,7 @@
  * 定时任务服务
  */
 import * as cron from 'node-cron';
-import * as parser from 'cron-parser';
+import parser from 'cron-parser';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../db/db';
