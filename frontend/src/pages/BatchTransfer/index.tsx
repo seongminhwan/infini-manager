@@ -917,7 +917,7 @@ const BatchTransfer = () => {
                       {displaySettings.balance && account?.availableBalance && (
                         <Tag color="green" style={{ padding: '2px 8px', fontSize: '14px' }}>
                           <span>余额💰: </span>
-                          <span style={{ color: '#FFD700', fontWeight: 'bold', fontSize: '15px' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '15px' }}>
                             {account.availableBalance}
                           </span>
                         </Tag>
@@ -925,7 +925,7 @@ const BatchTransfer = () => {
                       {displaySettings.redPacket && account?.redPacketBalance && (
                         <Tag color="red" style={{ padding: '2px 8px', fontSize: '14px' }}>
                           <span>红包🧧: </span>
-                          <span style={{ color: 'white', fontWeight: 'bold', fontSize: '15px' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '15px' }}>
                             {account.redPacketBalance}
                           </span>
                         </Tag>
