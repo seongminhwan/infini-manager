@@ -183,6 +183,11 @@ const BatchTransfer = () => {
   // 轮询进度的定时器
   const [progressTimer, setProgressTimer] = useState<NodeJS.Timeout | null>(null);
   
+  // 转账详情模态框状态
+  const [detailModalVisible, setDetailModalVisible] = useState<boolean>(false);
+  const [currentTransfer, setCurrentTransfer] = useState<any>(null);
+  const [retryLoading, setRetryLoading] = useState<boolean>(false);
+  
   // 步骤定义
   const steps = [
     {
