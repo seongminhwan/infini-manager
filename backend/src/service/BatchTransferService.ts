@@ -262,13 +262,13 @@ export class BatchTransferService {
           updated_at: new Date()
         });
       
-      // 添加历史记录
-      await db('infini_batch_transfer_histories').insert({
-        batch_id: batchId,
-        status: finalStatus,
-        message: `批量转账已完成，成功: ${successCount}，失败: ${failedCount}`,
-        created_at: new Date()
-      });
+      // 移除历史记录操作，因为表不存在
+      // await db('infini_batch_transfer_histories').insert({
+      //   batch_id: batchId,
+      //   status: finalStatus,
+      //   message: `批量转账已完成，成功: ${successCount}，失败: ${failedCount}`,
+      //   created_at: new Date()
+      // });
       
       return {
         success: true,
@@ -480,13 +480,13 @@ export class BatchTransferService {
           updated_at: new Date()
         });
       
-      // 添加历史记录
-      await db('infini_batch_transfer_histories').insert({
-        batch_id: batchId,
-        status: finalStatus,
-        message: `批量转账已恢复，本次成功: ${successCount}，本次失败: ${failedCount}，总成功: ${totalSuccessCount}，总失败: ${totalFailedCount}`,
-        created_at: new Date()
-      });
+      // 移除历史记录操作，因为表不存在
+      // await db('infini_batch_transfer_histories').insert({
+      //   batch_id: batchId,
+      //   status: finalStatus,
+      //   message: `批量转账已恢复，本次成功: ${successCount}，本次失败: ${failedCount}，总成功: ${totalSuccessCount}，总失败: ${totalFailedCount}`,
+      //   created_at: new Date()
+      // });
       
       return {
         success: true,
