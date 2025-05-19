@@ -44,32 +44,134 @@ export class AxiosLoggingService {
   }
 
   /**
-   * 获取指定时间范围内的请求日志
-   * @param startDate 开始日期
-   * @param endDate 结束日期
-   * @param page 页码
-   * @param pageSize 每页条数
+   * 获取请求日志，支持多种筛选条件和分页
+   * @param options 查询选项
    */
-  static async getRequestLogs(
-    startDate?: Date,
-    endDate?: Date,
-    page: number = 1,
-    pageSize: number = 50
-  ) {
+  static async getRequestLogs(options: {
+    startDate?: Date;
+    endDate?: Date;
+    businessModule?: string;
+    businessOperation?: string;
+    url?: string;
+    method?: string;
+    statusCode?: number;
+    success?: boolean;
+    page?: number;
+    pageSize?: number;
+  }) {
+    const {
+      startDate,
+      endDate,
+      businessModule,
+      businessOperation,
+      url,
+      method,
+      statusCode,
+      success,
+      page = 1,
+      pageSize = 50
+    } = options;
     try {
       const query = db('axios_request_logs')
         .select('*')
         .orderBy('created_at', 'desc');
+      // 添加业务上下文筛选
+      if (businessModule) {
+        query.where('business_module', businessModule);
+      }
       
+      if (businessOperation) {
+        query.where('business_operation', businessOperation);
+      }
+      
+      // 添加其他筛选条件
+      if (url) {
+        query.where('url', 'like', `%${url}%`);
+      }
+      
+      if (method) {
+        query.where('method', method);
+      }
+      
+      if (statusCode) {
+        query.where('status_code', statusCode);
+      }
+      
+      if (success !== undefined) {
+        query.where('success', success);
+      }
       // 添加日期过滤
       if (startDate) {
         query.where('created_at', '>=', startDate);
       }
+      // 添加业务上下文筛选到计数查询
+      if (businessModule) {
+        countQuery.where('business_module', businessModule);
+      }
       
+      if (businessOperation) {
+        countQuery.where('business_operation', businessOperation);
+      }
+      
+      // 添加其他筛选条件到计数查询
+      if (url) {
+        countQuery.where('url', 'like', `%${url}%`);
+      }
+      
+      if (method) {
+        countQuery.where('method', method);
+      }
+      
+      if (statusCode) {
+        countQuery.where('status_code', statusCode);
+      }
+      
+      if (success !== undefined) {
+        countQuery.where('success', success);
+      }
       if (endDate) {
         query.where('created_at', '<=', endDate);
       }
+
+  /**
+   * 获取所有业务模块列表（去重）
+   */
+  static async getBusinessModules(): Promise<string[]> {
+    try {
+      const results = await db('axios_request_logs')
+        .distinct('business_module')
+        .whereNotNull('business_module')
+        .orderBy('business_module');
       
+      return results.map(item => item.business_module);
+    } catch (error) {
+      console.error('获取业务模块列表失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取指定业务模块下的所有操作类型列表（去重）
+   * @param businessModule 业务模块名称，如果不指定则获取所有操作类型
+   */
+  static async getBusinessOperations(businessModule?: string): Promise<string[]> {
+    try {
+      const query = db('axios_request_logs')
+        .distinct('business_operation')
+        .whereNotNull('business_operation')
+        .orderBy('business_operation');
+      
+      if (businessModule) {
+        query.where('business_module', businessModule);
+      }
+      
+      const results = await query;
+      return results.map(item => item.business_operation);
+    } catch (error) {
+      console.error('获取业务操作类型列表失败:', error);
+      throw error;
+    }
+  }
       // 分页
       const offset = (page - 1) * pageSize;
       query.limit(pageSize).offset(offset);
