@@ -17,6 +17,7 @@ import {
   DollarOutlined,
   CreditCardOutlined,
   ScheduleOutlined,
+  ApiOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -162,6 +163,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       key: '/task-manage',
       icon: <ScheduleOutlined />,
       label: '定时任务管理',
+    },
+    {
+      key: '/api-log-monitor',
+      icon: <ApiOutlined />,
+      label: 'API日志监控',
     },
     {
       key: '/email-manage',
