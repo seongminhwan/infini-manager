@@ -1,142 +1,208 @@
 /**
  * 业务上下文使用示例
- * 演示如何在业务代码中使用BusinessContextManager
+ * 
+ * 在Node.js中实现类似Java ThreadLocal的业务上下文传递机制
+ * 主要通过Express中间件在路由层面设置业务上下文，无需开发者手动处理
  */
+import { Request, Response, NextFunction, Router } from 'express';
 import axios from 'axios';
-import { BusinessContextManager, withBusinessContext } from './BusinessContextManager';
+import { BusinessContextManager } from './BusinessContextManager';
 
 /**
- * 卡片服务示例类
- * 展示两种使用业务上下文的方式：手动设置和使用装饰器
+ * 业务上下文中间件工厂函数
+ * 创建一个为请求自动设置业务上下文的Express中间件
+ * 
+ * @param module 业务模块名称
+ * @param operation 业务操作类型
+ * @param getMetadata 可选函数，从请求中提取额外的上下文元数据
  */
-export class CardServiceExample {
-  /**
-   * 方式一：手动设置业务上下文
-   * 在方法内部使用BusinessContextManager.run()手动设置业务上下文
-   */
-  async getCardDetails(cardId: string): Promise<any> {
-    // 设置业务上下文并在其中执行异步操作
-    return BusinessContextManager.runAsync(
-      {
-        module: 'card',
-        operation: 'query',
-        metadata: { cardId }
-      },
-      async () => {
-        // 在这个异步函数中执行的所有操作都可以访问到业务上下文
-        // 包括内部调用的所有axios请求
-        
-        try {
-          const response = await axios.get(`/api/cards/${cardId}`);
-          return response.data;
-        } catch (error) {
-          console.error('获取卡片详情失败:', error);
-          throw error;
-        }
-      }
-    );
-  }
-
-  /**
-   * 方式二：使用装饰器自动应用业务上下文
-   * 使用@withBusinessContext装饰器自动为方法应用业务上下文
-   */
-  @withBusinessContext({
-    module: 'card',
-    operation: 'apply',
-    metadata: { source: 'web' }
-  })
-  async applyNewCard(userId: string, cardType: string): Promise<any> {
-    // 该方法中的所有axios请求都会自动包含业务上下文
-    // 无需手动设置BusinessContextManager.run()
-    
-    try {
-      const response = await axios.post('/api/cards/apply', {
-        userId,
-        cardType
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('申请新卡失败:', error);
-      throw error;
-    }
-  }
-}
-
-/**
- * 账户服务示例类
- * 展示嵌套业务上下文的情况
- */
-export class AccountServiceExample {
-  private cardService = new CardServiceExample();
-  
-  /**
-   * 创建账户并申请卡片
-   * 演示业务上下文的嵌套使用
-   */
-  async createAccountWithCard(userData: any, cardType: string): Promise<any> {
-    return BusinessContextManager.runAsync(
-      {
-        module: 'account',
-        operation: 'create',
-        metadata: { source: 'app', userData }
-      },
-      async () => {
-        // 创建账户
-        const accountResponse = await axios.post('/api/accounts', userData);
-        const accountId = accountResponse.data.id;
-        
-        // 这里调用另一个带有业务上下文的方法，将创建一个新的业务上下文
-        // 但原始请求仍然会保留'account'业务上下文
-        await this.cardService.applyNewCard(accountId, cardType);
-        
-        return {
-          accountId,
-          message: '账户创建并申请卡片成功'
-        };
-      }
-    );
-  }
-}
-
-/**
- * 示例：使用业务上下文中间件（Express）
- * 可以在路由处理前自动设置业务上下文
- */
-export function businessContextMiddleware(module: string, operation: string) {
-  return (req: any, res: any, next: () => void) => {
-    // 从请求中获取额外的上下文信息
-    const metadata = {
-      userId: req.user?.id,
+export function createBusinessContextMiddleware(
+  module: string, 
+  operation: string,
+  getMetadata?: (req: Request) => Record<string, any>
+) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    // 默认元数据
+    const defaultMetadata = {
+      requestId: req.headers['x-request-id'] || `req_${Date.now()}`,
+      userId: (req as any).user?.id,
       ip: req.ip,
       userAgent: req.headers['user-agent']
     };
     
+    // 合并自定义元数据（如果有）
+    const customMetadata = getMetadata ? getMetadata(req) : {};
+    const metadata = { ...defaultMetadata, ...customMetadata };
+    
     // 使用BusinessContextManager包装后续处理
     BusinessContextManager.run(
       { module, operation, metadata },
-      () => next()
+      next
     );
   };
 }
 
 /**
- * 示例：在Express路由中使用业务上下文中间件
+ * 示例1：在app.ts中设置全局路由前缀中间件
  * 
  * ```typescript
  * import express from 'express';
- * import { businessContextMiddleware } from './BusinessContextExample';
+ * import { createBusinessContextMiddleware } from './utils/BusinessContextExample';
  * 
- * const router = express.Router();
+ * const app = express();
  * 
- * // 为整个路由组应用业务上下文
- * router.use('/cards', businessContextMiddleware('card', 'api'));
+ * // 在所有路由前应用前缀中间件
+ * app.use('/api', (req, res, next) => {
+ *   // 从URL路径提取业务模块和操作
+ *   const path = req.path;
+ *   const segments = path.split('/').filter(Boolean);
+ *   
+ *   // 第一段通常是业务模块
+ *   const module = segments[0] || 'unknown';
+ *   
+ *   // 基于HTTP方法确定操作类型
+ *   let operation = 'unknown';
+ *   switch(req.method) {
+ *     case 'GET': operation = 'query'; break;
+ *     case 'POST': operation = 'create'; break;
+ *     case 'PUT': operation = 'update'; break;
+ *     case 'DELETE': operation = 'delete'; break;
+ *     default: operation = req.method.toLowerCase(); break;
+ *   }
+ *   
+ *   // 创建并应用业务上下文中间件
+ *   const contextMiddleware = createBusinessContextMiddleware(module, operation);
+ *   contextMiddleware(req, res, next);
+ * });
+ * ```
+ */
+
+/**
+ * 示例2：在路由文件中使用业务上下文中间件
  * 
- * // 或为特定路由应用业务上下文
- * router.post('/transfers', 
- *   businessContextMiddleware('transfer', 'create'), 
- *   transferController.createTransfer
+ * ```typescript
+ * // src/routes/infiniCards.ts
+ * import { Router } from 'express';
+ * import { createBusinessContextMiddleware } from '../utils/BusinessContextExample';
+ * import { infiniCardController } from '../controllers/infiniCardController';
+ * 
+ * const router = Router();
+ * 
+ * // 为所有卡片路由设置业务模块
+ * router.use(createBusinessContextMiddleware('card', 'general'));
+ * 
+ * // 为特定路由设置具体的业务操作
+ * router.post('/apply', 
+ *   createBusinessContextMiddleware('card', 'apply', (req) => ({
+ *     cardType: req.body.cardType,    // 从请求体提取卡片类型作为元数据
+ *     source: req.query.source || 'web'  // 来源渠道
+ *   })), 
+ *   infiniCardController.applyCard
+ * );
+ * 
+ * // 批量申请卡片
+ * router.post('/batch-apply', 
+ *   createBusinessContextMiddleware('card', 'batch_apply'), 
+ *   infiniCardController.batchApplyCards
+ * );
+ * 
+ * export default router;
+ * ```
+ */
+
+/**
+ * 示例3：使用中间件包装整个路由模块
+ * 
+ * ```typescript
+ * // app.ts中的路由注册部分
+ * import { createBusinessContextMiddleware } from './utils/BusinessContextExample';
+ * 
+ * // 使用中间件包装路由模块，自动设置业务上下文
+ * app.use('/api/infini-accounts', 
+ *   createBusinessContextMiddleware('account', 'api'),
+ *   infiniAccountsRoutes
+ * );
+ * 
+ * app.use('/api/infini-cards', 
+ *   createBusinessContextMiddleware('card', 'api'),
+ *   infiniCardsRoutes
+ * );
+ * 
+ * app.use('/api/transfers', 
+ *   createBusinessContextMiddleware('transfer', 'api'),
+ *   transferRoutes
  * );
  * ```
  */
+
+/**
+ * 示例4：高级用法 - 为不同HTTP方法设置不同业务操作
+ * 
+ * ```typescript
+ * // src/routes/infiniAccounts.ts
+ * import { Router } from 'express';
+ * import { createBusinessContextMiddleware } from '../utils/BusinessContextExample';
+ * import { infiniAccountController } from '../controllers/infiniAccountController';
+ * 
+ * const router = Router();
+ * 
+ * // 查询账户列表
+ * router.get('/',
+ *   createBusinessContextMiddleware('account', 'query'),
+ *   infiniAccountController.getAccounts
+ * );
+ * 
+ * // 创建账户
+ * router.post('/',
+ *   createBusinessContextMiddleware('account', 'create'),
+ *   infiniAccountController.createAccount
+ * );
+ * 
+ * // 更新账户
+ * router.put('/:id',
+ *   createBusinessContextMiddleware('account', 'update'),
+ *   infiniAccountController.updateAccount
+ * );
+ * 
+ * // 删除账户
+ * router.delete('/:id',
+ *   createBusinessContextMiddleware('account', 'delete'),
+ *   infiniAccountController.deleteAccount
+ * );
+ * 
+ * export default router;
+ * ```
+ */
+
+/**
+ * 注意：如果在特殊情况下需要手动设置业务上下文（不推荐），可以使用以下方式
+ */
+export async function manualContextExample(): Promise<void> {
+  // 手动设置业务上下文并在其中执行异步操作
+  // 不推荐在业务代码中直接使用此方式，应优先使用路由中间件
+  await BusinessContextManager.runAsync(
+    {
+      module: 'batch_job',
+      operation: 'cron_task',
+      metadata: { 
+        jobId: `job_${Date.now()}`,
+        source: 'scheduler'
+      }
+    },
+    async () => {
+      // 在上下文中执行的代码...
+      await axios.get('https://api.example.com/data');
+      
+      // 子任务也会继承上下文
+      await processSubTask();
+    }
+  );
+}
+
+/**
+ * 子任务示例
+ */
+async function processSubTask(): Promise<void> {
+  // 这个函数内的所有axios请求都会自动包含父函数设置的业务上下文
+  await axios.post('https://api.example.com/subtask', { data: 'example' });
+}
