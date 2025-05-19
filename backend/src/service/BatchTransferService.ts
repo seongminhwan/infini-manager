@@ -92,14 +92,19 @@ export class BatchTransferService {
       const trx = await db.transaction();
       
       try {
-        // 创建批量转账记录
+        // 生成批次编号
+        const batchNumber = `BT${Date.now()}`;
+        
+        // 创建批量转账记录 - 调整字段名以匹配数据库表结构
         const [batchId] = await trx('infini_batch_transfers').insert({
-          // 移除name字段，使用remarks字段代替，因为实际数据库表中不存在name字段
-          type: data.type,
+          name: data.name, // 现在已添加name字段
+          batch_number: batchNumber,
+          batch_type: data.type, // 数据库中是batch_type而非type
           status: 'pending',
-          source: 'batch',
+          total_accounts: data.relations.length,
           total_amount: totalAmount,
-          remarks: data.remarks || data.name || null, // 使用remarks或name作为备注
+          // 使用error_message代替remarks，因为实际表中没有remarks字段
+          error_message: data.remarks || data.name || null,
           created_by: data.createdBy || null,
           created_at: new Date(),
           updated_at: new Date()
