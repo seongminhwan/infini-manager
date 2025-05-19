@@ -2,7 +2,7 @@
  * 定时任务服务
  */
 import * as cron from 'node-cron';
-import * as parser from 'cron-parser';
+import parser from 'cron-parser';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../db/db';
@@ -93,7 +93,7 @@ export class TaskService {
       }
       
       // 计算下次执行时间
-      const interval = parser.parseExpression(taskDTO.cronExpression);
+      const interval = parser.parseExpression(taskDTO.cronExpression, { currentDate: new Date() });
       const nextExecutionTime = interval.next().toDate();
       
       // 转换处理器参数为JSON字符串
@@ -167,7 +167,7 @@ export class TaskService {
         updateData.cron_expression = taskDTO.cronExpression;
         
         // 计算新的下次执行时间
-        const interval = parser.parseExpression(taskDTO.cronExpression);
+        const interval = parser.parseExpression(taskDTO.cronExpression, { currentDate: new Date() });
         updateData.next_execution_time = interval.next().toDate();
       }
       
@@ -422,7 +422,7 @@ export class TaskService {
         await this.lockManager.releaseLock(task.task_key);
         
         // 更新任务最后执行时间
-        const interval = parser.parseExpression(task.cron_expression);
+        const interval = parser.parseExpression(task.cron_expression, { currentDate: new Date() });
         const nextExecutionTime = interval.next().toDate();
         
         await db('infini_scheduled_tasks')
