@@ -660,6 +660,48 @@ export class InfiniCardService {
   }
 
   /**
+   * 验证手机号格式
+   * 支持的格式：
+   * 1. +区号 手机号（例如：+86 13800138000）
+   * 2. 区号 手机号（例如：86 13800138000）
+   * 3. 纯手机号（例如：13800138000）
+   * @param phoneCode 电话区号
+   * @param phoneNumber 电话号码
+   * @returns {string|null} 错误消息，如果验证通过则返回null
+   */
+  private validatePhoneFormat(phoneCode: string, phoneNumber: string): string | null {
+    // 手机号不能为空
+    if (!phoneNumber) {
+      return '手机号不能为空';
+    }
+    
+    // 如果phoneCode以"+"开头，检查格式1
+    if (phoneCode && phoneCode.startsWith('+')) {
+      // 区号应该是+数字格式
+      if (!/^\+\d+$/.test(phoneCode)) {
+        return '区号格式不正确，应为"+数字"格式，例如：+86';
+      }
+      // 手机号应该只包含数字
+      if (!/^\d+$/.test(phoneNumber)) {
+        return '手机号格式不正确，应只包含数字';
+      }
+      return null;
+    }
+    
+    // 如果phoneCode不为空且不含"+"，检查格式2
+    if (phoneCode && !/^\d+$/.test(phoneCode)) {
+      return '区号格式不正确，应只包含数字，例如：86';
+    }
+    
+    // 手机号应该只包含数字
+    if (!/^\d+$/.test(phoneNumber)) {
+      return '手机号格式不正确，应只包含数字';
+    }
+    
+    return null;
+  }
+
+  /**
    * 提交KYC基础信息
    * @param accountId Infini账户ID
    * @param kycData KYC基础数据
@@ -674,6 +716,15 @@ export class InfiniCardService {
   }): Promise<ApiResponse> {
     try {
       console.log(`开始提交KYC基础信息，账户ID: ${accountId}`);
+
+      // 验证手机号格式
+      const phoneFormatError = this.validatePhoneFormat(kycData.phone_code, kycData.phone_number);
+      if (phoneFormatError) {
+        return {
+          success: false,
+          message: phoneFormatError
+        };
+      }
 
       // 查找账户
       const account = await db('infini_accounts')
