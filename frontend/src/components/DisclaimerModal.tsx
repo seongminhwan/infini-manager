@@ -47,6 +47,11 @@ const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ visible, onConfirm })
       maskClosable={false}
       width={700}
       centered
+      bodyStyle={{ 
+        maxHeight: '60vh', 
+        overflow: 'auto', 
+        padding: '16px 24px' 
+      }}
       footer={[
         <Button 
           key="confirm" 
@@ -58,22 +63,22 @@ const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ visible, onConfirm })
         </Button>
       ]}
     >
-      <Typography>
-        <Title level={4}>⚠️ 严禁非法行为声明 | PROHIBITION OF ILLEGAL ACTIVITIES ⚠️</Title>
-        <Paragraph style={{ fontWeight: 'bold' }}>
+      <Typography style={{ marginBottom: 0 }}>
+        <Title level={4} style={{ marginTop: 0 }}>⚠️ 严禁非法行为声明 | PROHIBITION OF ILLEGAL ACTIVITIES ⚠️</Title>
+        <Paragraph style={{ fontWeight: 'bold', marginBottom: 8 }}>
           本系统的目的是便于拥有多个Infini账户的用户管理自己的账户。严厉禁止任何用户通过本系统对Infini系统进行hack行为，一经发现，将会通知官方，并将相关信息移交网络安全部门。
         </Paragraph>
         <Paragraph>
           The purpose of this system is to help users manage their own Infini accounts. Any attempt to hack the Infini system through this tool is strictly prohibited. Violations will be reported to Infini officials and relevant information will be handed over to cybersecurity authorities.
         </Paragraph>
 
-        <Divider />
+        <Divider style={{ margin: '12px 0' }} />
 
-        <Title level={4}>免责声明 | DISCLAIMER</Title>
-        <Title level={5}>⚠️ 重要声明：本项目仅供学习和研究使用 ⚠️</Title>
-        <Title level={5}>⚠️ IMPORTANT DISCLAIMER: THIS PROJECT IS FOR EDUCATIONAL AND RESEARCH PURPOSES ONLY ⚠️</Title>
+        <Title level={4} style={{ marginBottom: 8 }}>免责声明 | DISCLAIMER</Title>
+        <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>⚠️ 重要声明：本项目仅供学习和研究使用 ⚠️</Title>
+        <Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>⚠️ IMPORTANT DISCLAIMER: THIS PROJECT IS FOR EDUCATIONAL AND RESEARCH PURPOSES ONLY ⚠️</Title>
 
-        <Space direction="vertical">
+        <Space direction="vertical" size={8}>
           <Paragraph>
             <Text strong>• 本项目仅用于技术学习、研究和个人非商业用途</Text><br />
             <Text>This project is solely for technical learning, research, and personal non-commercial use</Text>
@@ -105,12 +110,12 @@ const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ visible, onConfirm })
           </Paragraph>
         </Space>
 
-        <Divider />
+        <Divider style={{ margin: '12px 0' }} />
 
         <Checkbox 
           onChange={handleCheckboxChange}
           checked={agreed}
-          style={{ marginTop: 16 }}
+          style={{ marginTop: 8 }}
         >
           <Text strong>我已知晓所有禁止行为，我保证不将其用于非法行为</Text>
         </Checkbox>
