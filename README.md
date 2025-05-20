@@ -2,6 +2,12 @@
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/seongminhwan/infini-manager)
 
+## ⚠️ 严禁非法行为声明 | PROHIBITION OF ILLEGAL ACTIVITIES ⚠️
+
+**本系统的目的是便于拥有多个Infini账户的用户管理自己的账户。严厉禁止任何用户通过本系统对Infini系统进行hack行为，一经发现，将会通知官方，并将相关信息移交网络安全部门。**
+
+**The purpose of this system is to help users manage their own Infini accounts. Any attempt to hack the Infini system through this tool is strictly prohibited. Violations will be reported to Infini officials and relevant information will be handed over to cybersecurity authorities.**
+
 ## 免责声明 | DISCLAIMER
 
 **⚠️ 重要声明：本项目仅供学习和研究使用 ⚠️**  
