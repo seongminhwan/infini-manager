@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Popover, Tag, Button, Space } from 'antd';
+import { Popover, Tag, Button, Space, Modal } from 'antd';
 import { DollarOutlined, ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import TransferForm from './TransferForm';
 
 interface TransferActionPopoverProps {
   account: {
@@ -15,31 +15,33 @@ interface TransferActionPopoverProps {
  * 可用余额 Tag + Popover 组件
  * 1. 显示余额标签，点击后弹出 Popover
  * 2. Popover 展示"转入 / 转出"按钮
- * 3. 点击按钮后导航到账户转账页面
+ * 3. 点击按钮后显示转账表单弹窗
  */
 const TransferActionPopover: React.FC<TransferActionPopoverProps> = ({ account }) => {
   const [visible, setVisible] = useState(false);
-  const navigate = useNavigate();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [actionType, setActionType] = useState<'in' | 'out'>('in');
 
   const handleVisibleChange = (v: boolean) => {
     setVisible(v);
   };
 
-  // 处理点击转入/转出按钮 - 导航到账户转账页面
+  // 处理点击转入/转出按钮 - 显示转账表单弹窗
   const handleAction = (type: 'in' | 'out') => {
     console.log(`点击${type==='in'?'转入':'转出'}按钮`, account);
     
-    // 关闭弹窗
-    setVisible(false);
+    // 设置操作类型
+    setActionType(type);
     
-    // 根据类型构建参数并导航
-    if (type === 'in') {
-      // 转入：将当前账户作为目标账户
-      navigate(`/account-transfer?targetType=internal&internalTarget=${account.id}`);
-    } else {
-      // 转出：将当前账户作为源账户
-      navigate(`/account-transfer?sourceAccount=${account.id}`);
-    }
+    // 关闭Popover，显示Modal
+    setVisible(false);
+    setModalVisible(true);
+  };
+
+  // 处理转账完成
+  const handleTransferFinished = (success: boolean) => {
+    // 关闭转账弹窗
+    setModalVisible(false);
   };
 
   // 渲染按钮视图
@@ -68,24 +70,30 @@ const TransferActionPopover: React.FC<TransferActionPopoverProps> = ({ account }
   );
 
   return (
-    <Popover
-      open={visible}
-      onOpenChange={handleVisibleChange}
-      trigger="click"
-      placement="rightBottom"
-      getPopupContainer={() => document.body}
-      destroyTooltipOnHide
-      content={renderButtonsView()}
-    >
-      <Tag
-        color={account.availableBalance > 0 ? 'green' : 'default'}
-        style={{ cursor: 'pointer' }}
+    <>
+      <Popover
+        open={visible}
+        onOpenChange={handleVisibleChange}
+        trigger="click"
+        placement="rightBottom"
+        getPopupContainer={() => document.body}
+        destroyTooltipOnHide
+        content={renderButtonsView()}
       >
-        <DollarOutlined style={{ marginRight: 4 }} />
-        {account.availableBalance.toFixed(6)}
-      </Tag>
-    </Popover>
-  );
-};
-
-export default TransferActionPopover;
+        <Tag
+          color={account.availableBalance > 0 ? 'green' : 'default'}
+          style={{ cursor: 'pointer' }}
+        >
+          <DollarOutlined style={{ marginRight: 4 }} />
+          {account.availableBalance.toFixed(6)}
+        </Tag>
+      </Popover>
+      
+      {/* 转账表单弹窗 */}
+      <Modal
+        title={`${actionType === 'in' ? '转入' : '转出'}资金`}
+        open={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        footer={null}
+        destroyOnClose
+      ></Modal>
