@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Popover, Tag, Button, Space, Modal } from 'antd';
 import { DollarOutlined, ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
-import TransferForm from './TransferForm';
+import TransferFormCore from './TransferFormCore';
 
 interface TransferActionPopoverProps {
   account: {
@@ -96,10 +96,14 @@ const TransferActionPopover: React.FC<TransferActionPopoverProps> = ({ account }
         onCancel={() => setModalVisible(false)}
         footer={null}
         destroyOnClose
+        width={700}
       >
-        <TransferForm
-          sourceAccountId={account.id}
+        <TransferFormCore
+          defaultSourceAccountId={actionType === 'out' ? account.id : undefined}
+          defaultTargetAccountId={actionType === 'in' ? account.id : undefined}
           mode={actionType}
+          compact={true}
+          showAdvancedOptions={false}
           onFinished={handleTransferFinished}
         />
       </Modal>
