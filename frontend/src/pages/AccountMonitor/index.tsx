@@ -2737,31 +2737,31 @@ const AccountMonitor: React.FC = () => {
         let color = 'orange';
         let text = '未认证';
         
-    if (actualLevel === 1) {
-      color = 'blue';
-      text = '基础认证';
-    } else if (actualLevel === 2) {
-      color = 'green';
-      text = 'KYC认证';
-    } else if (actualLevel === 3) {
-      color = 'gold';
-      text = 'KYC认证中';
-    }
-    
-    return (
-      <Tooltip title={`KYC验证级别: ${actualLevel !== undefined ? actualLevel : '未设置'}`}>
-        <Tag 
-          color={color} 
-          style={{ cursor: 'pointer' }}
-          onClick={(e) => {
-            e.stopPropagation(); // 阻止冒泡，避免触发行点击事件
-            handleViewKycInfo(record.id, actualLevel);
-          }}
-        >
-          {text}
-        </Tag>
-      </Tooltip>
-    );
+        if (actualLevel === 1) {
+          color = 'blue';
+          text = '基础认证';
+        } else if (actualLevel === 2) {
+          color = 'green';
+          text = 'KYC认证';
+        } else if (actualLevel === 3) {
+          color = 'gold';
+          text = 'KYC认证中';
+        }
+        
+        return (
+          <Tooltip title={`KYC验证级别: ${actualLevel !== undefined ? actualLevel : '未设置'}`}>
+            <Tag 
+              color={color} 
+              style={{ cursor: 'pointer' }}
+              onClick={(e) => {
+                e.stopPropagation(); // 阻止冒泡，避免触发行点击事件
+                handleViewKycInfo(record.id, actualLevel);
+              }}
+            >
+              {text}
+            </Tag>
+          </Tooltip>
+        );
       }
     },
     {
