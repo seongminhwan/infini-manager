@@ -70,6 +70,7 @@ import { debounce, DebouncedFunc } from 'lodash';
 import { ResizeCallbackData } from 'react-resizable';
 import api, { apiBaseUrl, configApi, infiniAccountApi, randomUserApi, totpToolApi, httpService, transferApi, batchTransferApi } from '../../services/api';
 import RandomUserRegisterModal from '../../components/RandomUserRegisterModal';
+import KycInfoPopover from '../../components/KycInfoPopover';
 import TwoFactorAuthModal from '../../components/TwoFactorAuthModal';
 import TwoFaViewModal from '../../components/TwoFaViewModal';
 import KycAuthModal from '../../components/KycAuthModal';
@@ -2730,37 +2731,12 @@ const AccountMonitor: React.FC = () => {
         return levelA - levelB;
       },
       render: (level: number | undefined, record: InfiniAccount) => {
-        // 根据verification_level或verificationLevel显示不同颜色的Tag
         // 优先使用verification_level，如果为undefined则使用verificationLevel
         const actualLevel = level !== undefined ? level : record.verificationLevel;
         
-        let color = 'orange';
-        let text = '未认证';
-        
-        if (actualLevel === 1) {
-          color = 'blue';
-          text = '基础认证';
-        } else if (actualLevel === 2) {
-          color = 'green';
-          text = 'KYC认证';
-        } else if (actualLevel === 3) {
-          color = 'gold';
-          text = 'KYC认证中';
-        }
-        
+        // 使用KycInfoPopover组件显示KYC状态和信息
         return (
-          <Tooltip title={`KYC验证级别: ${actualLevel !== undefined ? actualLevel : '未设置'}`}>
-            <Tag 
-              color={color} 
-              style={{ cursor: 'pointer' }}
-              onClick={(e) => {
-                e.stopPropagation(); // 阻止冒泡，避免触发行点击事件
-                handleViewKycInfo(record.id, actualLevel ?? 0); // 使用默认值0处理undefined情况
-              }}
-            >
-              {text}
-            </Tag>
-          </Tooltip>
+          <KycInfoPopover accountId={record.id} verificationLevel={actualLevel} />
         );
       }
     },
