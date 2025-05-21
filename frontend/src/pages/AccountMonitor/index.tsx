@@ -32,6 +32,7 @@ import {
   Empty,
   TableColumnsType,
   Tabs, // 添加Tabs组件导入
+  Popover, // 添加Popover组件导入
 } from 'antd';
 import {
   PlusOutlined,
@@ -2842,7 +2843,7 @@ const AccountMonitor: React.FC = () => {
                     rowKey={(r:any)=>r.card_id||r.id}
                     pagination={false}
                     onRow={(record:any)=>({
-                      onClick: ()=> showCardDetail(record, cardListAccount || record),
+                      onClick: ()=> showCardDetail(record),
                       style: { cursor: 'pointer' }
                     })}
                     columns={[
@@ -2857,7 +2858,7 @@ const AccountMonitor: React.FC = () => {
                   <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>
                     提示：点击行查看卡片详情
                   </div>
-                  <style jsx>{`
+                  <style>{`
                     .card-list-row:hover {
                       background-color: #f5f5f5;
                     }
