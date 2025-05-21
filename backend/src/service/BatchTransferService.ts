@@ -31,7 +31,7 @@ interface BatchTransferRelation {
   id: number;
   batch_id: number;
   source_account_id: number | null;
-  target_account_id: number | null;
+  matched_account_id: number | null;
   contact_type: string | null;
   target_identifier: string | null;
   amount: string;
@@ -327,10 +327,10 @@ export class BatchTransferService {
         contactType = (relation.contact_type || 'inner') as 'uid' | 'email' | 'inner';
         targetIdentifier = relation.target_identifier || '';
         
-        // 如果没有提供targetIdentifier但提供了target_account_id，使用内部账户转账
-        if ((!targetIdentifier || targetIdentifier === '') && relation.target_account_id) {
+        // 如果没有提供targetIdentifier但提供了matched_account_id，使用内部账户转账
+        if ((!targetIdentifier || targetIdentifier === '') && relation.matched_account_id) {
           contactType = 'inner';
-          targetIdentifier = relation.target_account_id.toString();
+          targetIdentifier = relation.matched_account_id.toString();
         }
       }
       
