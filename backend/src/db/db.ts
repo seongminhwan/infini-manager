@@ -65,8 +65,8 @@ if (typeof connectionInfo === 'string') {
 // 初始化数据库
 export async function initializeDatabase(): Promise<void> {
   try {
-    // 运行所有待执行的迁移
-    await db.migrate.latest();
+    // 运行所有待执行的迁移，跳过缺失迁移文件校验
+    await db.migrate.latest({ disableMigrationsListValidation: true });
     console.log('数据库迁移完成');
     
     // 判断是否需要运行种子数据

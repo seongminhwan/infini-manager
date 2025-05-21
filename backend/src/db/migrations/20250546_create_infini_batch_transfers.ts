@@ -1,6 +1,9 @@
 import { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
+  const exists = await knex.schema.hasTable('infini_batch_transfers');
+  if (exists) return;
+
   await knex.schema.createTable('infini_batch_transfers', table => {
     table.increments('id').primary();
     table.string('name', 255).notNullable().comment('批量转账名称');
@@ -35,5 +38,8 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists('infini_batch_transfers');
+  const exists = await knex.schema.hasTable('infini_batch_transfers');
+  if (exists) {
+    await knex.schema.dropTable('infini_batch_transfers');
+  }
 }

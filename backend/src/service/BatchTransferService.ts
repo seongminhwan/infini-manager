@@ -92,33 +92,29 @@ export class BatchTransferService {
       const trx = await db.transaction();
       
       try {
-        // 生成批次编号
-        const batchNumber = `BT${Date.now()}`;
-        
-        // 创建批量转账记录 - 调整字段名以匹配数据库表结构
+        // 创建批量转账记录  (字段需与 migration 中保持一致)
         const [batchId] = await trx('infini_batch_transfers').insert({
-          name: data.name, // 现在已添加name字段
-          batch_number: batchNumber,
-          batch_type: data.type, // 数据库中是batch_type而非type
+          name: data.name,
+          type: data.type,              // one_to_many | many_to_one
           status: 'pending',
-          total_accounts: data.relations.length,
+          source: 'batch',              // 固定来源
           total_amount: totalAmount,
-          // 使用error_message代替remarks，因为实际表中没有remarks字段
-          error_message: data.remarks || data.name || null,
+          success_count: 0,
+          failed_count: 0,
+          remarks: data.remarks || null,
           created_by: data.createdBy || null,
           created_at: new Date(),
           updated_at: new Date()
         });
         
-        // 创建转账关系记录 - 调整适配实际数据库表结构
+        // 创建转账关系记录
         const relationRecords = data.relations.map(relation => {
-          // 一对多模式：使用指定的源账户ID
           if (data.type === 'one_to_many') {
+            // 固定源账户 → 多个目标账户
             return {
               batch_id: batchId,
               source_account_id: data.sourceAccountId,
-              // 不使用target_account_id字段，该字段在实际数据库中不存在
-              matched_account_id: relation.targetAccountId, // 使用matched_account_id代替
+              target_account_id: relation.targetAccountId,
               contact_type: relation.contactType || 'inner',
               target_identifier: relation.targetIdentifier || '',
               amount: relation.amount,
@@ -127,21 +123,18 @@ export class BatchTransferService {
               updated_at: new Date()
             };
           }
-          // 多对一模式：使用指定的目标账户ID
-          else {
-            return {
-              batch_id: batchId,
-              source_account_id: relation.sourceAccountId,
-              // 使用matched_account_id存储目标账户ID
-              matched_account_id: data.targetAccountId,
-              contact_type: relation.contactType || 'inner',
-              target_identifier: relation.targetIdentifier || '',
-              amount: relation.amount,
-              status: 'pending',
-              created_at: new Date(),
-              updated_at: new Date()
-            };
-          }
+          // 多对一模式：多个源账户 → 固定目标账户
+          return {
+            batch_id: batchId,
+            source_account_id: relation.sourceAccountId,
+            target_account_id: data.targetAccountId,
+            contact_type: relation.contactType || 'inner',
+            target_identifier: relation.targetIdentifier || '',
+            amount: relation.amount,
+            status: 'pending',
+            created_at: new Date(),
+            updated_at: new Date()
+          };
         });
         
         await trx('infini_batch_transfer_relations').insert(relationRecords);
@@ -257,8 +250,8 @@ export class BatchTransferService {
         .update({
           status: finalStatus,
           success_count: successCount,
-          fail_count: failedCount, // 修正字段名：failed_count -> fail_count
-          end_time: new Date(), // 使用end_time代替completed_at
+          failed_count: failedCount,
+          completed_at: new Date(),
           updated_at: new Date()
         });
       
@@ -312,7 +305,7 @@ export class BatchTransferService {
       let contactType: 'uid' | 'email' | 'inner';
       let targetIdentifier: string;
       
-      if (batch.batch_type === 'one_to_many') { // 修正字段名：type -> batch_type
+      if (batch.type === 'one_to_many') {
         // 一对多模式：源账户固定，目标账户来自关系
         if (!relation.source_account_id) {
           throw new Error('缺少源账户ID');
@@ -348,7 +341,7 @@ export class BatchTransferService {
         relation.amount,
         'batch', // 来源为批量转账
         false, // 不强制执行
-        batch.error_message || undefined, // 使用error_message代替remarks
+        batch.remarks || undefined,
         auto2FA // 是否自动处理2FA验证
       );
       
@@ -467,7 +460,7 @@ export class BatchTransferService {
       
       // 更新批量转账状态和计数
       const totalSuccessCount = (currentCounts?.success_count || 0) + successCount;
-      const totalFailedCount = (currentCounts?.fail_count || 0) + failedCount; // 修正字段名：failed_count -> fail_count
+      const totalFailedCount = (currentCounts?.failed_count || 0) + failedCount;
       const finalStatus = await this.determineFinalStatus(batchId);
       
       await db('infini_batch_transfers')
@@ -475,8 +468,8 @@ export class BatchTransferService {
         .update({
           status: finalStatus,
           success_count: totalSuccessCount,
-          fail_count: totalFailedCount, // 修正字段名：failed_count -> fail_count
-          end_time: finalStatus === 'completed' || finalStatus === 'failed' ? new Date() : null, // 使用end_time代替completed_at
+          failed_count: totalFailedCount,
+          completed_at: finalStatus === 'completed' || finalStatus === 'failed' ? new Date() : null,
           updated_at: new Date()
         });
       
@@ -602,7 +595,10 @@ export class BatchTransferService {
     };
     
     if (status === 'completed' || status === 'failed') {
-      updateData.end_time = new Date(); // 使用end_time代替completed_at
+      updateData.completed_at = new Date();
+    } else {
+      // 若重新进入非终态，清空 completed_at
+      updateData.completed_at = null;
     }
     
     await db('infini_batch_transfers')

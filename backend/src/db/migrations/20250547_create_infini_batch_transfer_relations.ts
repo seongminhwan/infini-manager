@@ -1,6 +1,8 @@
 import { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
+  const exists = await knex.schema.hasTable('infini_batch_transfer_relations');
+  if (exists) return;
   await knex.schema.createTable('infini_batch_transfer_relations', table => {
     table.increments('id').primary();
     table.integer('batch_id').unsigned().notNullable().comment('关联的批量转账ID');

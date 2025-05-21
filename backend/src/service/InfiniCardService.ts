@@ -379,6 +379,12 @@ export class InfiniCardService {
    */
   private async saveCardInfo(accountId: string, cardInfo: any): Promise<void> {
     try {
+      // 若card_id为空，视为不完整卡片，直接忽略持久化
+      if (!cardInfo || !cardInfo.card_id) {
+        console.warn(`检测到不完整的卡片数据，card_id 为空，已跳过持久化。accountId=${accountId}`);
+        return;
+      }
+
       // 检查卡片是否已存在
       const existingCard = await db('infini_cards')
         .where({

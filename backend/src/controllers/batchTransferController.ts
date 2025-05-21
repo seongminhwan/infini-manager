@@ -110,7 +110,7 @@ export const getBatchTransfers: ControllerMethod = async (req: Request, res: Res
     }
     
     if (type) {
-      query = query.where('batch_type', type); // 修正字段名：type -> batch_type
+      query = query.where('type', type);
     }
     
     // 获取总记录数
@@ -224,7 +224,7 @@ export const executeBatchTransfer: ControllerMethod = async (req: Request, res: 
           .where('id', id)
           .update({
             status: 'failed',
-            end_time: new Date(), // 添加end_time字段
+            completed_at: new Date(),
             updated_at: new Date()
           })
           .catch(err => console.error('更新批量转账状态失败:', err));
@@ -455,6 +455,7 @@ export const retryFailedTransfers: ControllerMethod = async (req: Request, res: 
       .where('id', id)
       .update({
         status: 'processing',
+        completed_at: null,
         updated_at: new Date()
       });
     
@@ -539,6 +540,7 @@ export const resumeBatchTransfer: ControllerMethod = async (req: Request, res: R
       .where('id', id)
       .update({
         status: 'processing',
+        completed_at: null,
         updated_at: new Date()
       });
     

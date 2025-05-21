@@ -67,7 +67,7 @@ import { Resizable } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 import { debounce, DebouncedFunc } from 'lodash';
 import { ResizeCallbackData } from 'react-resizable';
-import api, { apiBaseUrl, configApi, infiniAccountApi, randomUserApi, totpToolApi, httpService, transferApi } from '../../services/api';
+import api, { apiBaseUrl, configApi, infiniAccountApi, randomUserApi, totpToolApi, httpService, transferApi, batchTransferApi } from '../../services/api';
 import RandomUserRegisterModal from '../../components/RandomUserRegisterModal';
 import TwoFactorAuthModal from '../../components/TwoFactorAuthModal';
 import TwoFaViewModal from '../../components/TwoFaViewModal';
@@ -80,6 +80,7 @@ import OneClickSetupModal from '../../components/OneClickSetupModal';
 import BatchRegisterModal from '../../components/BatchRegisterModal';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
+import { infiniCardApi } from '../../services/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -2826,10 +2827,56 @@ const AccountMonitor: React.FC = () => {
         { text: '4-10张', value: '>3,<=10' },
         { text: '10张以上', value: '>10' }
       ],
-      render: (text: number) => (
-        <Tag color={text > 0 ? 'blue' : 'default'}>
-          {text || 0}
-        </Tag>
+      render: (text: number, record: InfiniAccount) => (
+        <Popover
+          title={`${record.email} 的卡片列表`}
+          trigger="click"
+          placement="rightBottom"
+          content={
+            <div style={{ width: 500 }}>
+              {text > 0 ? (
+                <div>
+                  <Table
+                    dataSource={cardList}
+                    loading={cardListLoading}
+                    rowKey={(r:any)=>r.card_id||r.id}
+                    pagination={false}
+                    onRow={(record:any)=>({
+                      onClick: ()=> showCardDetail(record, cardListAccount || record),
+                      style: { cursor: 'pointer' }
+                    })}
+                    columns={[
+                      { title:'卡片ID', dataIndex:'card_id', key:'card_id'},
+                      { title:'卡号后四位', dataIndex:'card_last_four_digits', key:'last4'},
+                      { title:'状态', dataIndex:'status', key:'status'},
+                      { title:'余额', dataIndex:'available_balance', key:'balance'},
+                    ]}
+                    size="small"
+                    rowClassName={() => 'card-list-row'}
+                  />
+                  <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>
+                    提示：点击行查看卡片详情
+                  </div>
+                  <style jsx>{`
+                    .card-list-row:hover {
+                      background-color: #f5f5f5;
+                    }
+                  `}</style>
+                </div>
+              ) : (
+                <Empty description="暂无卡片信息" />
+              )}
+            </div>
+          }
+          destroyTooltipOnHide
+        >
+          <Tag
+            color={text > 0 ? 'blue' : 'default'}
+            style={{ cursor: text > 0 ? 'pointer' : 'default' }}
+          >
+            {text || 0}
+          </Tag>
+        </Popover>
       )
     },
   {
@@ -3473,6 +3520,45 @@ const AccountMonitor: React.FC = () => {
     fetchGroups();
   }, []);
 
+  // ==== 卡片列表弹窗状态 ====
+  const [cardListVisible, setCardListVisible] = useState<boolean>(false);
+  const [cardListLoading, setCardListLoading] = useState<boolean>(false);
+  const [cardList, setCardList] = useState<any[]>([]);
+  const [cardListAccount, setCardListAccount] = useState<InfiniAccount | null>(null);
+
+  const openCardListModal = async (account: InfiniAccount) => {
+    setCardListAccount(account);
+    setCardListVisible(true);
+    setCardListLoading(true);
+    try {
+      const res = await infiniCardApi.getCardList(account.id.toString());
+      if (res.success) {
+        setCardList(res.data.items || res.data || []);
+      } else {
+        message.error(res.message || '获取卡片列表失败');
+      }
+    } catch (e) {
+      console.error('获取卡片列表失败:', e);
+      message.error('获取卡片列表失败');
+    } finally {
+      setCardListLoading(false);
+    }
+  };
+
+  const closeCardListModal = () => {
+    setCardListVisible(false);
+    setCardList([]);
+    setCardListAccount(null);
+  };
+
+  const showCardDetail = (card: any) => {
+    if (!cardListAccount) return;
+    // 直接设置当前选中的账户和卡片信息，打开卡片详情模态框
+    setSelectedAccountForCard(cardListAccount);
+    setSelectedCardInfo(card);
+    setCardDetailModalVisible(true);
+  };
+
   return (
     <div>
       <StyledCard
@@ -3720,6 +3806,32 @@ const AccountMonitor: React.FC = () => {
           });
         }}
       />
+      {/* 卡片列表弹窗 */}
+      <Modal
+        visible={cardListVisible}
+        title={cardListAccount ? `${cardListAccount.email} 的卡片列表` : '卡片列表'}
+        onCancel={closeCardListModal}
+        footer={null}
+        width={800}
+      >
+        <Table
+          dataSource={cardList}
+          loading={cardListLoading}
+          rowKey={(r:any)=>r.card_id||r.id}
+          pagination={false}
+          onRow={(record:any)=>({
+            onClick: ()=> showCardDetail(record)
+          })}
+          columns={[
+            { title:'卡片ID', dataIndex:'card_id', key:'card_id'},
+            { title:'卡号后四位', dataIndex:'card_last_four_digits', key:'last4'},
+            { title:'状态', dataIndex:'status', key:'status'},
+            { title:'余额', dataIndex:'available_balance', key:'balance'},
+          ]}
+          size="small"
+        />
+        <p style={{fontSize:12,color:'#999'}}>点击行查看卡片详情</p>
+      </Modal>
     </div>
   );
 };

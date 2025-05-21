@@ -575,6 +575,8 @@ export class InfiniAccountService {
       
       // 使用子查询计算每个账户的卡片数量
       const cardCountSubquery = db('infini_cards')
+        .whereNotNull('card_id')
+        .andWhere('card_id', '!=', '')
         .select('infini_account_id')
         .count('* as card_count')
         .groupBy('infini_account_id')
