@@ -2748,118 +2748,19 @@ const AccountMonitor: React.FC = () => {
       text = 'KYC认证中';
     }
     
-    // 当前KYC弹窗状态
-    const [kycModalVisible, setKycModalVisible] = useState<boolean>(false);
-    const [kycInfo, setKycInfo] = useState<any>(null);
-    const [loadingKycInfo, setLoadingKycInfo] = useState<boolean>(false);
-    
-    // 点击查看KYC信息
-    const handleViewKycInfo = async (e: React.MouseEvent) => {
-      e.stopPropagation(); // 阻止冒泡，避免触发行点击事件
-      
-      // 显示加载状态
-      setLoadingKycInfo(true);
-      setKycModalVisible(true);
-      
-      try {
-        // 获取KYC信息
-        const response = await api.get(`${API_BASE_URL}/api/infini-accounts/kyc/information/${record.id}`);
-        console.log('获取KYC信息响应:', response);
-        
-        if (response.data.success && response.data.data.kyc_information && response.data.data.kyc_information.length > 0) {
-          const kycInfoData = response.data.data.kyc_information[0];
-          
-          // 处理KYC认证中的状态
-          if (actualLevel === 3 && (!kycInfoData.status || kycInfoData.status === 0)) {
-            kycInfoData.status = 1; // 验证中状态
-          }
-          
-          // 转换为前端组件需要的格式
-          const transformedInfo = {
-            id: kycInfoData.id,
-            isValid: actualLevel === 2 ? true : Boolean(kycInfoData.is_valid),
-            type: kycInfoData.type,
-            s3Key: kycInfoData.s3_key,
-            firstName: kycInfoData.first_name,
-            lastName: kycInfoData.last_name,
-            country: kycInfoData.country,
-            phone: kycInfoData.phone,
-            phoneCode: kycInfoData.phone_code,
-            identificationNumber: kycInfoData.identification_number,
-            status: actualLevel === 2 ? 2 : kycInfoData.status,
-            createdAt: kycInfoData.created_at,
-            imageUrl: kycInfoData.image_url
-          };
-          
-          setKycInfo(transformedInfo);
-        } else {
-          // 处理无KYC信息的情况
-          if (actualLevel === 3) {
-            // KYC认证中状态，创建默认信息
-            setKycInfo({
-              id: record.userId,
-              status: 1, // 验证中状态
-              isValid: false,
-              type: 0,
-              createdAt: Math.floor(Date.now() / 1000)
-            });
-          } else {
-            setKycInfo({});
-            message.warning('未查询到KYC信息');
-          }
-        }
-      } catch (error) {
-        console.error('获取KYC信息出错:', error);
-        message.error('获取KYC信息失败');
-        // 错误时也创建基本信息对象
-        if (actualLevel === 3) {
-          setKycInfo({
-            id: record.userId,
-            status: 1, // 验证中状态
-            isValid: false,
-            type: 0,
-            createdAt: Math.floor(Date.now() / 1000)
-          });
-        } else {
-          setKycInfo({});
-        }
-      } finally {
-        setLoadingKycInfo(false);
-      }
-    };
-    
-    // 关闭KYC信息弹窗
-    const handleCloseKycModal = () => {
-      setKycModalVisible(false);
-      setKycInfo(null);
-    };
-    
     return (
-      <>
-        <Tooltip title={`KYC验证级别: ${actualLevel !== undefined ? actualLevel : '未设置'}`}>
-          <Tag 
-            color={color} 
-            style={{ cursor: 'pointer' }}
-            onClick={handleViewKycInfo}
-          >
-            {text}
-          </Tag>
-        </Tooltip>
-        
-        {/* KYC信息弹窗 */}
-        <KycViewModal
-          visible={kycModalVisible}
-          onClose={handleCloseKycModal}
-          accountId={record.id.toString()}
-          kycInfo={loadingKycInfo ? undefined : kycInfo}
-          onStatusChange={() => {
-            // 状态变更后刷新列表
-            message.success('KYC状态已更新');
-            handleCloseKycModal();
-            // 触发表格刷新
-            fetchPaginatedAccounts();
+      <Tooltip title={`KYC验证级别: ${actualLevel !== undefined ? actualLevel : '未设置'}`}>
+        <Tag 
+          color={color} 
+          style={{ cursor: 'pointer' }}
+          onClick={(e) => {
+            e.stopPropagation(); // 阻止冒泡，避免触发行点击事件
+            handleViewKycInfo(record.id, actualLevel);
           }}
-        />
+        >
+          {text}
+        </Tag>
+      </Tooltip>
       </>
     );
       }
