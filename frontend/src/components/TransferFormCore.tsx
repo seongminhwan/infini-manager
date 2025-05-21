@@ -69,23 +69,23 @@ const TransferFormCore: React.FC<TransferFormCoreProps> = ({
         if (response.success && response.data) {
           setAccounts(response.data);
           
-          // 如果是转入模式，且有默认目标账户，设置源账户列表排除目标账户
-          if (mode === 'in' && defaultTargetAccountId) {
-            const targetAccount = response.data.find(acc => acc.id == defaultTargetAccountId);
-            if (targetAccount) {
-              form.setFieldsValue({ targetAccount: targetAccount.email });
-            }
+        // 如果是转入模式，且有默认目标账户，设置源账户列表排除目标账户
+        if (mode === 'in' && defaultTargetAccountId) {
+          const targetAccount = response.data.find((acc: any) => acc.id == defaultTargetAccountId);
+          if (targetAccount) {
+            form.setFieldsValue({ targetAccount: targetAccount.email });
           }
-          
-          // 如果有默认源账户ID，设置可用余额
-          if (defaultSourceAccountId) {
-            const sourceAccount = response.data.find(acc => acc.id == defaultSourceAccountId);
-            if (sourceAccount) {
-              form.setFieldsValue({ 
-                sourceAccount: sourceAccount.id,
-                sourceBalance: sourceAccount.availableBalance || 0
-              });
-            }
+        }
+        
+        // 如果有默认源账户ID，设置可用余额
+        if (defaultSourceAccountId) {
+          const sourceAccount = response.data.find((acc: any) => acc.id == defaultSourceAccountId);
+          if (sourceAccount) {
+            form.setFieldsValue({ 
+              sourceAccount: sourceAccount.id,
+              sourceBalance: sourceAccount.availableBalance || 0
+            });
+          }
           }
           
           // 如果有默认目标账户ID且为内部转账，设置目标账户
