@@ -2755,7 +2755,7 @@ const AccountMonitor: React.FC = () => {
               style={{ cursor: 'pointer' }}
               onClick={(e) => {
                 e.stopPropagation(); // 阻止冒泡，避免触发行点击事件
-                handleViewKycInfo(record.id, actualLevel);
+                handleViewKycInfo(record.id, actualLevel ?? 0); // 使用默认值0处理undefined情况
               }}
             >
               {text}
