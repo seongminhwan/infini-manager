@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Popover, Tag, Button, Space, message } from 'antd';
-import { DollarOutlined, ArrowDownOutlined, ArrowUpOutlined, ArrowLeftOutlined } from '@ant-design/icons';
-import TransferForm from './TransferForm';
+import { Popover, Tag, Button, Space } from 'antd';
+import { DollarOutlined, ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 
 interface TransferActionPopoverProps {
   account: {
@@ -14,46 +14,32 @@ interface TransferActionPopoverProps {
 /**
  * 可用余额 Tag + Popover 组件
  * 1. 显示余额标签，点击后弹出 Popover
- * 2. Popover 首屏展示"转入 / 转出"按钮
- * 3. 点击按钮后切换到转账表单
+ * 2. Popover 展示"转入 / 转出"按钮
+ * 3. 点击按钮后导航到账户转账页面
  */
 const TransferActionPopover: React.FC<TransferActionPopoverProps> = ({ account }) => {
   const [visible, setVisible] = useState(false);
-  // 添加视图状态，用于控制显示按钮还是表单
-  const [currentView, setCurrentView] = useState<'buttons' | 'transferForm'>('buttons');
-  // 添加当前操作类型状态
-  const [actionType, setActionType] = useState<'in' | 'out'>('in');
+  const navigate = useNavigate();
 
   const handleVisibleChange = (v: boolean) => {
     setVisible(v);
-    // 当关闭弹窗时，重置状态
-    if (!v) {
-      setCurrentView('buttons');
-    }
   };
 
-  // 处理点击转入/转出按钮
+  // 处理点击转入/转出按钮 - 导航到账户转账页面
   const handleAction = (type: 'in' | 'out') => {
     console.log(`点击${type==='in'?'转入':'转出'}按钮`, account);
-    // 设置当前操作类型
-    setActionType(type);
-    // 切换到表单视图
-    setCurrentView('transferForm');
-  };
-
-  // 处理返回按钮点击
-  const handleBack = () => {
-    setCurrentView('buttons');
-  };
-
-  // 处理转账完成或取消
-  const handleTransferFinished = (success: boolean) => {
-    if (success) {
-      message.success(`${actionType === 'in' ? '转入' : '转出'}操作已完成`);
-    }
-    // 重置状态并关闭弹窗
+    
+    // 关闭弹窗
     setVisible(false);
-    setCurrentView('buttons');
+    
+    // 根据类型构建参数并导航
+    if (type === 'in') {
+      // 转入：将当前账户作为目标账户
+      navigate(`/account-transfer?targetType=internal&internalTarget=${account.id}`);
+    } else {
+      // 转出：将当前账户作为源账户
+      navigate(`/account-transfer?sourceAccount=${account.id}`);
+    }
   };
 
   // 渲染按钮视图
@@ -81,39 +67,6 @@ const TransferActionPopover: React.FC<TransferActionPopoverProps> = ({ account }
     </Space>
   );
 
-  // 渲染表单视图
-  const renderTransferFormView = () => (
-    <div style={{ width: 300 }}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-        <Button 
-          icon={<ArrowLeftOutlined />} 
-          onClick={handleBack}
-          type="link"
-          style={{ padding: 0, marginRight: 8 }}
-        />
-        <h4 style={{ margin: 0 }}>
-          {actionType === 'in' ? '转入' : '转出'}
-        </h4>
-      </div>
-      
-      {/* 使用现有的TransferForm组件 */}
-      <TransferForm 
-        sourceAccountId={account.id} 
-        mode={actionType} 
-        onFinished={handleTransferFinished}
-      />
-    </div>
-  );
-
-  // 根据当前视图状态渲染不同的内容
-  const renderContent = () => {
-    if (currentView === 'buttons') {
-      return renderButtonsView();
-    } else {
-      return renderTransferFormView();
-    }
-  };
-
   return (
     <Popover
       open={visible}
@@ -122,7 +75,7 @@ const TransferActionPopover: React.FC<TransferActionPopoverProps> = ({ account }
       placement="rightBottom"
       getPopupContainer={() => document.body}
       destroyTooltipOnHide
-      content={renderContent()}
+      content={renderButtonsView()}
     >
       <Tag
         color={account.availableBalance > 0 ? 'green' : 'default'}
@@ -135,4 +88,4 @@ const TransferActionPopover: React.FC<TransferActionPopoverProps> = ({ account }
   );
 };
 
-export default TransferActionPopover; 
+export default TransferActionPopover;
