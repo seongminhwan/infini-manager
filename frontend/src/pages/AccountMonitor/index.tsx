@@ -638,29 +638,29 @@ const AccountDetailModal: React.FC<{
     console.log('当前账户信息:', account);
     console.log('verification_level:', account.verification_level);
 
-    return (
+  return (
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-    <div>
-      <Title level={4} style={{ margin: 0 }}>
-        账户详情
-        <StatusTag color={account.status === 'active' ? 'green' : 'orange'}>
-          {account.status === 'active' ? '活跃' : account.status}
-        </StatusTag>
-        {account.verification_level !== undefined && (
-          <StatusTag color={
-            account.verification_level === 2 ? 'green' : 
-            account.verification_level === 3 ? 'gold' : 
-            account.verification_level === 1 ? 'blue' : 'orange'
-          }>
-            {account.verification_level === 2 ? 'KYC认证' : 
-             account.verification_level === 3 ? 'KYC认证中' :
-             account.verification_level === 1 ? '基础认证' : '未认证'}
-          </StatusTag>
-        )}
-      </Title>
-    </div>
-    <div>
+          <div>
+            <Title level={4} style={{ margin: 0 }}>
+              账户详情
+              <StatusTag color={account.status === 'active' ? 'green' : 'orange'}>
+                {account.status === 'active' ? '活跃' : account.status}
+              </StatusTag>
+              {account.verification_level !== undefined && (
+                <StatusTag color={
+                  account.verification_level === 2 ? 'green' : 
+                  account.verification_level === 3 ? 'gold' : 
+                  account.verification_level === 1 ? 'blue' : 'orange'
+                }>
+                  {account.verification_level === 2 ? 'KYC认证' : 
+                  account.verification_level === 3 ? 'KYC认证中' :
+                  account.verification_level === 1 ? '基础认证' : '未认证'}
+                </StatusTag>
+              )}
+            </Title>
+          </div>
+          <div>
           {account.mockUserId && (
             <Button 
               type="primary"
