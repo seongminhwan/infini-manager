@@ -3625,6 +3625,93 @@ const AccountMonitor: React.FC = () => {
     );
   };
 
+  // KYC信息弹窗状态
+  const [kycModalVisible, setKycModalVisible] = useState<boolean>(false);
+  const [kycInfo, setKycInfo] = useState<any>(null);
+  const [loadingKycInfo, setLoadingKycInfo] = useState<boolean>(false);
+  const [selectedKycAccountId, setSelectedKycAccountId] = useState<string>('');
+  
+  // 查看KYC信息
+  const handleViewKycInfo = async (accountId: number, verificationLevel: number) => {
+    // 显示加载状态
+    setLoadingKycInfo(true);
+    setKycModalVisible(true);
+    setSelectedKycAccountId(accountId.toString());
+    
+    try {
+      // 获取KYC信息
+      const response = await api.get(`${API_BASE_URL}/api/infini-accounts/kyc/information/${accountId}`);
+      console.log('获取KYC信息响应:', response);
+      
+      if (response.data.success && response.data.data.kyc_information && response.data.data.kyc_information.length > 0) {
+        const kycInfoData = response.data.data.kyc_information[0];
+        
+        // 处理KYC认证中的状态
+        if (verificationLevel === 3 && (!kycInfoData.status || kycInfoData.status === 0)) {
+          kycInfoData.status = 1; // 验证中状态
+        }
+        
+        // 转换为前端组件需要的格式
+        const transformedInfo = {
+          id: kycInfoData.id,
+          isValid: verificationLevel === 2 ? true : Boolean(kycInfoData.is_valid),
+          type: kycInfoData.type,
+          s3Key: kycInfoData.s3_key,
+          firstName: kycInfoData.first_name,
+          lastName: kycInfoData.last_name,
+          country: kycInfoData.country,
+          phone: kycInfoData.phone,
+          phoneCode: kycInfoData.phone_code,
+          identificationNumber: kycInfoData.identification_number,
+          status: verificationLevel === 2 ? 2 : kycInfoData.status,
+          createdAt: kycInfoData.created_at,
+          imageUrl: kycInfoData.image_url
+        };
+        
+        setKycInfo(transformedInfo);
+      } else {
+        // 处理无KYC信息的情况
+        if (verificationLevel === 3) {
+          // KYC认证中状态，创建默认信息
+          setKycInfo({
+            id: accountId,
+            status: 1, // 验证中状态
+            isValid: false,
+            type: 0,
+            createdAt: Math.floor(Date.now() / 1000)
+          });
+        } else {
+          setKycInfo({});
+          message.warning('未查询到KYC信息');
+        }
+      }
+    } catch (error) {
+      console.error('获取KYC信息出错:', error);
+      message.error('获取KYC信息失败');
+      // 错误时也创建基本信息对象
+      if (verificationLevel === 3) {
+        setKycInfo({
+          id: accountId,
+          status: 1, // 验证中状态
+          isValid: false,
+          type: 0,
+          createdAt: Math.floor(Date.now() / 1000)
+        });
+      } else {
+        setKycInfo({});
+      }
+    } finally {
+      setLoadingKycInfo(false);
+    }
+  };
+  
+  // 关闭KYC信息弹窗
+  const handleCloseKycModal = () => {
+    setKycModalVisible(false);
+    setKycInfo(null);
+    setSelectedKycAccountId('');
+  };
+
   // 首次加载时使用分页API
   useEffect(() => {
     fetchPaginatedAccounts();
