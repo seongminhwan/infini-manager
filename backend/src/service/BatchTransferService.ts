@@ -108,27 +108,27 @@ export class BatchTransferService {
           updated_at: new Date()
         });
         
-        // 创建转账关系记录
-        const relationRecords = data.relations.map(relation => {
-          if (data.type === 'one_to_many') {
-            // 固定源账户 → 多个目标账户
-            return {
-              batch_id: batchId,
-              source_account_id: data.sourceAccountId,
-              target_account_id: relation.targetAccountId,
-              contact_type: relation.contactType || 'inner',
-              target_identifier: relation.targetIdentifier || '',
-              amount: relation.amount,
-              status: 'pending',
-              created_at: new Date(),
-              updated_at: new Date()
-            };
-          }
-          // 多对一模式：多个源账户 → 固定目标账户
+      // 创建转账关系记录
+      const relationRecords = data.relations.map(relation => {
+        if (data.type === 'one_to_many') {
+          // 固定源账户 → 多个目标账户
           return {
             batch_id: batchId,
-            source_account_id: relation.sourceAccountId,
-            target_account_id: data.targetAccountId,
+            source_account_id: data.sourceAccountId,
+            matched_account_id: relation.targetAccountId,
+            contact_type: relation.contactType || 'inner',
+            target_identifier: relation.targetIdentifier || '',
+            amount: relation.amount,
+            status: 'pending',
+            created_at: new Date(),
+            updated_at: new Date()
+          };
+        }
+        // 多对一模式：多个源账户 → 固定目标账户
+        return {
+          batch_id: batchId,
+          source_account_id: relation.sourceAccountId,
+          matched_account_id: data.targetAccountId,
             contact_type: relation.contactType || 'inner',
             target_identifier: relation.targetIdentifier || '',
             amount: relation.amount,
