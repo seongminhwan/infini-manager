@@ -2761,7 +2761,6 @@ const AccountMonitor: React.FC = () => {
           {text}
         </Tag>
       </Tooltip>
-      </>
     );
       }
     },
