@@ -144,7 +144,13 @@ const KycInfoPopover: React.FC<KycInfoPopoverProps> = ({ accountId, verification
           <Descriptions.Item label="国家">{kycInfo.country}</Descriptions.Item>
         )}
         {kycInfo.phone && (
-          <Descriptions.Item label="电话">{kycInfo.phoneCode ? `+${kycInfo.phoneCode} ` : ''}{kycInfo.phone}</Descriptions.Item>
+          <Descriptions.Item label="电话">
+            {kycInfo.phoneCode 
+              ? (kycInfo.phoneCode.startsWith('+') ? kycInfo.phoneCode : `+${kycInfo.phoneCode}`) + ' ' 
+              : ''
+            }
+            {kycInfo.phone}
+          </Descriptions.Item>
         )}
         {kycInfo.identificationNumber && (
           <Descriptions.Item label="证件号码">{kycInfo.identificationNumber}</Descriptions.Item>
