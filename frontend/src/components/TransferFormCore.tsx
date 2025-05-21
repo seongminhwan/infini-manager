@@ -141,7 +141,9 @@ const TransferFormCore: React.FC<TransferFormCoreProps> = ({
   // 处理转账提交
   const handleSubmit = async (values: any) => {
     // 根据转账模式调整源账户和目标账户
-    let sourceAccountId, targetIdentifier, actualContactType;
+    let sourceAccountId: string | number;
+    let targetIdentifier: string;
+    let actualContactType: 'uid' | 'email' | 'inner';
     
     if (mode === 'in' && defaultTargetAccountId) {
       // 转入模式：源=选择的账户，目标=预设账户
