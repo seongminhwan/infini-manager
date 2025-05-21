@@ -103,7 +103,7 @@ const TransferActionPopover: React.FC<TransferActionPopoverProps> = ({ account }
           defaultTargetAccountId={actionType === 'in' ? account.id : undefined}
           mode={actionType}
           compact={true}
-          showAdvancedOptions={false}
+          showAdvancedOptions={true}
           onFinished={handleTransferFinished}
         />
       </Modal>
