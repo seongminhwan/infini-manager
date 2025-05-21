@@ -95,7 +95,7 @@ export class BatchTransferService {
         // 创建批量转账记录  (字段需与 migration 中保持一致)
         const [batchId] = await trx('infini_batch_transfers').insert({
           name: data.name,
-          type: data.type,              // one_to_many | many_to_one
+          batch_type: data.type,        // one_to_many | many_to_one
           status: 'pending',
           source: 'batch',              // 固定来源
           total_amount: totalAmount,
