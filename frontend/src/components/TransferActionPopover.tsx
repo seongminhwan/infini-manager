@@ -96,4 +96,15 @@ const TransferActionPopover: React.FC<TransferActionPopoverProps> = ({ account }
         onCancel={() => setModalVisible(false)}
         footer={null}
         destroyOnClose
-      ></Modal>
+      >
+        <TransferForm
+          sourceAccountId={account.id}
+          mode={actionType}
+          onFinished={handleTransferFinished}
+        />
+      </Modal>
+    </>
+  );
+};
+
+export default TransferActionPopover;
