@@ -611,14 +611,19 @@ const ProxyManage: React.FC = () => {
             label="代理策略"
             rules={[{ required: true, message: '请选择代理策略' }]}
           >
-            <Select placeholder="选择代理策略">
+            <Select 
+              placeholder="选择代理策略"
+              dropdownMatchSelectWidth={false}
+              dropdownStyle={{ minWidth: 300 }}
+              optionLabelProp="label"
+            >
               {proxyModeOptions.map(option => (
-                <Option key={option.value} value={option.value}>
+                <Option key={option.value} value={option.value} label={option.label}>
                   <Space>
                     {option.icon}
-                    <div>
+                    <div style={{ maxWidth: '100%' }}>
                       <div>{option.label}</div>
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                      <Text type="secondary" style={{ fontSize: '12px', display: 'block', whiteSpace: 'normal' }}>
                         {option.description}
                       </Text>
                     </div>
