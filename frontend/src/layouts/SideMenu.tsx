@@ -18,6 +18,7 @@ import {
   CreditCardOutlined,
   ScheduleOutlined,
   ApiOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -115,9 +116,9 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // 菜单项配置 - 重新组织为业务功能、资金操作、系统管理和工具等逻辑分组
+  // 菜单项配置 - 按功能模块重新组织
   const menuItems = [
-    // ------------ 概览和监控 ------------
+    // ------------ 总览监控 ------------
     {
       key: '/overview',
       icon: <DashboardOutlined />,
@@ -136,29 +137,21 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       label: '账户批量注册机',
     },
     {
+      key: '/random-user-manage',
+      icon: <IdcardOutlined />,
+      label: '模拟用户数据管理',
+    },
+    {
       key: '/account-group-manage',
       icon: <TeamOutlined />,
       label: '账户分组管理',
     },
     
-    // ------------ 卡片管理 ------------
+    // ------------ 资金管理 ------------
     {
-      key: 'card-ops',
-      icon: <CreditCardOutlined />,
-      label: '卡片管理',
-      children: [
-        {
-          key: '/batch-card-apply',
-          label: '批量开卡',
-        }
-      ]
-    },
-    
-    // ------------ 资金操作 ------------
-    {
-      key: 'account-ops',
+      key: 'fund-ops',
       icon: <SwapOutlined />,
-      label: '账户资金',
+      label: '资金管理',
       children: [
         {
           key: '/account-transfer',
@@ -183,6 +176,15 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
         }
       ]
     },
+    
+    // ------------ 卡片服务 ------------
+    {
+      key: '/batch-card-apply',
+      icon: <CreditCardOutlined />,
+      label: '批量开卡',
+    },
+    
+    // ------------ 推广返现 ------------
     {
       key: 'aff-ops',
       icon: <DollarOutlined />,
@@ -199,7 +201,39 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       ]
     },
     
+    // ------------ 支持工具 ------------
+    {
+      key: '/email-manage',
+      icon: <MailOutlined />,
+      label: '主邮箱管理',
+    },
+    {
+      key: '/kyc-image-manage',
+      icon: <FileImageOutlined />,
+      label: 'KYC图片管理',
+    },
+    {
+      key: '/proxy-pool-manage',
+      icon: <ApiOutlined />,
+      label: (
+        <Space>
+          代理管理
+          <BetaBadge>Beta</BetaBadge>
+        </Space>
+      ),
+    },
+    
     // ------------ 系统管理 ------------
+    {
+      key: '/system-settings',
+      icon: <SettingOutlined />,
+      label: (
+        <Space>
+          系统设置
+          <BetaBadge>Beta</BetaBadge>
+        </Space>
+      ),
+    },
     {
       key: '/task-manage',
       icon: <ScheduleOutlined />,
@@ -239,23 +273,6 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
           <DevBadge>开发中</DevBadge>
         </Space>
       ),
-    },
-    
-    // ------------ 辅助工具 ------------
-    {
-      key: '/email-manage',
-      icon: <MailOutlined />,
-      label: '主邮箱管理',
-    },
-    {
-      key: '/kyc-image-manage',
-      icon: <FileImageOutlined />,
-      label: 'KYC图片管理',
-    },
-    {
-      key: '/random-user-manage',
-      icon: <IdcardOutlined />,
-      label: '模拟用户数据管理',
     },
   ];
 
