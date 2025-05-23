@@ -19,6 +19,8 @@ import BatchTransfer from '../pages/BatchTransfer';
 import BatchTransferDetails from '../pages/BatchTransferDetails';
 import TaskManage from '../pages/TaskManage';
 import ApiLogMonitor from '../pages/ApiLogMonitor';
+import SystemSettings from '../pages/SystemSettings';
+import ProxyManage from '../pages/ProxyPoolManage';
 
 /**
  * 应用路由配置
@@ -54,6 +56,10 @@ const AppRoutes: React.FC = () => {
         <Route path="/task-manage" element={<TaskManage />} />
         {/* API日志监控路由 */}
         <Route path="/api-log-monitor" element={<ApiLogMonitor />} />
+        {/* 系统设置路由 */}
+        <Route path="/system-settings" element={<SystemSettings />} />
+        {/* 代理管理路由 */}
+        <Route path="/proxy-pool-manage" element={<ProxyManage />} />
       </Route>
     </Routes>
   );
