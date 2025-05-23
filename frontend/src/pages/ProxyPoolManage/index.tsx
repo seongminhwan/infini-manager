@@ -1,6 +1,6 @@
 /**
  * 代理管理页面
- * 提供全局代理策略配置、代理服务器管理和验证等功能
+ * 提供全局代理策略配置和代理服务器管理功能
  */
 import React, { useState, useEffect } from 'react';
 import {
@@ -25,6 +25,7 @@ import {
   Popconfirm,
   InputNumber,
   Statistic,
+  Descriptions,
 } from 'antd';
 import {
   PlusOutlined,
@@ -50,21 +51,6 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 // 接口定义
-interface ProxyPool {
-  id: number;
-  name: string;
-  description?: string;
-  proxy_mode: 'none' | 'round_robin' | 'random' | 'failover';
-  enabled: boolean;
-  proxy_stats?: {
-    total: number;
-    enabled: number;
-    healthy: number;
-  };
-  created_at: string;
-  updated_at: string;
-}
-
 interface ProxyServer {
   id: number;
   pool_id: number;
@@ -84,23 +70,34 @@ interface ProxyServer {
   updated_at: string;
 }
 
+interface GlobalProxyConfig {
+  id: number;
+  name: string;
+  description?: string;
+  proxy_mode: 'none' | 'round_robin' | 'random' | 'failover';
+  enabled: boolean;
+  proxy_stats?: {
+    total: number;
+    enabled: number;
+    healthy: number;
+  };
+}
+
 const ProxyManage: React.FC = () => {
   // 状态管理
-  const [pools, setPools] = useState<ProxyPool[]>([]);
+  const [globalConfig, setGlobalConfig] = useState<GlobalProxyConfig | null>(null);
   const [servers, setServers] = useState<ProxyServer[]>([]);
   const [loading, setLoading] = useState(false);
   const [serversLoading, setServersLoading] = useState(false);
-  const [selectedPool, setSelectedPool] = useState<ProxyPool | null>(null);
   
   // 弹窗状态
-  const [poolModalVisible, setPoolModalVisible] = useState(false);
+  const [configModalVisible, setConfigModalVisible] = useState(false);
   const [serverModalVisible, setServerModalVisible] = useState(false);
   const [batchModalVisible, setBatchModalVisible] = useState(false);
-  const [editingPool, setEditingPool] = useState<ProxyPool | null>(null);
   const [editingServer, setEditingServer] = useState<ProxyServer | null>(null);
   
   // 表单
-  const [poolForm] = Form.useForm();
+  const [configForm] = Form.useForm();
   const [serverForm] = Form.useForm();
   const [batchForm] = Form.useForm();
 
@@ -122,43 +119,40 @@ const ProxyManage: React.FC = () => {
 
   // 页面加载时获取数据
   useEffect(() => {
-    fetchPools();
+    fetchGlobalConfig();
   }, []);
 
-  // 选择代理策略组时获取服务器列表
+  // 全局配置发生变化时获取服务器列表
   useEffect(() => {
-    if (selectedPool) {
-      fetchServers(selectedPool.id);
+    if (globalConfig) {
+      fetchServers(globalConfig.id);
     }
-  }, [selectedPool]);
+  }, [globalConfig]);
 
-  // 获取代理策略组列表
-  const fetchPools = async () => {
+  // 获取全局代理配置
+  const fetchGlobalConfig = async () => {
     setLoading(true);
     try {
       const response = await proxyPoolApi.getPools();
-      if (response.success) {
-        setPools(response.data || []);
-        // 默认选择第一个代理策略组
-        if (response.data && response.data.length > 0 && !selectedPool) {
-          setSelectedPool(response.data[0]);
-        }
+      if (response.success && response.data && response.data.length > 0) {
+        // 默认使用第一个配置作为全局配置
+        setGlobalConfig(response.data[0]);
       } else {
-        message.error(response.message || '获取代理策略列表失败');
+        message.error(response.message || '获取全局代理配置失败');
       }
     } catch (error) {
-      console.error('获取代理策略列表失败:', error);
-      message.error('获取代理策略列表失败');
+      console.error('获取全局代理配置失败:', error);
+      message.error('获取全局代理配置失败');
     } finally {
       setLoading(false);
     }
   };
 
   // 获取代理服务器列表
-  const fetchServers = async (poolId: number) => {
+  const fetchServers = async (configId: number) => {
     setServersLoading(true);
     try {
-      const response = await proxyPoolApi.getServers(poolId);
+      const response = await proxyPoolApi.getServers(configId);
       if (response.success) {
         setServers(response.data || []);
       } else {
@@ -172,43 +166,41 @@ const ProxyManage: React.FC = () => {
     }
   };
 
-  // 创建/编辑代理策略组
-  const handlePoolSubmit = async (values: any) => {
+  // 更新全局代理配置
+  const handleConfigSubmit = async (values: any) => {
+    if (!globalConfig) return;
+    
     try {
-      const response = editingPool
-        ? await proxyPoolApi.updatePool(editingPool.id, values)
-        : await proxyPoolApi.createPool(values);
+      const response = await proxyPoolApi.updatePool(globalConfig.id, values);
       
       if (response.success) {
-        message.success(editingPool ? '代理策略更新成功' : '代理策略创建成功');
-        setPoolModalVisible(false);
-        setEditingPool(null);
-        poolForm.resetFields();
-        fetchPools();
+        message.success('全局代理配置更新成功');
+        setConfigModalVisible(false);
+        fetchGlobalConfig(); // 重新获取全局配置
       } else {
-        message.error(response.message || '操作失败');
+        message.error(response.message || '更新失败');
       }
     } catch (error) {
-      console.error('代理策略操作失败:', error);
-      message.error('操作失败');
+      console.error('更新全局代理配置失败:', error);
+      message.error('更新失败');
     }
   };
 
   // 创建/编辑代理服务器
   const handleServerSubmit = async (values: any) => {
-    if (!selectedPool) return;
+    if (!globalConfig) return;
     
     try {
       const response = editingServer
         ? await proxyPoolApi.updateServer(editingServer.id, values)
-        : await proxyPoolApi.addServer(selectedPool.id, values);
+        : await proxyPoolApi.addServer(globalConfig.id, values);
       
       if (response.success) {
         message.success(editingServer ? '代理服务器更新成功' : '代理服务器添加成功');
         setServerModalVisible(false);
         setEditingServer(null);
         serverForm.resetFields();
-        fetchServers(selectedPool.id);
+        fetchServers(globalConfig.id);
       } else {
         message.error(response.message || '操作失败');
       }
@@ -220,7 +212,7 @@ const ProxyManage: React.FC = () => {
 
   // 批量导入代理
   const handleBatchImport = async (values: any) => {
-    if (!selectedPool) return;
+    if (!globalConfig) return;
     
     try {
       const proxyStrings = values.proxyList
@@ -233,13 +225,13 @@ const ProxyManage: React.FC = () => {
         return;
       }
       
-      const response = await proxyPoolApi.batchAddServers(selectedPool.id, proxyStrings);
+      const response = await proxyPoolApi.batchAddServers(globalConfig.id, proxyStrings);
       
       if (response.success) {
         message.success(`成功导入 ${response.data.added} 个代理服务器`);
         setBatchModalVisible(false);
         batchForm.resetFields();
-        fetchServers(selectedPool.id);
+        fetchServers(globalConfig.id);
       } else {
         message.error(response.message || '批量导入失败');
       }
@@ -255,8 +247,8 @@ const ProxyManage: React.FC = () => {
       const response = await proxyPoolApi.deleteServer(serverId);
       if (response.success) {
         message.success('代理服务器删除成功');
-        if (selectedPool) {
-          fetchServers(selectedPool.id);
+        if (globalConfig) {
+          fetchServers(globalConfig.id);
         }
       } else {
         message.error(response.message || '删除失败');
@@ -273,8 +265,8 @@ const ProxyManage: React.FC = () => {
       const response = await proxyPoolApi.validateServer(serverId);
       if (response.success) {
         message.success('代理验证完成');
-        if (selectedPool) {
-          fetchServers(selectedPool.id);
+        if (globalConfig) {
+          fetchServers(globalConfig.id);
         }
       } else {
         message.error(response.message || '验证失败');
@@ -293,8 +285,8 @@ const ProxyManage: React.FC = () => {
         message.success('健康检查已开始，请稍后查看结果');
         // 延迟刷新数据
         setTimeout(() => {
-          if (selectedPool) {
-            fetchServers(selectedPool.id);
+          if (globalConfig) {
+            fetchServers(globalConfig.id);
           }
         }, 3000);
       } else {
@@ -307,10 +299,10 @@ const ProxyManage: React.FC = () => {
   };
 
   // 渲染代理统计
-  const renderPoolStats = () => {
-    if (!selectedPool?.proxy_stats) return null;
+  const renderProxyStats = () => {
+    if (!globalConfig?.proxy_stats) return null;
     
-    const { total, enabled, healthy } = selectedPool.proxy_stats;
+    const { total, enabled, healthy } = globalConfig.proxy_stats;
     const healthyRate = total > 0 ? Math.round((healthy / total) * 100) : 0;
     
     return (
@@ -361,83 +353,6 @@ const ProxyManage: React.FC = () => {
       </Row>
     );
   };
-
-  // 代理策略表格列
-  const poolColumns = [
-    {
-      title: '名称',
-      dataIndex: 'name',
-      key: 'name',
-      render: (text: string, record: ProxyPool) => (
-        <Space>
-          <GlobalOutlined style={{ color: '#1890ff' }} />
-          <Text strong>{text}</Text>
-          {!record.enabled && <Tag color="warning">已禁用</Tag>}
-        </Space>
-      ),
-    },
-    {
-      title: '代理策略',
-      dataIndex: 'proxy_mode',
-      key: 'proxy_mode',
-      render: (mode: string) => {
-        const option = proxyModeOptions.find(opt => opt.value === mode);
-        return (
-          <Space>
-            {option?.icon}
-            <span>{option?.label}</span>
-          </Space>
-        );
-      },
-    },
-    {
-      title: '代理统计',
-      key: 'stats',
-      render: (record: ProxyPool) => {
-        const stats = record.proxy_stats;
-        if (!stats) return '-';
-        
-        return (
-          <Space>
-            <Badge count={stats.total} showZero style={{ backgroundColor: '#1890ff' }} />
-            <Badge count={stats.healthy} showZero style={{ backgroundColor: '#52c41a' }} />
-            <Badge count={stats.total - stats.healthy} showZero style={{ backgroundColor: '#ff4d4f' }} />
-          </Space>
-        );
-      },
-    },
-    {
-      title: '描述',
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true,
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 200,
-      render: (record: ProxyPool) => (
-        <Space>
-          <Button
-            type="primary"
-            size="small"
-            onClick={() => setSelectedPool(record)}
-          >
-            管理
-          </Button>
-          <Button
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => {
-              setEditingPool(record);
-              setPoolModalVisible(true);
-              poolForm.setFieldsValue(record);
-            }}
-          />
-        </Space>
-      ),
-    },
-  ];
 
   // 代理服务器表格列
   const serverColumns = [
@@ -571,57 +486,63 @@ const ProxyManage: React.FC = () => {
           <GlobalOutlined /> 代理管理
         </Title>
         <Paragraph>
-          配置全局代理策略和代理服务器，支持HTTP、HTTPS、SOCKS4、SOCKS5代理，提供多种代理策略和健康检查功能。
+          配置全局代理策略和代理服务器，支持HTTP、HTTPS、SOCKS4、SOCKS5代理，提供代理健康检查功能。
         </Paragraph>
       </div>
 
-      {/* 代理策略列表 */}
-      <Card
-        title={
-          <Space>
-            <SettingOutlined />
-            代理策略配置
-          </Space>
-        }
-        extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              setEditingPool(null);
-              setPoolModalVisible(true);
-              poolForm.resetFields();
-            }}
-          >
-            新建代理策略
-          </Button>
-        }
-        style={{ marginBottom: 24 }}
-      >
-        <Table
-          dataSource={pools}
-          columns={poolColumns}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 个代理策略`,
-            pageSize: 10,
-          }}
-        />
-      </Card>
+      {/* 全局代理配置 */}
+      {globalConfig && (
+        <Card
+          title={
+            <Space>
+              <SettingOutlined />
+              全局代理配置
+            </Space>
+          }
+          extra={
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              onClick={() => {
+                setConfigModalVisible(true);
+                configForm.setFieldsValue(globalConfig);
+              }}
+            >
+              修改配置
+            </Button>
+          }
+          style={{ marginBottom: 24 }}
+        >
+          <Descriptions column={{ xxl: 4, xl: 3, lg: 3, md: 2, sm: 1, xs: 1 }}>
+            <Descriptions.Item label="代理策略">
+              <Space>
+                {proxyModeOptions.find(opt => opt.value === globalConfig.proxy_mode)?.icon}
+                <span>{proxyModeOptions.find(opt => opt.value === globalConfig.proxy_mode)?.label}</span>
+              </Space>
+            </Descriptions.Item>
+            <Descriptions.Item label="状态">
+              {globalConfig.enabled ? (
+                <Tag color="success">已启用</Tag>
+              ) : (
+                <Tag color="warning">已禁用</Tag>
+              )}
+            </Descriptions.Item>
+            {globalConfig.description && (
+              <Descriptions.Item label="描述" span={2}>
+                {globalConfig.description}
+              </Descriptions.Item>
+            )}
+          </Descriptions>
+        </Card>
+      )}
 
       {/* 代理服务器管理 */}
-      {selectedPool && (
+      {globalConfig && (
         <Card
           title={
             <Space>
               <ApiOutlined />
-              {selectedPool.name} - 代理服务器
-              <Tag color="blue" style={{ marginLeft: 8 }}>
-                {proxyModeOptions.find(opt => opt.value === selectedPool.proxy_mode)?.label}
-              </Tag>
+              代理服务器管理
             </Space>
           }
           extra={
@@ -652,7 +573,7 @@ const ProxyManage: React.FC = () => {
             </Space>
           }
         >
-          {renderPoolStats()}
+          {renderProxyStats()}
           
           <Table
             dataSource={servers}
@@ -669,43 +590,26 @@ const ProxyManage: React.FC = () => {
         </Card>
       )}
 
-      {/* 创建/编辑代理策略弹窗 */}
+      {/* 编辑全局代理配置弹窗 */}
       <Modal
-        title={editingPool ? '编辑代理策略' : '创建代理策略'}
-        open={poolModalVisible}
+        title="编辑全局代理配置"
+        open={configModalVisible}
         onCancel={() => {
-          setPoolModalVisible(false);
-          setEditingPool(null);
-          poolForm.resetFields();
+          setConfigModalVisible(false);
+          configForm.resetFields();
         }}
         footer={null}
         width={600}
       >
         <Form
-          form={poolForm}
+          form={configForm}
           layout="vertical"
-          onFinish={handlePoolSubmit}
+          onFinish={handleConfigSubmit}
         >
-          <Form.Item
-            name="name"
-            label="策略名称"
-            rules={[{ required: true, message: '请输入策略名称' }]}
-          >
-            <Input placeholder="例如：主要代理策略" />
-          </Form.Item>
-
-          <Form.Item
-            name="description"
-            label="描述"
-          >
-            <TextArea placeholder="代理策略描述信息" rows={3} />
-          </Form.Item>
-
           <Form.Item
             name="proxy_mode"
             label="代理策略"
             rules={[{ required: true, message: '请选择代理策略' }]}
-            initialValue="round_robin"
           >
             <Select placeholder="选择代理策略">
               {proxyModeOptions.map(option => (
@@ -725,26 +629,31 @@ const ProxyManage: React.FC = () => {
           </Form.Item>
 
           <Form.Item
+            name="description"
+            label="描述"
+          >
+            <TextArea placeholder="代理配置描述信息" rows={3} />
+          </Form.Item>
+
+          <Form.Item
             name="enabled"
             valuePropName="checked"
-            initialValue={true}
           >
             <Space>
               <Switch checkedChildren="启用" unCheckedChildren="禁用" />
-              <Text type="secondary">启用此代理策略</Text>
+              <Text type="secondary">启用全局代理</Text>
             </Space>
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0 }}>
             <Space>
               <Button type="primary" htmlType="submit">
-                {editingPool ? '更新' : '创建'}
+                更新
               </Button>
               <Button
                 onClick={() => {
-                  setPoolModalVisible(false);
-                  setEditingPool(null);
-                  poolForm.resetFields();
+                  setConfigModalVisible(false);
+                  configForm.resetFields();
                 }}
               >
                 取消
