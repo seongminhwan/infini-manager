@@ -308,6 +308,23 @@ export const batchTransferApi = {
     }
   },
   
+  // 获取批量转账关系列表
+  getBatchTransferRelations: async (id: string, params?: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    keyword?: string;
+  }) => {
+    try {
+      console.log(`获取批量转账关系列表, ID: ${id}`, params);
+      const response = await api.get(`${apiBaseUrl}/api/batch-transfers/${id}/relations`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('获取批量转账关系列表失败:', error);
+      throw error;
+    }
+  },
+  
   // 执行批量转账
   executeBatchTransfer: async (id: string, auto2FA: boolean = false) => {
     try {
@@ -388,6 +405,18 @@ export const batchTransferApi = {
       return response.data;
     } catch (error) {
       console.error('重试单个失败的转账失败:', error);
+      throw error;
+    }
+  },
+  
+  // 手动关闭批量转账任务
+  closeBatchTransfer: async (id: string, reason?: string) => {
+    try {
+      console.log(`手动关闭批量转账任务, ID: ${id}, 原因: ${reason || '无'}`);
+      const response = await api.post(`${apiBaseUrl}/api/batch-transfers/${id}/close`, { reason });
+      return response.data;
+    } catch (error) {
+      console.error('手动关闭批量转账任务失败:', error);
       throw error;
     }
   }

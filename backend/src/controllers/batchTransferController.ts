@@ -583,3 +583,134 @@ export const getFailedTransfers: ControllerMethod = async (req: Request, res: Re
     next(error);
   }
 };
+
+/**
+ * 获取批量转账关系列表（支持分页和筛选）
+ */
+export const getBatchTransferRelations: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { 
+      page = '1', 
+      pageSize = '20',
+      status,
+      keyword
+    } = req.query;
+    
+    // 获取页码和每页条数
+    const pageNum = parseInt(page as string, 10) || 1;
+    const pageSizeNum = parseInt(pageSize as string, 10) || 20;
+    
+    // 构建查询
+    let query = db('infini_batch_transfer_relations')
+      .leftJoin('infini_accounts as source_account', 'infini_batch_transfer_relations.source_account_id', 'source_account.id')
+      .leftJoin('infini_accounts as target_account', 'infini_batch_transfer_relations.matched_account_id', 'target_account.id')
+      .select(
+        'infini_batch_transfer_relations.*',
+        'source_account.email as source_account_email',
+        'source_account.uid as source_account_uid',
+        'target_account.email as target_account_email',
+        'target_account.uid as target_account_uid'
+      )
+      .where('infini_batch_transfer_relations.batch_id', id)
+      .orderBy('infini_batch_transfer_relations.id', 'asc');
+    
+    // 应用筛选条件
+    if (status) {
+      query = query.where('infini_batch_transfer_relations.status', status);
+    }
+    
+    // 关键词搜索（支持目标标识符、账户邮箱等）
+    if (keyword && typeof keyword === 'string' && keyword.trim() !== '') {
+      const searchTerm = `%${keyword.trim()}%`;
+      query = query.where((builder) => {
+        builder
+          .where('infini_batch_transfer_relations.target_identifier', 'like', searchTerm)
+          .orWhere('source_account.email', 'like', searchTerm)
+          .orWhere('target_account.email', 'like', searchTerm)
+          .orWhere('source_account.uid', 'like', searchTerm)
+          .orWhere('target_account.uid', 'like', searchTerm)
+          .orWhere('infini_batch_transfer_relations.error_message', 'like', searchTerm);
+      });
+    }
+    
+    // 获取总记录数
+    const countQuery = query.clone()
+      .clearSelect()
+      .clearOrder()
+      .count('infini_batch_transfer_relations.id as total')
+      .first();
+    const countResult = await countQuery;
+    const total = (countResult as any).total;
+    
+    // 应用分页
+    const offset = (pageNum - 1) * pageSizeNum;
+    query = query.limit(pageSizeNum).offset(offset);
+    
+    // 执行查询
+    const relations = await query;
+    
+    // 获取批量转账信息
+    const batchTransfer = await db('infini_batch_transfers')
+      .where('id', id)
+      .first();
+    
+    res.json({
+      success: true,
+      data: {
+        batchTransfer,
+        relations,
+        pagination: {
+          total,
+          page: pageNum,
+          pageSize: pageSizeNum,
+          totalPages: Math.ceil(total / pageSizeNum)
+        }
+      },
+      message: '成功获取批量转账关系列表'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 手动关闭批量转账任务
+ */
+export const closeBatchTransfer: ControllerMethod = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    // 查询批量转账记录
+    const batchTransfer = await db('infini_batch_transfers')
+      .where('id', id)
+      .first();
+    
+    if (!batchTransfer) {
+      return res.status(404).json({
+        success: false,
+        message: '找不到指定的批量转账'
+      });
+    }
+    
+    // 只允许关闭pending和processing状态的批量转账
+    if (!['pending', 'processing'].includes(batchTransfer.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `批量转账当前状态为${batchTransfer.status}，只能关闭pending或processing状态的批量转账`
+      });
+    }
+    
+    // 调用服务关闭批量转账
+    const response = await batchTransferService.closeBatchTransfer(parseInt(id), reason);
+    
+    if (response.success) {
+      res.json(response);
+    } else {
+      res.status(400).json(response);
+    }
+  } catch (error) {
+    next(error);
+  }
+};

@@ -488,4 +488,96 @@ router.post('/:batchId/relations/:relationId/retry',
   batchTransferController.retryTransferRelation
 );
 
+/**
+ * @swagger
+ * /api/batch-transfers/{id}/relations:
+ *   get:
+ *     summary: 获取批量转账关系列表
+ *     tags: [BatchTransfers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: 批量转账ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: 页码
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *         description: 每页条数
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: 状态筛选
+ *       - in: query
+ *         name: keyword
+ *         schema:
+ *           type: string
+ *         description: 关键词搜索
+ *     responses:
+ *       200:
+ *         description: 成功获取批量转账关系列表
+ *       404:
+ *         description: 批量转账不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.get('/:id/relations', 
+  createBusinessContextMiddleware('batch_transfer', 'relations', (req) => ({
+    batchId: req.params.id,
+    page: req.query.page,
+    pageSize: req.query.pageSize,
+    status: req.query.status,
+    keyword: req.query.keyword
+  })),
+  batchTransferController.getBatchTransferRelations
+);
+
+/**
+ * @swagger
+ * /api/batch-transfers/{id}/close:
+ *   post:
+ *     summary: 手动关闭批量转账任务
+ *     tags: [BatchTransfers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: 批量转账ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: 关闭原因
+ *     responses:
+ *       200:
+ *         description: 批量转账已关闭
+ *       400:
+ *         description: 无法关闭（状态不正确或其他错误）
+ *       404:
+ *         description: 批量转账不存在
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/:id/close', 
+  createBusinessContextMiddleware('batch_transfer', 'close', (req) => ({
+    batchId: req.params.id,
+    reason: req.body.reason
+  })),
+  batchTransferController.closeBatchTransfer
+);
+
 export default router;

@@ -174,6 +174,10 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
           ),
         },
         {
+          key: '/batch-transfer-details',
+          label: '批量转账明细',
+        },
+        {
           key: '/account-details',
           label: '账户明细',
         }

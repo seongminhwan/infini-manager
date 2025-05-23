@@ -96,7 +96,7 @@ export class BatchTransferService {
         const [batchId] = await trx('infini_batch_transfers').insert({
           name: data.name,
           batch_number: `BATCH${Date.now()}`,  // 使用时间戳作为批次号
-          batch_type: data.type,        // one_to_many | many_to_one
+          type: data.type,                     // one_to_many | many_to_one (修复字段名)
           status: 'pending',
           source: 'batch',              // 固定来源
           total_amount: totalAmount,
@@ -104,8 +104,8 @@ export class BatchTransferService {
           failed_count: 0,
           remarks: data.remarks || null,
           created_by: data.createdBy || null,
-          created_at: new Date(),
-          updated_at: new Date()
+          created_at: trx.fn.now(),
+          updated_at: trx.fn.now()
         });
         
       // 创建转账关系记录
@@ -120,8 +120,8 @@ export class BatchTransferService {
             target_identifier: relation.targetIdentifier || '',
             amount: relation.amount,
             status: 'pending',
-            created_at: new Date(),
-            updated_at: new Date()
+            created_at: trx.fn.now(),
+            updated_at: trx.fn.now()
           };
         }
         // 多对一模式：多个源账户 → 固定目标账户
@@ -133,8 +133,8 @@ export class BatchTransferService {
             target_identifier: relation.targetIdentifier || '',
             amount: relation.amount,
             status: 'pending',
-            created_at: new Date(),
-            updated_at: new Date()
+            created_at: trx.fn.now(),
+            updated_at: trx.fn.now()
           };
         });
         
@@ -150,7 +150,7 @@ export class BatchTransferService {
             totalAmount,
             relationsCount: data.relations.length
           }),
-          created_at: new Date()
+          created_at: trx.fn.now()
         });
         
         // 提交事务
@@ -246,12 +246,23 @@ export class BatchTransferService {
       
       // 更新批量转账状态和计数
       const finalStatus = failedCount === 0 ? 'completed' : (successCount === 0 ? 'failed' : 'completed');
+      
+      // 获取当前的成功和失败计数
+      const currentCounts = await db('infini_batch_transfers')
+        .where('id', batchId)
+        .select('success_count', 'failed_count')
+        .first();
+      
+      // 累加计数而不是覆盖
+      const totalSuccessCount = (currentCounts?.success_count || 0) + successCount;
+      const totalFailedCount = (currentCounts?.failed_count || 0) + failedCount;
+      
       await db('infini_batch_transfers')
         .where('id', batchId)
         .update({
           status: finalStatus,
-          success_count: successCount,
-          failed_count: failedCount,
+          success_count: totalSuccessCount,
+          failed_count: totalFailedCount,
           completed_at: new Date(),
           updated_at: new Date()
         });
@@ -260,7 +271,7 @@ export class BatchTransferService {
       await db('infini_batch_transfer_histories').insert({
         batch_id: batchId,
         status: finalStatus,
-        message: `批量转账已完成，成功: ${successCount}，失败: ${failedCount}`,
+        message: `批量转账已完成，本次成功: ${successCount}，本次失败: ${failedCount}，总成功: ${totalSuccessCount}，总失败: ${totalFailedCount}`,
         created_at: new Date()
       });
       
@@ -268,11 +279,11 @@ export class BatchTransferService {
         success: true,
         data: {
           batchId,
-          successCount,
-          failedCount,
+          successCount: totalSuccessCount,
+          failedCount: totalFailedCount,
           status: finalStatus
         },
-        message: `批量转账已完成，成功: ${successCount}，失败: ${failedCount}`
+        message: `批量转账已完成，本次成功: ${successCount}，本次失败: ${failedCount}，总成功: ${totalSuccessCount}，总失败: ${totalFailedCount}`
       };
     } catch (error) {
       console.error('执行批量转账失败:', error);
@@ -315,6 +326,12 @@ export class BatchTransferService {
         sourceAccountId = relation.source_account_id.toString();
         contactType = (relation.contact_type || 'inner') as 'uid' | 'email' | 'inner';
         targetIdentifier = relation.target_identifier || '';
+        
+        // 如果没有提供targetIdentifier但提供了matched_account_id，使用内部账户转账
+        if ((!targetIdentifier || targetIdentifier === '') && relation.matched_account_id) {
+          contactType = 'inner';
+          targetIdentifier = relation.matched_account_id.toString();
+        }
       } else { // 多对一模式
         // 多对一模式：源账户来自关系，目标账户固定
         if (!relation.source_account_id) {
@@ -539,8 +556,30 @@ export class BatchTransferService {
       const batchId = relation.batch_id;
       const finalStatus = await this.determineFinalStatus(batchId);
       
-      // 更新批量转账状态
-      await this.updateBatchStatus(batchId, finalStatus);
+      // 重新计算并更新批量转账状态和计数
+      const completedCount = await db('infini_batch_transfer_relations')
+        .where('batch_id', batchId)
+        .where('status', 'completed')
+        .count('id as count')
+        .first()
+        .then(result => (result as any).count);
+        
+      const failedCount = await db('infini_batch_transfer_relations')
+        .where('batch_id', batchId)
+        .where('status', 'failed')
+        .count('id as count')
+        .first()
+        .then(result => (result as any).count);
+      
+      await db('infini_batch_transfers')
+        .where('id', batchId)
+        .update({
+          status: finalStatus,
+          success_count: completedCount,
+          failed_count: failedCount,
+          completed_at: finalStatus === 'completed' || finalStatus === 'failed' ? new Date() : null,
+          updated_at: new Date()
+        });
       
       return {
         success: result,
@@ -685,5 +724,118 @@ export class BatchTransferService {
     }
     
     return duplicates;
+  }
+
+  /**
+   * 手动关闭批量转账
+   * @param batchId 批量转账ID
+   * @param reason 关闭原因
+   * @returns 关闭结果
+   */
+  async closeBatchTransfer(batchId: number, reason?: string): Promise<ApiResponse> {
+    try {
+      // 获取批量转账信息
+      const batch = await db('infini_batch_transfers').where('id', batchId).first();
+      if (!batch) {
+        return {
+          success: false,
+          message: '找不到指定的批量转账'
+        };
+      }
+      
+      // 检查状态是否可以关闭
+      if (batch.status === 'completed' || batch.status === 'failed') {
+        return {
+          success: false,
+          message: `批量转账已${batch.status === 'completed' ? '完成' : '失败'}，无法关闭`
+        };
+      }
+      
+      // 开始数据库事务
+      const trx = await db.transaction();
+      
+      try {
+        // 获取所有待处理和处理中的转账关系
+        const pendingRelations = await trx('infini_batch_transfer_relations')
+          .where('batch_id', batchId)
+          .whereIn('status', ['pending', 'processing']);
+        
+        // 将所有待处理和处理中的关系标记为失败
+        if (pendingRelations.length > 0) {
+          await trx('infini_batch_transfer_relations')
+            .where('batch_id', batchId)
+            .whereIn('status', ['pending', 'processing'])
+            .update({
+              status: 'failed',
+              error_message: reason || '批量转账已被手动关闭',
+              updated_at: new Date()
+            });
+        }
+        
+        // 重新计算成功和失败数量
+        const completedCount = await trx('infini_batch_transfer_relations')
+          .where('batch_id', batchId)
+          .where('status', 'completed')
+          .count('id as count')
+          .first()
+          .then(result => (result as any).count);
+          
+        const failedCount = await trx('infini_batch_transfer_relations')
+          .where('batch_id', batchId)
+          .where('status', 'failed')
+          .count('id as count')
+          .first()
+          .then(result => (result as any).count);
+        
+        // 更新批量转账状态为失败
+        await trx('infini_batch_transfers')
+          .where('id', batchId)
+          .update({
+            status: 'failed',
+            success_count: completedCount,
+            failed_count: failedCount,
+            completed_at: new Date(),
+            updated_at: new Date()
+          });
+        
+        // 添加历史记录
+        await trx('infini_batch_transfer_histories').insert({
+          batch_id: batchId,
+          status: 'failed',
+          message: `批量转账已被手动关闭${reason ? `，原因：${reason}` : ''}`,
+          details: JSON.stringify({
+            closedRelationsCount: pendingRelations.length,
+            completedCount,
+            failedCount,
+            reason: reason || '手动关闭'
+          }),
+          created_at: new Date()
+        });
+        
+        // 提交事务
+        await trx.commit();
+        
+        return {
+          success: true,
+          data: {
+            batchId,
+            closedRelationsCount: pendingRelations.length,
+            completedCount,
+            failedCount
+          },
+          message: `批量转账已关闭，共关闭 ${pendingRelations.length} 个待处理的转账关系`
+        };
+      } catch (error) {
+        // 回滚事务
+        await trx.rollback();
+        throw error;
+      }
+    } catch (error) {
+      console.error('关闭批量转账失败:', error);
+      return {
+        success: false,
+        message: `关闭批量转账失败: ${(error as Error).message}`
+      };
+    }
   }
 }

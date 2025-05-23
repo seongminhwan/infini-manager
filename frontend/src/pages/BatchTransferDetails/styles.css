@@ -1,0 +1,258 @@
+/* 批量转账明细页面样式 */
+.batch-transfer-details {
+  padding: 24px;
+}
+
+.batch-transfer-details .search-form {
+  margin-bottom: 24px;
+}
+
+.batch-transfer-details .table-card {
+  margin-bottom: 24px;
+}
+
+.batch-transfer-details .detail-modal {
+  top: 20px;
+}
+
+.batch-transfer-details .detail-modal .ant-modal-body {
+  padding: 16px;
+}
+
+.batch-transfer-details .status-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.batch-transfer-details .progress-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.batch-transfer-details .progress-info .count {
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.batch-transfer-details .account-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.batch-transfer-details .account-info .main {
+  font-weight: 500;
+}
+
+.batch-transfer-details .account-info .sub {
+  font-size: 12px;
+  color: #888;
+}
+
+.batch-transfer-details .error-message {
+  color: #ff4d4f;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.batch-transfer-details .relations-search {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 6px;
+}
+
+.batch-transfer-details .amount-display {
+  color: #52c41a;
+  font-weight: bold;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.batch-transfer-details .task-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.batch-transfer-details .task-info .name {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.batch-transfer-details .task-info .remarks {
+  font-size: 12px;
+  color: #666;
+}
+
+.batch-transfer-details .actions-column {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.batch-transfer-details .status-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.batch-transfer-details .status-progress .ant-progress {
+  margin: 0;
+}
+
+/* 响应式布局 */
+@media (max-width: 1200px) {
+  .batch-transfer-details .detail-modal {
+    width: 90% !important;
+    max-width: 1000px;
+  }
+}
+
+@media (max-width: 768px) {
+  .batch-transfer-details {
+    padding: 16px;
+  }
+  
+  .batch-transfer-details .detail-modal {
+    width: 95% !important;
+    margin: 0;
+    top: 0;
+    height: 100vh;
+  }
+  
+  .batch-transfer-details .detail-modal .ant-modal-content {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .batch-transfer-details .detail-modal .ant-modal-body {
+    flex: 1;
+    overflow-y: auto;
+  }
+}
+
+/* 表格优化 */
+.batch-transfer-details .ant-table-thead > tr > th {
+  background-color: #f7f7f7;
+  font-weight: 600;
+}
+
+.batch-transfer-details .ant-table-tbody > tr:hover > td {
+  background-color: #f5f5f5;
+}
+
+/* 标签样式优化 */
+.batch-transfer-details .ant-tag {
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 2px 8px;
+}
+
+/* Descriptions 组件样式优化 */
+.batch-transfer-details .ant-descriptions-item-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.batch-transfer-details .ant-descriptions-item-content {
+  color: #666;
+}
+
+/* Tabs 样式优化 */
+.batch-transfer-details .ant-tabs-tab {
+  font-weight: 500;
+}
+
+.batch-transfer-details .ant-tabs-content-holder {
+  padding: 16px 0;
+}
+
+/* 搜索表单样式 */
+.batch-transfer-details .search-form .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.batch-transfer-details .search-form .ant-col:last-child .ant-form-item {
+  margin-bottom: 0;
+}
+
+/* 转账ID链接样式 */
+.batch-transfer-details .transfer-id-link {
+  color: #1890ff !important;
+  font-weight: bold;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.batch-transfer-details .transfer-id-link:hover {
+  color: #40a9ff !important;
+  text-shadow: 0 0 4px rgba(24, 144, 255, 0.3);
+}
+
+/* 转账详情弹窗样式 */
+.batch-transfer-details .transfer-detail-modal .ant-modal-header {
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+  border-bottom: none;
+}
+
+.batch-transfer-details .transfer-detail-modal .ant-modal-title {
+  color: white;
+  font-weight: bold;
+}
+
+.batch-transfer-details .transfer-detail-modal .ant-modal-close {
+  color: white;
+}
+
+.batch-transfer-details .transfer-detail-modal .ant-modal-close:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 转账关系表格增强 */
+.batch-transfer-details .relations-table .ant-table-tbody > tr:hover > td {
+  background-color: #f0f8ff;
+}
+
+.batch-transfer-details .relations-table .ant-btn-link {
+  border: none;
+  box-shadow: none;
+  transition: all 0.3s ease;
+}
+
+.batch-transfer-details .relations-table .ant-btn-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
+}
+
+/* 状态标签增强 */
+.batch-transfer-details .status-tag-completed {
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+  border: none;
+  color: white;
+  font-weight: bold;
+}
+
+.batch-transfer-details .status-tag-pending {
+  background: linear-gradient(135deg, #faad14 0%, #ffc53d 100%);
+  border: none;
+  color: white;
+  font-weight: bold;
+}
+
+.batch-transfer-details .status-tag-processing {
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+  border: none;
+  color: white;
+  font-weight: bold;
+}
+
+.batch-transfer-details .status-tag-failed {
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+  border: none;
+  color: white;
+  font-weight: bold;
+} 
