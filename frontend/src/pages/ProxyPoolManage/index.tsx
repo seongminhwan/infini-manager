@@ -886,11 +886,11 @@ const ProxyManage: React.FC = () => {
           description={
             <div style={{ lineHeight: '1.8' }}>
               <p>• <Text code>192.168.0.1:8080</Text> (默认HTTP)</p>
-              <p>• <Text code>192.168.0.1:8080{备注}</Text></p>
-              <p>• <Text code>192.168.0.1:8000:代理账号:代理密码{备注}</Text></p>
-              <p>• <Text code>socks5://192.168.0.1:8000[刷新URL]{备注}</Text></p>
-              <p>• <Text code>http://[2001:db8:2de:0:0:0:0:e13]:8000[刷新URL]{备注}</Text></p>
-              <p>• <Text code>socks5://代理账号:代理密码@192.168.0.1:8000[刷新URL]{备注}</Text></p>
+              <p>• <Text code>192.168.0.1:8080{'备注'}</Text></p>
+              <p>• <Text code>192.168.0.1:8000:代理账号:代理密码{'备注'}</Text></p>
+              <p>• <Text code>socks5://192.168.0.1:8000[刷新URL]{'备注'}</Text></p>
+              <p>• <Text code>http://[2001:db8:2de:0:0:0:0:e13]:8000[刷新URL]{'备注'}</Text></p>
+              <p>• <Text code>socks5://代理账号:代理密码@192.168.0.1:8000[刷新URL]{'备注'}</Text></p>
               <p>• <Text code>代理账号:代理密码@192.168.0.1:8000</Text></p>
               <p>• <Text code>http://127.0.0.1:8080</Text></p>
               <p>• <Text code>socks5://127.0.0.1:1080</Text></p>
@@ -914,7 +914,7 @@ const ProxyManage: React.FC = () => {
             rules={[{ required: true, message: '请输入代理地址列表' }]}
           >
             <TextArea
-              placeholder={`192.168.0.1:8080{备注}\n192.168.0.1:8000:账号:密码\nsocks5://192.168.0.1:8000[刷新URL]{备注}\nhttp://[IPv6]:8080\n代理账号:代理密码@192.168.0.1:8000`}
+              placeholder={`192.168.0.1:8080{示例备注}\n192.168.0.1:8000:账号:密码\nsocks5://192.168.0.1:8000[刷新URL]{示例备注}\nhttp://[IPv6]:8080\n代理账号:代理密码@192.168.0.1:8000`}
               rows={10}
               style={{ fontFamily: 'monospace' }}
             />
