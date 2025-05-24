@@ -184,9 +184,6 @@ httpClient.interceptors.response.use(
       });
       
       // 如果使用了代理，记录代理使用情况（成功）
-      // 重用上面已声明的enhancedConfig变量
-      if (enhancedConfig._currentProxyId) {
-      // 使用上面定义的resEnhancedConfig变量
       if (resEnhancedConfig._currentProxyId) {
         console.log(`[代理日志] 记录代理 #${resEnhancedConfig._currentProxyId} 使用成功 - 响应时间: ${duration}ms`);
         try {
@@ -196,6 +193,8 @@ httpClient.interceptors.response.use(
             duration // 响应时间
           );
           console.log(`[代理日志] 代理使用统计已更新: #${resEnhancedConfig._currentProxyId} - 成功请求`);
+        } catch (proxyLogError) {
+          console.error(`[代理日志] 记录代理使用统计失败:`, proxyLogError);
         }
       }
     } catch (loggingError) {
