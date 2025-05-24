@@ -177,47 +177,135 @@ export class ProxyPoolService {
   }
 
   /**
+   * 使用curl命令验证代理
+   * 这种方法绕过了axios的代理处理逻辑，直接使用系统curl命令
+   * curl已知能正确处理HTTP代理访问HTTPS站点的情况
+   */
+  async curlValidateProxy(proxy: ProxyServer, timeout: number = 10000): Promise<{
+    isValid: boolean;
+    responseTime: number;
+    error?: string;
+    output?: string;
+  }> {
+    const startTime = Date.now();
+    const { exec } = require('child_process');
+    const util = require('util');
+    const execPromise = util.promisify(exec);
+    
+    // 测试URL
+    const testUrl = 'https://api.ipify.org';
+    
+    // 构建curl命令
+    let curlCommand = '';
+    if (proxy.username && proxy.password) {
+      // 带认证的代理
+      curlCommand = `curl -s -m ${timeout/1000} -x "${proxy.proxy_type}://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}" "${testUrl}"`;
+    } else {
+      // 不带认证的代理
+      curlCommand = `curl -s -m ${timeout/1000} -x "${proxy.proxy_type}://${proxy.host}:${proxy.port}" "${testUrl}"`;
+    }
+    
+    console.log(`[代理验证] 使用curl命令验证代理: ${proxy.name}`);
+    console.log(`[代理验证] 执行命令: ${curlCommand.replace(/:[^:@]*@/, ':****@')}`); // 隐藏密码
+    
+    try {
+      const { stdout, stderr } = await execPromise(curlCommand);
+      const responseTime = Date.now() - startTime;
+      
+      if (stderr) {
+        console.error(`[代理验证] curl错误: ${stderr}`);
+        return {
+          isValid: false,
+          responseTime,
+          error: `curl错误: ${stderr}`,
+          output: stderr
+        };
+      }
+      
+      // 检查输出是否为有效IP
+      const isValidIpOutput = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(stdout.trim());
+      
+      if (isValidIpOutput) {
+        console.log(`[代理验证] 代理 ${proxy.name} 验证成功: 返回IP ${stdout.trim()}`);
+        return {
+          isValid: true,
+          responseTime,
+          output: stdout.trim()
+        };
+      } else {
+        console.log(`[代理验证] 代理 ${proxy.name} 验证失败: 返回内容不是有效IP - ${stdout.substring(0, 100)}`);
+        return {
+          isValid: false,
+          responseTime,
+          error: '返回内容不是有效IP',
+          output: stdout.substring(0, 100)
+        };
+      }
+    } catch (error: any) {
+      const responseTime = Date.now() - startTime;
+      console.error(`[代理验证] curl执行失败: ${error.message}`);
+      
+      return {
+        isValid: false,
+        responseTime,
+        error: `curl执行失败: ${error.message}`,
+        output: error.message
+      };
+    }
+  }
+  
+  /**
    * 验证代理有效性
-   * 改进后的验证逻辑：
-   * 1. 依次尝试多个测试URL，而不是随机选择一个
-   * 2. 更准确地区分不同类型的错误
-   * 3. 根据HTTP状态码准确判断代理有效性
+   * 使用axios或curl命令验证代理
    */
   async validateProxy(proxy: ProxyServer, timeout: number = 10000): Promise<{
     isValid: boolean;
     responseTime: number;
     error?: string;
   }> {
+    // 首先尝试使用curl命令验证，如果成功则直接返回结果
+    // curl命令已知能正确处理HTTP代理访问HTTPS站点的情况
+    try {
+      console.log(`[代理验证] 首先尝试使用curl命令验证代理 ${proxy.name}`);
+      const curlResult = await this.curlValidateProxy(proxy, timeout);
+      if (curlResult.isValid) {
+        console.log(`[代理验证] curl验证成功: ${curlResult.output}`);
+        return {
+          isValid: true,
+          responseTime: curlResult.responseTime,
+          error: undefined
+        };
+      } else {
+        console.log(`[代理验证] curl验证失败: ${curlResult.error}, 将尝试axios验证`);
+      }
+    } catch (curlError) {
+      console.error(`[代理验证] curl验证出错: ${curlError}, 将尝试axios验证`);
+    }
+    
+    // 如果curl验证失败，继续使用axios验证
     const startTime = Date.now();
     
     // 添加HTTP测试URL（不仅是HTTPS）
     const testUrls = [
+      'http://httpbin.org/ip',  // 首先尝试HTTP版本
       'https://httpbin.org/ip',
       'https://api.ipify.org',
       'https://icanhazip.com',
-      'http://httpbin.org/ip',  // 添加HTTP版本
-      'https://www.google.com',
       'https://www.baidu.com'
     ];
     
     // 依次尝试每个测试URL
     for (const testUrl of testUrls) {
       try {
-        console.log(`[代理验证] 正在验证代理 ${proxy.name} (${proxy.proxy_type}://${proxy.host}:${proxy.port}) 访问 ${testUrl}`);
+        console.log(`[代理验证] 使用axios验证代理 ${proxy.name} (${proxy.proxy_type}://${proxy.host}:${proxy.port}) 访问 ${testUrl}`);
         
-        // 对每个特定URL构建完整的代理配置
+        // 构建完整的代理配置
         const proxyConfig = this.buildProxyConfig(proxy, testUrl);
-        console.log(`[代理验证] 详细代理配置: ${JSON.stringify({
-          hasProxy: !!proxyConfig.proxy,
-          hasHttpsAgent: !!proxyConfig.httpsAgent,
-          hasHttpAgent: !!proxyConfig.httpAgent,
-          hasHeaders: !!proxyConfig.headers
-        })}`);
         
         // 使用完整的代理配置
         const response = await axios.get(testUrl, {
           timeout,
-          ...proxyConfig, // 使用完整配置，包含httpsAgent和所有必要头信息
+          ...proxyConfig,
           validateStatus: () => true // 允许所有状态码
         });
         
