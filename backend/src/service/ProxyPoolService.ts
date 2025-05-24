@@ -386,16 +386,23 @@ export class ProxyPoolService {
       // 如果代理是HTTP类型但目标是HTTPS，设置隧道模式
       if (proxy.proxy_type === 'http' && isTargetHttps) {
         console.log(`[代理配置] 检测到HTTP代理访问HTTPS网站，启用隧道模式`);
-        // 启用隧道模式，强制HTTP CONNECT方法
+        
+        // 修复：使用URL字符串格式创建HttpsProxyAgent实例
+        let proxyUrl = `http://${proxy.host}:${proxy.port}`;
+        if (proxy.username && proxy.password) {
+          proxyUrl = `http://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`;
+        }
+        
+        console.log(`[代理配置] 创建HTTP隧道，代理URL: ${proxyUrl}`);
+        
+        // 设置代理配置（用于非HTTPS请求）
         config.proxy = proxyConfig;
-        // 设置Axios配置，强制使用隧道
-        config.httpsAgent = new HttpsProxyAgent({
-          host: proxy.host,
-          port: String(proxy.port), // 转换为字符串类型，HttpsProxyAgent需要
-          auth: proxy.username && proxy.password ? 
-            `${proxy.username}:${proxy.password}` : undefined,
-          rejectUnauthorized: false  // 不验证HTTPS证书，提高兼容性
-        });
+        
+        // 创建HttpsProxyAgent（专用于HTTPS请求的隧道）
+        const httpsAgent = new HttpsProxyAgent(proxyUrl);
+        config.httpsAgent = httpsAgent;
+        
+        console.log(`[代理配置] HTTP代理隧道模式配置完成`);
       } else {
         // 普通情况，直接使用代理配置
         config.proxy = proxyConfig;
