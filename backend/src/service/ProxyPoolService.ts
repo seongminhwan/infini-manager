@@ -376,32 +376,29 @@ export class ProxyPoolService {
         port: proxy.port
       };
       
-      // 根据用户反馈，处理特殊格式的认证字符串
+      // 设置认证信息
       if (proxy.username && proxy.password) {
-        if (proxy.username.includes(',') || proxy.password.includes(',')) {
-          // 特殊格式的认证字符串，整体作为auth
-          console.log(`[代理配置] 检测到特殊格式的认证字符串，使用完整认证字符串`);
-          proxyConfig.auth = `${proxy.username}:${proxy.password}`;
-        } else {
-          // 标准格式的用户名密码
-          proxyConfig.auth = {
-            username: proxy.username,
-            password: proxy.password
-          };
-        }
+        console.log(`[代理配置] 使用认证信息: ${proxy.username}:${proxy.password}`);
+        // 始终使用标准格式，符合AxiosProxyConfig类型定义
+        proxyConfig.auth = {
+          username: proxy.username,
+          password: proxy.password
+        };
       }
       
       // 如果代理是HTTP类型但目标是HTTPS，设置隧道模式
       if (proxy.proxy_type === 'http' && isTargetHttps) {
         console.log(`[代理配置] 检测到HTTP代理访问HTTPS网站，启用隧道模式`);
         
-        // 构建代理URL，考虑特殊格式的认证字符串
-        let proxyUrl = `http://${proxy.host}:${proxy.port}`;
+        // 构建代理URL字符串，特殊处理认证部分
+        let proxyUrl;
         if (proxy.username && proxy.password) {
-          // 使用encodeURIComponent确保特殊字符被正确编码
-          const authPart = encodeURIComponent(`${proxy.username}:${proxy.password}`);
-          proxyUrl = `http://${authPart}@${proxy.host}:${proxy.port}`;
-          console.log(`[代理配置] 使用认证信息构建代理URL（已编码特殊字符）`);
+          // 直接使用完整认证字符串，而不是分解为用户名和密码
+          // 例如："0b33e1763712d63e6a04__cr.us,ca:c5a4e336b003e13e@gw.dataimpulse.com:823"
+          proxyUrl = `http://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`;
+          console.log(`[代理配置] 创建HTTP隧道，使用完整认证字符串`);
+        } else {
+          proxyUrl = `http://${proxy.host}:${proxy.port}`;
         }
         
         console.log(`[代理配置] 创建HTTP隧道，代理URL: ${proxyUrl}`);
