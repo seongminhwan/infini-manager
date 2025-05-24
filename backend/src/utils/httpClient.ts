@@ -32,40 +32,56 @@ const httpClient = axios.create();
 const configureProxy = async (config: EnhancedRequestConfig): Promise<EnhancedRequestConfig> => {
   // 如果明确指定不使用代理，直接返回原配置
   if (config.useProxy === false) {
+    console.log(`[代理日志] 请求 ${config.url} 明确指定不使用代理`);
     return config;
   }
   
   try {
     // 确定使用哪个代理池，默认使用ID为1的代理池
     const poolId = config.proxyPoolId || DEFAULT_PROXY_POOL_ID;
+    console.log(`[代理日志] 为请求 ${config.url} 选择代理，使用代理池ID: ${poolId}`);
     
     // 如果指定了具体的代理服务器ID，则获取该代理
     if (config.proxyServerId) {
+      console.log(`[代理日志] 使用指定的代理服务器ID: ${config.proxyServerId}`);
       const proxyResult = await proxyPoolService.getProxyServer(config.proxyServerId);
       if (proxyResult.success && proxyResult.data) {
         const proxy = proxyResult.data;
         // 记录当前使用的代理ID
         config._currentProxyId = proxy.id;
         
+        console.log(`[代理日志] 成功获取代理服务器 #${proxy.id}: ${proxy.proxy_type}://${proxy.host}:${proxy.port}`);
+        
         // 配置代理
-        return proxyPoolService.configureRequestProxy(proxy, config);
+        const configWithProxy = proxyPoolService.configureRequestProxy(proxy, config);
+        console.log(`[代理日志] 已为请求 ${config.url} 配置代理 #${proxy.id}`);
+        return configWithProxy;
+      } else {
+        console.warn(`[代理日志] 获取指定代理服务器失败: ${proxyResult.message || '未知原因'}`);
       }
     } else {
       // 否则从代理池中选择代理
+      console.log(`[代理日志] 从代理池 #${poolId} 自动选择代理`);
       const proxy = await proxyPoolService.selectProxy(poolId);
       if (proxy) {
         // 记录当前使用的代理ID
         config._currentProxyId = proxy.id;
         
+        console.log(`[代理日志] 成功选择代理 #${proxy.id}: ${proxy.name} (${proxy.proxy_type}://${proxy.host}:${proxy.port})`);
+        
         // 配置代理
-        return proxyPoolService.configureRequestProxy(proxy, config);
+        const configWithProxy = proxyPoolService.configureRequestProxy(proxy, config);
+        console.log(`[代理日志] 已为请求 ${config.url} 配置代理 #${proxy.id}`);
+        return configWithProxy;
+      } else {
+        console.warn(`[代理日志] 代理池 #${poolId} 中未找到可用代理`);
       }
     }
     
-    console.log(`未找到可用代理，使用直连模式`);
+    console.log(`[代理日志] 未找到可用代理，请求 ${config.url} 将使用直连模式`);
     return config;
   } catch (error) {
-    console.error('配置代理失败:', error);
+    console.error(`[代理日志] 配置代理失败:`, error);
     return config; // 出错时使用原配置
   }
 };
@@ -81,9 +97,20 @@ httpClient.interceptors.request.use(
     
     // 应用代理配置（如果需要）
     const enhancedConfig = config as EnhancedRequestConfig;
+    console.log(`[代理日志] 开始为请求 ${config.url} 配置代理`);
+    
     if (enhancedConfig.useProxy !== false) {
       const proxyConfig = await configureProxy(enhancedConfig);
       Object.assign(config, proxyConfig);
+      
+      // 记录代理配置结果
+      if (enhancedConfig._currentProxyId) {
+        console.log(`[代理日志] 请求 ${config.url} 成功配置代理 #${enhancedConfig._currentProxyId}`);
+      } else {
+        console.log(`[代理日志] 请求 ${config.url} 将使用直连模式`);
+      }
+    } else {
+      console.log(`[代理日志] 请求 ${config.url} 不使用代理`);
     }
     
     return config;
@@ -110,7 +137,12 @@ httpClient.interceptors.response.use(
       const fullUrl = url.startsWith('http') ? url : `${baseURL}${url}`;
       
       // 打印响应信息
-      console.log(`收到响应: ${response.config.method?.toUpperCase()} ${fullUrl} - 状态: ${response.status} - 耗时: ${duration}ms`);
+      const enhancedConfig = response.config as EnhancedRequestConfig;
+      if (enhancedConfig._currentProxyId) {
+        console.log(`[代理日志] 收到响应: ${response.config.method?.toUpperCase()} ${fullUrl} - 状态: ${response.status} - 耗时: ${duration}ms - 使用代理: #${enhancedConfig._currentProxyId}`);
+      } else {
+        console.log(`收到响应: ${response.config.method?.toUpperCase()} ${fullUrl} - 状态: ${response.status} - 耗时: ${duration}ms - 直连模式`);
+      }
       
       // 记录请求体，确保完整记录原始内容
       let requestBody = '';
@@ -154,11 +186,17 @@ httpClient.interceptors.response.use(
       // 如果使用了代理，记录代理使用情况（成功）
       const enhancedConfig = response.config as EnhancedRequestConfig;
       if (enhancedConfig._currentProxyId) {
-        await proxyPoolService.recordProxyUsage(
-          enhancedConfig._currentProxyId,
-          true, // 成功
-          duration // 响应时间
-        );
+        console.log(`[代理日志] 记录代理 #${enhancedConfig._currentProxyId} 使用成功 - 响应时间: ${duration}ms`);
+        try {
+          await proxyPoolService.recordProxyUsage(
+            enhancedConfig._currentProxyId,
+            true, // 成功
+            duration // 响应时间
+          );
+          console.log(`[代理日志] 代理使用统计已更新: #${enhancedConfig._currentProxyId} - 成功请求`);
+        } catch (proxyLogError) {
+          console.error(`[代理日志] 记录代理使用统计失败:`, proxyLogError);
+        }
       }
     } catch (loggingError) {
       // 日志记录失败不应影响正常请求流程
@@ -181,7 +219,12 @@ httpClient.interceptors.response.use(
       const fullUrl = url.startsWith('http') ? url : `${baseURL}${url}`;
       
       // 打印错误信息
-      console.error(`请求失败: ${config.method?.toUpperCase()} ${fullUrl} - 错误: ${error.message}`);
+      const enhancedConfig = config as EnhancedRequestConfig;
+      if (enhancedConfig._currentProxyId) {
+        console.error(`[代理日志] 请求失败: ${config.method?.toUpperCase()} ${fullUrl} - 错误: ${error.message} - 使用代理: #${enhancedConfig._currentProxyId}`);
+      } else {
+        console.error(`请求失败: ${config.method?.toUpperCase()} ${fullUrl} - 错误: ${error.message} - 直连模式`);
+      }
       
       // 处理请求体，确保完整记录原始内容
       let requestBody = '';
@@ -218,11 +261,17 @@ httpClient.interceptors.response.use(
       // 如果使用了代理，记录代理使用情况（失败）
       const enhancedConfig = config as EnhancedRequestConfig;
       if (enhancedConfig._currentProxyId) {
-        await proxyPoolService.recordProxyUsage(
-          enhancedConfig._currentProxyId,
-          false, // 失败
-          duration // 响应时间
-        );
+        console.log(`[代理日志] 记录代理 #${enhancedConfig._currentProxyId} 使用失败 - 响应时间: ${duration}ms - 错误: ${error.message}`);
+        try {
+          await proxyPoolService.recordProxyUsage(
+            enhancedConfig._currentProxyId,
+            false, // 失败
+            duration // 响应时间
+          );
+          console.log(`[代理日志] 代理使用统计已更新: #${enhancedConfig._currentProxyId} - 失败请求`);
+        } catch (proxyLogError) {
+          console.error(`[代理日志] 记录代理使用统计失败:`, proxyLogError);
+        }
       }
     } catch (loggingError) {
       // 日志记录失败不应影响正常请求流程
@@ -233,7 +282,7 @@ httpClient.interceptors.response.use(
   }
 );
 
-console.log('HTTP客户端已配置，拦截器设置完成');
+console.log('[代理日志] HTTP客户端已配置，拦截器设置完成，代理池集成已启用');
 
 // 导出配置好的axios实例
 export default httpClient;
