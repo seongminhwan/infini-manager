@@ -358,9 +358,15 @@ export class ProxyPoolService {
   /**
    * 构建axios代理配置
    * @private 仅供内部使用
+   * @param proxy 代理服务器
+   * @param targetUrl 目标URL（可选），用于判断协议是否匹配
    */
-  private buildProxyConfig(proxy: ProxyServer): any {
+  private buildProxyConfig(proxy: ProxyServer, targetUrl?: string): any {
     const config: any = {};
+    
+    // 判断目标URL是否为HTTPS
+    const isTargetHttps = targetUrl && targetUrl.startsWith('https://');
+    console.log(`[代理配置] 目标URL: ${targetUrl || '未指定'}, 是否HTTPS: ${isTargetHttps}`);
     
     if (proxy.proxy_type === 'http' || proxy.proxy_type === 'https') {
       // HTTP/HTTPS代理
@@ -377,7 +383,23 @@ export class ProxyPoolService {
         };
       }
       
-      config.proxy = proxyConfig;
+      // 如果代理是HTTP类型但目标是HTTPS，设置隧道模式
+      if (proxy.proxy_type === 'http' && isTargetHttps) {
+        console.log(`[代理配置] 检测到HTTP代理访问HTTPS网站，启用隧道模式`);
+        // 启用隧道模式，强制HTTP CONNECT方法
+        config.proxy = proxyConfig;
+        // 设置Axios配置，强制使用隧道
+        config.httpsAgent = new HttpsProxyAgent({
+          host: proxy.host,
+          port: proxy.port,
+          auth: proxy.username && proxy.password ? 
+            `${proxy.username}:${proxy.password}` : undefined,
+          rejectUnauthorized: false  // 不验证HTTPS证书，提高兼容性
+        });
+      } else {
+        // 普通情况，直接使用代理配置
+        config.proxy = proxyConfig;
+      }
     } else if (proxy.proxy_type === 'socks4' || proxy.proxy_type === 'socks5') {
       // SOCKS代理
       let proxyUrl = `${proxy.proxy_type}://${proxy.host}:${proxy.port}`;
@@ -401,7 +423,9 @@ export class ProxyPoolService {
    * @returns 配置了代理的请求配置
    */
   configureRequestProxy(proxy: ProxyServer, requestConfig: any = {}): any {
-    const proxyConfig = this.buildProxyConfig(proxy);
+    // 获取目标URL
+    const targetUrl = requestConfig.url || '';
+    const proxyConfig = this.buildProxyConfig(proxy, targetUrl);
     return { ...requestConfig, ...proxyConfig };
   }
 
