@@ -5,6 +5,7 @@ import { Request, Response } from 'express';
 import TaskService from '../service/TaskService';
 import { TaskStatus, TaskDTO } from '../types/scheduledTask';
 import { ApiResponse } from '../types';
+import { taskHandlers } from '../service/TaskHandlers';
 
 // 创建任务服务实例
 const taskService = new TaskService();
@@ -14,6 +15,14 @@ const taskService = new TaskService();
  */
 export const initializeTaskService = async (): Promise<void> => {
   try {
+    // 注册任务处理器
+    console.log('注册任务处理器...');
+    Object.entries(taskHandlers).forEach(([name, handler]) => {
+      taskService.registerFunctionHandler(name, handler);
+      console.log(`已注册处理器: ${name}`);
+    });
+    
+    // 初始化任务服务
     await taskService.initialize();
     console.log('任务服务初始化成功');
   } catch (error) {

@@ -114,12 +114,47 @@ export class InfiniAccountService {
         return null;
       }
 
-      cookie = cookies
-        .filter((c: string) => c.includes('jwt_token='))
-        .join('; ');
+      // 查找包含 jwt_token=VALUE 且 VALUE 非空的 cookie
+      let validJwtCookieString = null;
+      for (const cookieStr of cookies) {
+        const match = cookieStr.match(/jwt_token=([^;]+)/); // 尝试匹配 jwt_token=VALUE
+        if (match && match[1] && match[1].trim() !== '') { // 确保 VALUE 存在且非空
+          // 如果需要组合所有Set-Cookie中的cookie，这里需要更复杂的逻辑
+          // 但通常我们主要关心的是包含有效jwt_token的那部分
+          // 为了简化，我们假设第一个找到的有效jwt_token的完整cookie字符串即可
+          // 或者，如果Set-Cookie中只有jwt_token是关键，可以只用它
+          // 但更安全的做法是，如果一个cookie字符串包含有效的jwt_token，就用这个字符串
+          validJwtCookieString = cookieStr; // 使用包含有效token的整个cookie字符串
+          // 如果有多个jwt_token cookie（不常见），这里可能需要调整
+          // 但通常Set-Cookie中对于同一个token名只有一个
+          break;
+        }
+      }
+
+      if (!validJwtCookieString) {
+        console.error(`${errorContext}无法从Set-Cookie中提取到有效的jwt_token值 (jwt_token=VALUE, VALUE非空)`);
+        return null;
+      }
+      
+      // 如果我们决定只使用包含jwt_token的那部分cookie（可能还有其他如Path, Expires等）
+      // 并且假设Set-Cookie中可能有多条，但我们只关心包含有效jwt_token的那些
+      // 那么，更精确的组合方式是：
+      const relevantCookies = cookies.filter(c => {
+        const match = c.match(/jwt_token=([^;]+)/);
+        return match && match[1] && match[1].trim() !== '';
+      });
+
+      if (relevantCookies.length === 0) {
+         // 这个分支理论上不会走到，因为上面的循环已经检查过了
+        console.error(`${errorContext}逻辑错误：无法找到相关的有效jwt_token cookie`);
+        return null;
+      }
+      
+      cookie = relevantCookies.join('; '); // 使用所有包含有效jwt_token的cookie字符串进行组合
 
       // 提取Cookie过期时间
-      const expiresMatch = cookie.match(/Expires=([^;]+)/);
+      // 确保cookie不是null或空字符串再进行match
+      const expiresMatch = cookie ? cookie.match(/Expires=([^;]+)/) : null;
       const cookieExpiresAt = expiresMatch ? new Date(expiresMatch[1]) : null;
 
       // 更新账户的Cookie信息

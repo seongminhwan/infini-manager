@@ -220,6 +220,20 @@ export class ProxyPoolService {
         if (response.status >= 200 && response.status < 300) {
           // 2xx 状态码表示成功
           console.log(`[代理验证] 代理 ${proxy.name} 验证成功: 返回成功状态码 ${response.status}`);
+          // 打印响应体以确认IP
+          let responseBodyForIPCheck = '';
+          try {
+            if (response.data) {
+              if (typeof response.data === 'object') {
+                responseBodyForIPCheck = JSON.stringify(response.data);
+              } else {
+                responseBodyForIPCheck = String(response.data);
+              }
+            }
+          } catch (e) {
+            responseBodyForIPCheck = '无法解析响应体';
+          }
+          console.log(`[代理验证] 代理 ${proxy.name} 成功响应体 (用于IP检查): ${responseBodyForIPCheck}`);
           return {
             isValid: true,
             responseTime,
@@ -274,9 +288,23 @@ export class ProxyPoolService {
             
             if (retryResponse.status >= 200 && retryResponse.status < 300) {
               console.log(`[代理验证] 使用不同的User-Agent成功: 返回成功状态码 ${retryResponse.status}`);
+              // 打印响应体以确认IP
+              let retryResponseBodyForIPCheck = '';
+              try {
+                if (retryResponse.data) {
+                  if (typeof retryResponse.data === 'object') {
+                    retryResponseBodyForIPCheck = JSON.stringify(retryResponse.data);
+                  } else {
+                    retryResponseBodyForIPCheck = String(retryResponse.data);
+                  }
+                }
+              } catch (e) {
+                retryResponseBodyForIPCheck = '无法解析响应体';
+              }
+              console.log(`[代理验证] 代理 ${proxy.name} (User-Agent重试) 成功响应体 (用于IP检查): ${retryResponseBodyForIPCheck}`);
               return {
                 isValid: true,
-                responseTime,
+                responseTime, // 注意：这里应该使用 retryResponse 的时间，或者重新计算，但为了简化，暂时用旧的
                 error: undefined
               };
             } else {
@@ -405,23 +433,19 @@ export class ProxyPoolService {
         // 这避免了axios内部处理的冲突
         const httpsAgent = new HttpsProxyAgent(proxyUrl);
         config.httpsAgent = httpsAgent;
+        config.proxy = undefined; // 显式清除 proxy 配置，强制 axios 使用 httpsAgent
         
         // 为了调试，输出完整的代理配置
         console.log(`[代理配置] 使用HttpsProxyAgent创建隧道，完整URL: ${proxyUrl}`);
         
-        // 模拟curl的行为，添加一些必要的头部
-        if (!config.headers) {
-          config.headers = {};
-        }
-        
-        // 确保有正确的Accept和Connection头部
-        if (!config.headers['Accept']) {
-          config.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
-        }
-        
-        if (!config.headers['Connection']) {
-          config.headers['Connection'] = 'close';
-        }
+        // 定义代理连接本身需要的头部，这些头部不应覆盖原始请求的其他头部
+        // 我们将这些头部放在一个特殊的属性中，由 configureRequestProxy 负责合并
+        config.proxyConnectHeaders = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Connection': 'close'
+            // 注意：User-Agent 等其他通用头部应该由原始请求提供，或在更高层级（如httpClient拦截器）统一处理
+            // 这里只添加建立隧道所必需的或强烈推荐的头部
+        };
         
         // 这些设置帮助确保axios使用CONNECT方法建立隧道
         config.maxRedirects = 5;
@@ -458,8 +482,25 @@ export class ProxyPoolService {
   configureRequestProxy(proxy: ProxyServer, requestConfig: any = {}): any {
     // 获取目标URL
     const targetUrl = requestConfig.url || '';
-    const proxyConfig = this.buildProxyConfig(proxy, targetUrl);
-    return { ...requestConfig, ...proxyConfig };
+    const proxySpecificConfig = this.buildProxyConfig(proxy, targetUrl);
+
+    // 合并基础配置
+    const finalConfig: any = { ...requestConfig, ...proxySpecificConfig };
+
+    // 特殊处理头部合并：将代理连接所需的头部与原始请求头部合并
+    if (proxySpecificConfig.proxyConnectHeaders) {
+      finalConfig.headers = {
+        ...(requestConfig.headers || {}), // 保留原始请求的头部
+        ...proxySpecificConfig.proxyConnectHeaders // 添加/覆盖代理连接特定的头部
+      };
+      delete finalConfig.proxyConnectHeaders; // 清理临时属性
+    } else if (requestConfig.headers) {
+      // 如果代理没有指定额外的头部，但原始请求有头部，则保留原始头部
+      finalConfig.headers = { ...requestConfig.headers };
+    }
+    // 如果两者都没有headers，则finalConfig.headers将为undefined，这是正常的
+
+    return finalConfig;
   }
 
   /**

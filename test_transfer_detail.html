@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量转账明细测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-info {
+            background: #e6f7ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #1890ff;
+        }
+        .feature-box {
+            background: #f6ffed;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #52c41a;
+        }
+        .success {
+            color: #52c41a;
+            font-weight: bold;
+        }
+        .error {
+            color: #ff4d4f;
+            font-weight: bold;
+        }
+        .warning {
+            color: #faad14;
+            font-weight: bold;
+        }
+        .api-test {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        button {
+            background: #1890ff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #40a9ff;
+        }
+        button.danger {
+            background: #ff4d4f;
+        }
+        button.danger:hover {
+            background: #ff7875;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .step-list {
+            counter-reset: step-counter;
+        }
+        .step-list li {
+            counter-increment: step-counter;
+            margin: 10px 0;
+            padding-left: 10px;
+        }
+        .step-list li::marker {
+            content: counter(step-counter) ". ";
+            font-weight: bold;
+            color: #1890ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>批量转账明细 - 手动关闭功能测试</h1>
+        
+        <div class="feature-box">
+            <h3>🎉 新功能：手动关闭批量转账</h3>
+            <p>✅ <strong>转账详情弹窗</strong>：在批量转账明细页面中，点击转账关系表格中的 "转账ID" 可以弹窗查看转账详情</p>
+            <p>🆕 <strong>手动关闭功能</strong>：用户可以手动关闭处于 pending 或 processing 状态的批量转账任务</p>
+            <p>📍 测试数据：批量转账ID: 37（新创建用于测试关闭功能）</p>
+        </div>
+
+        <div class="api-test">
+            <h3>API接口测试</h3>
+            <button onclick="testBatchTransferList()">测试批量转账列表</button>
+            <button onclick="testBatchTransferRelations()">测试批量转账关系</button>
+            <button onclick="testTransferDetail()">测试转账详情</button>
+            <button onclick="createTestBatch()" class="danger">创建测试批量转账</button>
+            <button onclick="testCloseBatch()" class="danger">测试关闭批量转账</button>
+            <div id="api-result"></div>
+        </div>
+
+        <div class="test-info">
+            <h3>使用步骤</h3>
+            <ol class="step-list">
+                <li>打开前端应用：<a href="http://localhost:3000" target="_blank">http://localhost:3000</a></li>
+                <li>导航到 "账户资金" → "批量转账明细"</li>
+                <li><strong>测试转账详情：</strong>
+                    <ul>
+                        <li>找到批量转账ID为35的记录，点击"详情"按钮</li>
+                        <li>在弹窗中切换到"转账明细"标签页</li>
+                        <li>找到转账ID为74的记录，点击转账ID链接</li>
+                        <li>应该会弹出转账详情窗口</li>
+                    </ul>
+                </li>
+                <li><strong>测试关闭功能：</strong>
+                    <ul>
+                        <li>找到状态为 "pending" 或 "processing" 的批量转账</li>
+                        <li>点击操作列中的红色"关闭"按钮</li>
+                        <li>在确认弹窗中填写关闭原因（可选）</li>
+                        <li>点击"确认关闭"按钮</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div class="test-info">
+            <h3>预期效果</h3>
+            <ul>
+                <li><strong>转账详情功能：</strong>转账ID显示为可点击的链接，点击后弹出详情Modal</li>
+                <li><strong>关闭功能：</strong>
+                    <ul>
+                        <li>只有 pending 和 processing 状态的批量转账显示"关闭"按钮</li>
+                        <li>点击关闭按钮后弹出确认对话框</li>
+                        <li>确认后批量转账状态变为 "failed"</li>
+                        <li>所有待处理的转账关系也变为 "failed"</li>
+                        <li>系统记录关闭操作的历史</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <div class="test-info">
+            <h3 class="warning">⚠️ 重要提醒</h3>
+            <p class="error">关闭批量转账是<strong>不可撤销</strong>的操作！</p>
+            <p>关闭后，所有未处理的转账将被标记为失败，此操作无法回滚。</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:33201';
+        
+        function displayResult(title, data, isSuccess = true) {
+            const resultDiv = document.getElementById('api-result');
+            const className = isSuccess ? 'success' : 'error';
+            resultDiv.innerHTML = `
+                <h4 class="${className}">${title}</h4>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+        }
+        
+        async function testBatchTransferList() {
+            try {
+                const response = await fetch(`${API_BASE}/api/batch-transfers?page=1&pageSize=5`);
+                const data = await response.json();
+                displayResult('✅ 批量转账列表API测试成功', data);
+            } catch (error) {
+                displayResult('❌ 批量转账列表API测试失败', error.message, false);
+            }
+        }
+        
+        async function testBatchTransferRelations() {
+            try {
+                const response = await fetch(`${API_BASE}/api/batch-transfers/35/relations?page=1&pageSize=5`);
+                const data = await response.json();
+                displayResult('✅ 批量转账关系API测试成功', data);
+            } catch (error) {
+                displayResult('❌ 批量转账关系API测试失败', error.message, false);
+            }
+        }
+        
+        async function testTransferDetail() {
+            try {
+                const response = await fetch(`${API_BASE}/api/transfers/74/history`);
+                const data = await response.json();
+                displayResult('✅ 转账详情API测试成功', data);
+            } catch (error) {
+                displayResult('❌ 转账详情API测试失败', error.message, false);
+            }
+        }
+        
+        async function createTestBatch() {
+            try {
+                const response = await fetch(`${API_BASE}/api/batch-transfers`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: '测试关闭功能-' + Date.now(),
+                        type: 'one_to_many',
+                        sourceAccountId: 1,
+                        relations: [{
+                            targetAccountId: 3,
+                            contactType: 'inner',
+                            targetIdentifier: '3',
+                            amount: '8.0'
+                        }],
+                        remarks: '用于测试关闭功能的批量转账'
+                    })
+                });
+                const data = await response.json();
+                displayResult('✅ 创建测试批量转账成功', data);
+            } catch (error) {
+                displayResult('❌ 创建测试批量转账失败', error.message, false);
+            }
+        }
+        
+        async function testCloseBatch() {
+            try {
+                // 先获取一个pending状态的批量转账
+                const listResponse = await fetch(`${API_BASE}/api/batch-transfers?page=1&pageSize=10&status=pending`);
+                const listData = await listResponse.json();
+                
+                if (!listData.success || !listData.data.batchTransfers.length) {
+                    displayResult('❌ 没有找到pending状态的批量转账', { message: '请先创建一个测试批量转账' }, false);
+                    return;
+                }
+                
+                const batchId = listData.data.batchTransfers[0].id;
+                
+                // 关闭批量转账
+                const closeResponse = await fetch(`${API_BASE}/api/batch-transfers/${batchId}/close`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        reason: '通过测试页面手动关闭'
+                    })
+                });
+                const closeData = await closeResponse.json();
+                displayResult('✅ 关闭批量转账API测试成功', closeData);
+            } catch (error) {
+                displayResult('❌ 关闭批量转账API测试失败', error.message, false);
+            }
+        }
+    </script>
+</body>
+</html> 

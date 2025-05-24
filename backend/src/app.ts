@@ -24,6 +24,7 @@ import affRoutes from './routes/aff';
 import batchTransferRoutes from './routes/batchTransfers';
 import tasksRoutes from './routes/tasks';
 import axiosLogsRoutes from './routes/axiosLogs';
+import proxyPoolsRoutes from './routes/proxyPools';
 // 导入类型
 import { ApiResponse } from './types';
 
@@ -126,6 +127,7 @@ app.use('/api/aff', affRoutes);
 app.use('/api/batch-transfers', batchTransferRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/axios-logs', axiosLogsRoutes);
+app.use('/api/proxy-pools', proxyPoolsRoutes);
 
 // 404错误处理
 app.use((req: Request, res: Response, next: NextFunction) => {

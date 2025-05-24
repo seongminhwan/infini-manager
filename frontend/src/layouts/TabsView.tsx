@@ -10,6 +10,17 @@ import {
   BellOutlined,
   ThunderboltOutlined,
   CloseOutlined,
+  MailOutlined,
+  FileImageOutlined,
+  IdcardOutlined,
+  TeamOutlined,
+  DollarOutlined,
+  CreditCardOutlined,
+  ScheduleOutlined,
+  ApiOutlined,
+  FileTextOutlined,
+  TransactionOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 
 type TabItem = {
@@ -58,26 +69,74 @@ const StyledTabs = styled(Tabs)`
   }
 `;
 
-// 路由与图标的映射
+// 路由与图标的映射 - 包含所有页面
 const routeIconMap = {
+  // 概览和监控
   '/overview': <DashboardOutlined />,
   '/account-monitor': <MonitorOutlined />,
-  '/account-transfer': <SwapOutlined />,
-  '/batch-transfer-details': <SwapOutlined />,
+  
+  // 账户管理
   '/account-register': <UserAddOutlined />,
-  '/notification-manage': <BellOutlined />,
+  '/account-group-manage': <TeamOutlined />,
+  
+  // 卡片管理
+  '/batch-card-apply': <CreditCardOutlined />,
+  
+  // 资金操作
+  '/account-transfer': <SwapOutlined />,
+  '/batch-transfer': <TransactionOutlined />,
+  '/batch-transfer-details': <FileTextOutlined />,
+  '/account-details': <FileTextOutlined />,
+  
+  // AFF返现
+  '/aff-cashback': <DollarOutlined />,
+  '/aff-history': <HistoryOutlined />,
+  
+  // 系统管理
+  '/task-manage': <ScheduleOutlined />,
   '/trigger-manage': <ThunderboltOutlined />,
+  '/notification-manage': <BellOutlined />,
+  '/api-log-monitor': <ApiOutlined />,
+  
+  // 辅助工具
+  '/email-manage': <MailOutlined />,
+  '/kyc-image-manage': <FileImageOutlined />,
+  '/random-user-manage': <IdcardOutlined />,
 };
 
-// 路由与标签标题的映射
+// 路由与标签标题的映射 - 包含所有页面
 const routeTitleMap = {
+  // 概览和监控
   '/overview': '概览',
   '/account-monitor': '账户监控',
-  '/account-transfer': '账户转账',
-  '/batch-transfer-details': '批量转账明细',
+  
+  // 账户管理
   '/account-register': '账户批量注册机',
-  '/notification-manage': '通知管理',
+  '/account-group-manage': '账户分组管理',
+  
+  // 卡片管理
+  '/batch-card-apply': '批量开卡',
+  
+  // 资金操作
+  '/account-transfer': '账户转账',
+  '/batch-transfer': '批量转账',
+  '/batch-transfer-details': '批量转账明细',
+  '/account-details': '账户明细',
+  
+  // AFF返现
+  '/aff-cashback': 'AFF批量返现',
+  '/aff-history': 'AFF历史记录',
+  
+  // 系统管理
+  '/task-manage': '定时任务管理',
   '/trigger-manage': '触发器管理',
+  '/notification-manage': '通知管理',
+  '/api-log-monitor': 'API日志监控',
+  
+  // 辅助工具
+  '/email-manage': '主邮箱管理',
+  '/kyc-image-manage': 'KYC图片管理',
+  '/random-user-manage': '模拟用户数据管理',
 };
 
 const TabsView: React.FC = () => {

@@ -1654,6 +1654,311 @@ export const axiosLogsApi = {
 };
 
 /**
+ * 任务管理API
+ * 处理定时任务相关的API请求
+ */
+export const taskApi = {
+  // 获取任务列表
+  getTasks: async () => {
+    try {
+      console.log('获取任务列表');
+      const response = await api.get(`${apiBaseUrl}/api/tasks`);
+      return response.data;
+    } catch (error) {
+      console.error('获取任务列表失败:', error);
+      throw error;
+    }
+  },
+  
+  // 创建任务
+  createTask: async (taskData: {
+    taskName: string;
+    taskKey: string;
+    description?: string;
+    cronExpression: string;
+    handler: {
+      type: 'function' | 'http' | 'service';
+      [key: string]: any;
+    };
+    status: 'enabled' | 'disabled';
+    retryCount?: number;
+    retryInterval?: number;
+  }) => {
+    try {
+      console.log('创建任务:', taskData);
+      const response = await api.post(`${apiBaseUrl}/api/tasks`, taskData);
+      return response.data;
+    } catch (error) {
+      console.error('创建任务失败:', error);
+      throw error;
+    }
+  },
+  
+  // 更新任务
+  updateTask: async (id: string, taskData: {
+    taskName?: string;
+    description?: string;
+    cronExpression?: string;
+    handler?: {
+      type: 'function' | 'http' | 'service';
+      [key: string]: any;
+    };
+    status?: 'enabled' | 'disabled';
+    retryCount?: number;
+    retryInterval?: number;
+  }) => {
+    try {
+      console.log(`更新任务 ID: ${id}`, taskData);
+      const response = await api.put(`${apiBaseUrl}/api/tasks/${id}`, taskData);
+      return response.data;
+    } catch (error) {
+      console.error('更新任务失败:', error);
+      throw error;
+    }
+  },
+  
+  // 删除任务
+  deleteTask: async (id: string) => {
+    try {
+      console.log(`删除任务 ID: ${id}`);
+      const response = await api.delete(`${apiBaseUrl}/api/tasks/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除任务失败:', error);
+      throw error;
+    }
+  },
+  
+  // 启用/禁用任务
+  toggleTask: async (id: string, isActive: boolean) => {
+    try {
+      console.log(`${isActive ? '启用' : '禁用'}任务 ID: ${id}`);
+      const response = await api.patch(`${apiBaseUrl}/api/tasks/${id}/toggle`, { isActive });
+      return response.data;
+    } catch (error) {
+      console.error('切换任务状态失败:', error);
+      throw error;
+    }
+  },
+  
+  // 手动执行任务
+  executeTask: async (id: string) => {
+    try {
+      console.log(`手动执行任务 ID: ${id}`);
+      const response = await api.post(`${apiBaseUrl}/api/tasks/${id}/execute`);
+      return response.data;
+    } catch (error) {
+      console.error('手动执行任务失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取任务执行历史
+  getTaskExecutions: async (id: string) => {
+    try {
+      console.log(`获取任务执行历史 ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/tasks/${id}/executions`);
+      return response.data;
+    } catch (error) {
+      console.error('获取任务执行历史失败:', error);
+      throw error;
+    }
+  },
+  
+  // 获取可用的函数处理器列表
+  getAvailableHandlers: async () => {
+    try {
+      console.log('获取可用的函数处理器列表');
+      const response = await api.get(`${apiBaseUrl}/api/tasks/handlers`);
+      return response.data;
+    } catch (error) {
+      console.error('获取可用的函数处理器列表失败:', error);
+      throw error;
+    }
+  }
+};
+
+/**
+ * 代理池管理API
+ * 处理所有与代理池相关的API请求
+ */
+export const proxyPoolApi = {
+  // 获取所有代理池
+  getPools: async () => {
+    try {
+      console.log('获取代理池列表');
+      const response = await api.get(`${apiBaseUrl}/api/proxy-pools`);
+      return response.data;
+    } catch (error) {
+      console.error('获取代理池列表失败:', error);
+      throw error;
+    }
+  },
+
+  // 创建代理池
+  createPool: async (poolData: {
+    name: string;
+    description?: string;
+    proxy_mode: 'none' | 'round_robin' | 'random' | 'failover';
+    enabled: boolean;
+  }) => {
+    try {
+      console.log('创建代理池:', poolData);
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools`, poolData);
+      return response.data;
+    } catch (error) {
+      console.error('创建代理池失败:', error);
+      throw error;
+    }
+  },
+
+  // 更新代理池
+  updatePool: async (poolId: number, poolData: {
+    name?: string;
+    description?: string;
+    proxy_mode?: 'none' | 'round_robin' | 'random' | 'failover';
+    enabled?: boolean;
+  }) => {
+    try {
+      console.log(`更新代理池 ${poolId}:`, poolData);
+      const response = await api.put(`${apiBaseUrl}/api/proxy-pools/${poolId}`, poolData);
+      return response.data;
+    } catch (error) {
+      console.error('更新代理池失败:', error);
+      throw error;
+    }
+  },
+
+  // 删除代理池
+  deletePool: async (poolId: number) => {
+    try {
+      console.log(`删除代理池 ${poolId}`);
+      const response = await api.delete(`${apiBaseUrl}/api/proxy-pools/${poolId}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除代理池失败:', error);
+      throw error;
+    }
+  },
+
+  // 获取代理池中的代理服务器
+  getServers: async (poolId: number) => {
+    try {
+      console.log(`获取代理池 ${poolId} 的服务器列表`);
+      const response = await api.get(`${apiBaseUrl}/api/proxy-pools/${poolId}/servers`);
+      return response.data;
+    } catch (error) {
+      console.error('获取代理服务器列表失败:', error);
+      throw error;
+    }
+  },
+
+  // 添加代理服务器
+  addServer: async (poolId: number, serverData: {
+    name: string;
+    proxy_type: 'http' | 'https' | 'socks4' | 'socks5';
+    host: string;
+    port: number;
+    username?: string;
+    password?: string;
+    enabled?: boolean;
+  }) => {
+    try {
+      console.log(`添加代理服务器到代理池 ${poolId}:`, serverData);
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools/${poolId}/servers`, serverData);
+      return response.data;
+    } catch (error) {
+      console.error('添加代理服务器失败:', error);
+      throw error;
+    }
+  },
+
+  // 批量添加代理服务器
+  batchAddServers: async (poolId: number, proxyStrings: string[]) => {
+    try {
+      console.log(`批量添加代理服务器到代理池 ${poolId}, 数量: ${proxyStrings.length}`);
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools/${poolId}/servers/batch`, {
+        proxyStrings
+      });
+      return response.data;
+    } catch (error) {
+      console.error('批量添加代理服务器失败:', error);
+      throw error;
+    }
+  },
+
+  // 更新代理服务器
+  updateServer: async (serverId: number, serverData: {
+    name?: string;
+    proxy_type?: 'http' | 'https' | 'socks4' | 'socks5';
+    host?: string;
+    port?: number;
+    username?: string;
+    password?: string;
+    enabled?: boolean;
+  }) => {
+    try {
+      console.log(`更新代理服务器 ${serverId}:`, serverData);
+      const response = await api.put(`${apiBaseUrl}/api/proxy-pools/servers/${serverId}`, serverData);
+      return response.data;
+    } catch (error) {
+      console.error('更新代理服务器失败:', error);
+      throw error;
+    }
+  },
+
+  // 删除代理服务器
+  deleteServer: async (serverId: number) => {
+    try {
+      console.log(`删除代理服务器 ${serverId}`);
+      const response = await api.delete(`${apiBaseUrl}/api/proxy-pools/servers/${serverId}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除代理服务器失败:', error);
+      throw error;
+    }
+  },
+
+  // 验证代理服务器
+  validateServer: async (serverId: number) => {
+    try {
+      console.log(`验证代理服务器 ${serverId}`);
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools/servers/${serverId}/validate`);
+      return response.data;
+    } catch (error) {
+      console.error('验证代理服务器失败:', error);
+      throw error;
+    }
+  },
+
+  // 解析代理字符串
+  parseProxyString: async (proxyString: string) => {
+    try {
+      console.log('解析代理字符串:', proxyString);
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools/parse`, {
+        proxyString
+      });
+      return response.data;
+    } catch (error) {
+      console.error('解析代理字符串失败:', error);
+      throw error;
+    }
+  },
+
+  // 执行健康检查
+  healthCheck: async () => {
+    try {
+      console.log('执行代理健康检查');
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools/health-check`);
+      return response.data;
+    } catch (error) {
+      console.error('代理健康检查失败:', error);
+      throw error;
+    }
+  },
+};
+
+/**
  * 使用说明：
  * 
  * 1. 直接使用api实例进行请求：

@@ -29,7 +29,8 @@ import {
   Spin,
   Row,
   Col,
-  List
+  List,
+  Alert
 } from 'antd';
 import {
   PlusOutlined,
@@ -48,11 +49,11 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
-import axios from 'axios';
-import api from '../../services/api';
+import { taskApi } from '../../services/api';
+import CronExpressionBuilder from '../../components/CronExpressionBuilder';
+import AccountFilterBuilder from '../../components/AccountFilterBuilder';
 
 const { Title, Text, Paragraph } = Typography;
-const { TabPane } = Tabs;
 const { Option } = Select;
 
 // 接口定义
@@ -176,6 +177,54 @@ const TaskManage: React.FC = () => {
   // 处理器配置状态
   const [handlerType, setHandlerType] = useState<'function' | 'http' | 'service'>('function');
   
+  // 新增：任务模板和配置状态
+  const [taskTemplate, setTaskTemplate] = useState<string>('custom');
+  const [cronExpression, setCronExpression] = useState<string>('');
+  const [accountFilterConfig, setAccountFilterConfig] = useState<any>({});
+  
+  // 安全解析处理器JSON
+  const safeParseHandler = (handler: any) => {
+    if (typeof handler === 'string') {
+      try {
+        return JSON.parse(handler);
+      } catch (error) {
+        console.error('解析处理器JSON失败:', error);
+        return { type: 'function', functionName: '', params: {} };
+      }
+    }
+    return handler; // 如果已经是对象，直接返回
+  };
+  
+  // 任务模板定义
+  const taskTemplates = [
+    {
+      key: 'custom',
+      name: '自定义任务',
+      description: '完全自定义的任务配置',
+      icon: <CodeOutlined />,
+      defaultValues: {}
+    },
+    {
+      key: 'sync_accounts',
+      name: '同步账户信息',
+      description: '定时同步指定账户的信息',
+      icon: <SyncOutlined />,
+      defaultValues: {
+        taskName: '同步账户信息',
+        taskKey: `sync_accounts_${Date.now()}`,
+        status: 'enabled',
+        retryCount: 3,
+        retryInterval: 60,
+        description: '定时同步指定账户的信息，包括余额、状态等数据',
+        // 固定的处理器配置
+        handlerType: 'function',
+        handlerName: 'syncAccountsInfo'
+      },
+      // 为同步账户信息任务提供默认的cron表达式
+      defaultCronExpression: '0 */30 * * * *' // 每30分钟执行一次
+    }
+  ];
+  
   // 初始数据加载
   useEffect(() => {
     fetchTasks();
@@ -185,35 +234,45 @@ const TaskManage: React.FC = () => {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/tasks');
+      const response = await taskApi.getTasks();
       
-      if (response.data.success) {
-        setTasks(response.data.data || []);
+      if (response.success) {
+        // 修复：API返回的data包含tasks数组和pagination信息
+        const tasksData = response.data?.tasks || response.data || [];
+        // 确保数据是数组格式
+        setTasks(Array.isArray(tasksData) ? tasksData : []);
       } else {
-        message.error(`获取任务列表失败: ${response.data.message}`);
+        message.error(response.message || '获取任务列表失败');
+        setTasks([]); // 失败时设置空数组
       }
     } catch (error: any) {
       console.error('获取任务列表失败:', error);
       message.error(`获取任务列表失败: ${error.message}`);
+      setTasks([]); // 错误时设置空数组
     } finally {
       setLoading(false);
     }
   };
   
   // 获取任务执行历史
-  const fetchTaskExecutionHistory = async (taskId: number) => {
+  const fetchTaskExecutions = async (taskId: string) => {
     try {
       setExecutionHistoryLoading(true);
-      const response = await axios.get(`/api/tasks/${taskId}/history`);
+      const response = await taskApi.getTaskExecutions(taskId);
       
-      if (response.data.success) {
-        setTaskExecutions(response.data.data || []);
+      if (response.success) {
+        // 修复：API返回的data可能包含executions数组和pagination信息
+        const executionsData = response.data?.executions || response.data || [];
+        // 确保数据是数组格式
+        setTaskExecutions(Array.isArray(executionsData) ? executionsData : []);
       } else {
-        message.error(`获取任务执行历史失败: ${response.data.message}`);
+        message.error(response.message || '获取执行历史失败');
+        setTaskExecutions([]); // 失败时设置空数组
       }
     } catch (error: any) {
-      console.error('获取任务执行历史失败:', error);
-      message.error(`获取任务执行历史失败: ${error.message}`);
+      console.error('获取执行历史失败:', error);
+      message.error(`获取执行历史失败: ${error.message}`);
+      setTaskExecutions([]); // 错误时设置空数组
     } finally {
       setExecutionHistoryLoading(false);
     }
@@ -224,9 +283,12 @@ const TaskManage: React.FC = () => {
     setTaskModalMode('create');
     setTaskModalVisible(true);
     
-    // 重置表单
+    // 重置表单和状态
     taskForm.resetFields();
     setHandlerType('function');
+    setTaskTemplate('custom');
+    setCronExpression('');
+    setAccountFilterConfig({});
   };
   
   // 打开任务模态框 - 编辑模式
@@ -236,7 +298,7 @@ const TaskManage: React.FC = () => {
     setTaskModalVisible(true);
     
     // 解析处理器JSON
-    const handler = JSON.parse(task.handler);
+    const handler = safeParseHandler(task.handler);
     setHandlerType(handler.type);
     
     // 设置表单初始值
@@ -286,113 +348,189 @@ const TaskManage: React.FC = () => {
   // 查看任务详情
   const handleViewTaskDetail = (task: Task) => {
     setSelectedTask(task);
-    fetchTaskExecutionHistory(task.id);
+    fetchTaskExecutions(task.id.toString());
+  };
+  
+  // 处理模板选择
+  const handleTemplateChange = (templateKey: string) => {
+    setTaskTemplate(templateKey);
+    
+    const template = taskTemplates.find(t => t.key === templateKey);
+    if (template) {
+      // 设置表单默认值
+      if (template.defaultValues) {
+        taskForm.setFieldsValue(template.defaultValues);
+        
+        // 设置处理器类型
+        if (template.defaultValues.handlerType) {
+          const handlerTypeValue = template.defaultValues.handlerType as 'function' | 'http' | 'service';
+          setHandlerType(handlerTypeValue);
+        }
+      }
+      
+      // 为同步账户信息任务设置默认的cron表达式
+      if (templateKey === 'sync_accounts' && template.defaultCronExpression) {
+        setCronExpression(template.defaultCronExpression);
+        taskForm.setFieldsValue({ cronExpression: template.defaultCronExpression });
+      } else {
+        // 其他模板重置cron表达式
+        setCronExpression('');
+        taskForm.setFieldsValue({ cronExpression: '' });
+      }
+      
+      // 重置账户筛选配置
+      setAccountFilterConfig({});
+    }
   };
   
   // 提交任务表单
-  const handleSubmitTaskForm = async (values: any) => {
+  const handleTaskSubmit = async (values: any) => {
     try {
       setLoading(true);
       
-      // 构建处理器配置
-      const handler = buildHandlerConfig(values);
+      // 验证必要字段
+      if (!values.taskName) {
+        message.error('请输入任务名称');
+        return;
+      }
+      
+      if (!values.taskKey) {
+        message.error('请输入任务键');
+        return;
+      }
+      
+      if (!cronExpression) {
+        message.error('请配置执行时间');
+        return;
+      }
+      
+      // 构建处理器对象
+      const buildHandler = () => {
+        switch (handlerType) {
+          case 'function': {
+            let params = {};
+            
+            // 如果是同步账户信息任务，使用账户筛选配置作为参数
+            if (taskTemplate === 'sync_accounts') {
+              params = accountFilterConfig || {};
+              
+              // 为同步账户信息任务提供默认参数
+              if (!params || Object.keys(params).length === 0) {
+                params = {
+                  type: 'list',
+                  selectedAccountIds: [],
+                  selectedGroupIds: [],
+                  scriptCode: ''
+                };
+              }
+            } else {
+              // 其他函数任务，解析JSON参数
+              try {
+                params = values.handlerParams ? JSON.parse(values.handlerParams) : {};
+              } catch (error) {
+                console.error('解析函数参数JSON失败:', error);
+                params = {};
+              }
+            }
+            
+            return {
+              type: 'function' as const,
+              functionName: taskTemplate === 'sync_accounts' ? 'syncAccountsInfo' : (values.handlerName || ''),
+              params
+            };
+          }
+          
+          case 'http': {
+            let headers = {};
+            let body = {};
+            
+            try {
+              headers = values.httpHeaders ? JSON.parse(values.httpHeaders) : {};
+            } catch (error) {
+              console.error('解析HTTP请求头JSON失败:', error);
+            }
+            
+            try {
+              body = values.httpBody ? JSON.parse(values.httpBody) : {};
+            } catch (error) {
+              console.error('解析HTTP请求体JSON失败:', error);
+            }
+            
+            return {
+              type: 'http' as const,
+              method: values.httpMethod || 'GET',
+              url: values.httpUrl || '',
+              headers,
+              body,
+              timeout: values.httpTimeout || 30000
+            };
+          }
+          
+          case 'service': {
+            let params = {};
+            
+            try {
+              params = values.serviceParams ? JSON.parse(values.serviceParams) : {};
+            } catch (error) {
+              console.error('解析服务参数JSON失败:', error);
+            }
+            
+            return {
+              type: 'service' as const,
+              serviceName: values.serviceName || '',
+              methodName: values.methodName || '',
+              params
+            };
+          }
+          
+          default:
+            return {
+              type: 'function' as const,
+              functionName: '',
+              params: {}
+            };
+        }
+      };
       
       // 构建任务数据
-      const taskData: TaskDTO = {
+      const taskData = {
         taskName: values.taskName,
         taskKey: values.taskKey,
-        cronExpression: values.cronExpression,
-        handler,
-        status: values.status,
-        retryCount: values.retryCount,
-        retryInterval: values.retryInterval,
-        description: values.description
+        description: values.description || '',
+        cronExpression: cronExpression,
+        handler: buildHandler(),
+        status: values.status as 'enabled' | 'disabled' || 'enabled',
+        retryCount: values.retryCount || 0,
+        retryInterval: values.retryInterval || 0
       };
+      
+      console.log('提交任务数据:', taskData);
       
       let response;
       
       if (taskModalMode === 'create') {
-        response = await axios.post('/api/tasks', taskData);
+        response = await taskApi.createTask(taskData);
       } else if (taskModalMode === 'edit' && selectedTask) {
-        response = await axios.put(`/api/tasks/${selectedTask.id}`, taskData);
+        response = await taskApi.updateTask(selectedTask.id.toString(), taskData);
       }
       
-      if (response && response.data.success) {
+      if (response && response.success) {
         message.success(`${taskModalMode === 'create' ? '创建' : '更新'}任务成功`);
         setTaskModalVisible(false);
+        taskForm.resetFields();
+        setCronExpression('');
+        setHandlerType('function');
+        setTaskTemplate('custom');
+        setAccountFilterConfig({});
         fetchTasks();
       } else {
-        message.error(`${taskModalMode === 'create' ? '创建' : '更新'}任务失败: ${response?.data.message}`);
+        message.error(`${taskModalMode === 'create' ? '创建' : '更新'}任务失败: ${response?.message || '未知错误'}`);
       }
     } catch (error: any) {
-      console.error(`${taskModalMode === 'create' ? '创建' : '更新'}任务失败:`, error);
-      message.error(`${taskModalMode === 'create' ? '创建' : '更新'}任务失败: ${error.message}`);
+      console.error('提交任务失败:', error);
+      message.error(`提交任务失败: ${error.message || '网络错误，请稍后重试'}`);
     } finally {
       setLoading(false);
-    }
-  };
-  
-  // 构建处理器配置
-  const buildHandlerConfig = (values: any): { type: HandlerType; [key: string]: any } => {
-    switch (values.handlerType as HandlerType) {
-      case 'function': {
-        let params = {};
-        try {
-          params = JSON.parse(values.params || '{}');
-        } catch (error) {
-          console.error('解析参数JSON失败:', error);
-        }
-        
-        return {
-          type: 'function' as HandlerType,
-          functionName: values.functionName,
-          params
-        };
-      }
-      
-      case 'http': {
-        let headers = {};
-        try {
-          headers = JSON.parse(values.httpHeaders || '{}');
-        } catch (error) {
-          console.error('解析请求头JSON失败:', error);
-        }
-        
-        let body = {};
-        try {
-          body = JSON.parse(values.httpBody || '{}');
-        } catch (error) {
-          console.error('解析请求体JSON失败:', error);
-        }
-        
-        return {
-          type: 'http' as HandlerType,
-          method: values.httpMethod,
-          url: values.httpUrl,
-          headers,
-          body,
-          timeout: values.httpTimeout
-        };
-      }
-      
-      case 'service': {
-        let params = {};
-        try {
-          params = JSON.parse(values.serviceParams || '{}');
-        } catch (error) {
-          console.error('解析服务参数JSON失败:', error);
-        }
-        
-        return {
-          type: 'service' as HandlerType,
-          serviceName: values.serviceName,
-          methodName: values.methodName,
-          params
-        };
-      }
-      
-      default:
-        return { type: 'function' as HandlerType, functionName: '', params: {} };
     }
   };
   
@@ -401,13 +539,13 @@ const TaskManage: React.FC = () => {
     try {
       setLoading(true);
       
-      const response = await axios.delete(`/api/tasks/${taskId}`);
+      const response = await taskApi.deleteTask(taskId.toString());
       
-      if (response.data.success) {
+      if (response.success) {
         message.success('删除任务成功');
         fetchTasks();
       } else {
-        message.error(`删除任务失败: ${response.data.message}`);
+        message.error(`删除任务失败: ${response.message}`);
       }
     } catch (error: any) {
       console.error('删除任务失败:', error);
@@ -422,19 +560,19 @@ const TaskManage: React.FC = () => {
     try {
       setLoading(true);
       
-      const response = await axios.post(`/api/tasks/${taskId}/trigger`);
+      const response = await taskApi.executeTask(taskId.toString());
       
-      if (response.data.success) {
+      if (response.success) {
         message.success('触发任务成功');
         
         // 如果当前正在查看该任务的执行历史，则刷新
         if (selectedTask && selectedTask.id === taskId) {
           setTimeout(() => {
-            fetchTaskExecutionHistory(taskId);
+            fetchTaskExecutions(taskId.toString());
           }, 1000); // 延迟1秒刷新，确保有新的执行记录
         }
       } else {
-        message.error(`触发任务失败: ${response.data.message}`);
+        message.error(`触发任务失败: ${response.message}`);
       }
     } catch (error: any) {
       console.error('触发任务失败:', error);
@@ -483,7 +621,7 @@ const TaskManage: React.FC = () => {
         title: '处理器类型',
         key: 'handler_type',
         render: (text: string, record: Task) => {
-          const handler = JSON.parse(record.handler);
+          const handler = safeParseHandler(record.handler);
           const handlerType = handler.type as HandlerType;
           return (
             <Tag icon={HANDLER_TYPE_ICONS[handlerType]} color="blue">
@@ -544,7 +682,7 @@ const TaskManage: React.FC = () => {
     return (
       <Table
         columns={columns}
-        dataSource={tasks}
+        dataSource={Array.isArray(tasks) ? tasks : []}
         rowKey="id"
         loading={loading}
         pagination={{ 
@@ -652,7 +790,7 @@ const TaskManage: React.FC = () => {
     return (
       <Table
         columns={columns}
-        dataSource={taskExecutions}
+        dataSource={Array.isArray(taskExecutions) ? taskExecutions : []}
         rowKey="id"
         loading={executionHistoryLoading}
         pagination={{ 
@@ -670,7 +808,7 @@ const TaskManage: React.FC = () => {
       <Form
         form={taskForm}
         layout="vertical"
-        onFinish={handleSubmitTaskForm}
+        onFinish={handleTaskSubmit}
         initialValues={{
           handlerType: 'function',
           httpMethod: 'GET',
@@ -679,6 +817,44 @@ const TaskManage: React.FC = () => {
           retryInterval: 0
         }}
       >
+        {/* 任务模板选择 */}
+        {taskModalMode === 'create' && (
+          <>
+            <StyledFormItem label="任务模板">
+              <Radio.Group
+                value={taskTemplate}
+                onChange={(e) => handleTemplateChange(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                {taskTemplates.map(template => (
+                  <Radio.Button
+                    key={template.key}
+                    value={template.key}
+                    style={{ 
+                      height: 'auto', 
+                      padding: '12px 16px',
+                      marginBottom: '8px',
+                      display: 'block',
+                      whiteSpace: 'normal'
+                    }}
+                  >
+                    <Space align="start">
+                      {template.icon}
+                      <div>
+                        <div style={{ fontWeight: 'bold' }}>{template.name}</div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {template.description}
+                        </div>
+                      </div>
+                    </Space>
+                  </Radio.Button>
+                ))}
+              </Radio.Group>
+            </StyledFormItem>
+            <Divider />
+          </>
+        )}
+
         <StyledFormItem
           label="任务名称"
           name="taskName"
@@ -696,13 +872,19 @@ const TaskManage: React.FC = () => {
           <Input placeholder="请输入任务键" disabled={taskModalMode === 'edit'} />
         </StyledFormItem>
         
+        {/* 使用新的Cron表达式组件 */}
         <StyledFormItem
-          label="Cron表达式"
+          label="执行时间配置"
           name="cronExpression"
-          rules={[{ required: true, message: '请输入Cron表达式' }]}
-          extra="例如：0 * * * * * (每分钟执行一次)"
+          rules={[{ required: true, message: '请配置执行时间' }]}
         >
-          <Input placeholder="请输入Cron表达式" />
+          <CronExpressionBuilder
+            value={cronExpression}
+            onChange={(cron) => {
+              setCronExpression(cron);
+              taskForm.setFieldsValue({ cronExpression: cron });
+            }}
+          />
         </StyledFormItem>
         
         <Divider orientation="left">处理器配置</Divider>
@@ -723,21 +905,56 @@ const TaskManage: React.FC = () => {
           <>
             <StyledFormItem
               label="函数名称"
-              name="functionName"
+              name="handlerName"
               rules={[{ required: true, message: '请输入函数名称' }]}
               extra="该函数必须通过TaskService的registerFunctionHandler方法注册"
             >
-              <Input placeholder="请输入函数名称" />
+              {taskTemplate === 'sync_accounts' ? (
+                <Input value="syncAccountsInfo" disabled />
+              ) : (
+                <Input placeholder="请输入函数名称" />
+              )}
             </StyledFormItem>
+            
+            {/* 同步账户信息模板的特殊配置 */}
+            {taskTemplate === 'sync_accounts' && (
+              <>
+                <Alert
+                  message="账户同步任务"
+                  description="此任务将定时同步指定账户的信息。请配置要同步的账户范围。"
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
+                
+                <StyledFormItem label="账户筛选配置">
+                  <AccountFilterBuilder
+                    value={accountFilterConfig}
+                    onChange={setAccountFilterConfig}
+                  />
+                </StyledFormItem>
+              </>
+            )}
             
             <StyledFormItem
               label="函数参数"
-              name="params"
-              extra="JSON格式的函数参数"
+              name="handlerParams"
+              extra={taskTemplate === 'sync_accounts' ? 
+                "账户筛选配置将自动生成参数，您也可以手动调整" : 
+                "JSON格式的函数参数"
+              }
             >
               <Input.TextArea 
-                placeholder='例如：{ "key": "value" }' 
-                rows={4} 
+                placeholder={taskTemplate === 'sync_accounts' ? 
+                  '参数将根据账户筛选配置自动生成' :
+                  '例如：{ "key": "value" }'
+                }
+                rows={taskTemplate === 'sync_accounts' ? 8 : 4}
+                value={taskTemplate === 'sync_accounts' ? 
+                  JSON.stringify(accountFilterConfig, null, 2) : 
+                  undefined
+                }
+                readOnly={taskTemplate === 'sync_accounts'}
               />
             </StyledFormItem>
           </>
@@ -876,148 +1093,157 @@ const TaskManage: React.FC = () => {
     }
     
     // 解析处理器配置
-    const handler = JSON.parse(selectedTask.handler);
+    const handler = safeParseHandler(selectedTask.handler);
     
     return (
       <Spin spinning={executionHistoryLoading}>
-        <Tabs>
-          <TabPane tab="基本信息" key="basic">
-            <StyledCard>
-              <Row gutter={[16, 16]}>
-                <Col span={24}>
-                  <Title level={4}>{selectedTask.task_name}</Title>
-                  <Tag color={STATUS_COLORS[selectedTask.status]}>
-                    {selectedTask.status === 'enabled' ? '已启用' : selectedTask.status === 'disabled' ? '已禁用' : '已删除'}
-                  </Tag>
-                </Col>
-                
-                <Col span={12}>
-                  <Text strong>任务键：</Text> {selectedTask.task_key}
-                </Col>
-                <Col span={12}>
-                  <Text strong>Cron表达式：</Text> <Tag color="processing">{selectedTask.cron_expression}</Tag>
-                </Col>
-                
-                <Col span={12}>
-                  <Text strong>创建时间：</Text> {new Date(selectedTask.created_at).toLocaleString()}
-                </Col>
-                <Col span={12}>
-                  <Text strong>最后更新：</Text> {new Date(selectedTask.updated_at).toLocaleString()}
-                </Col>
-                
-                <Col span={12}>
-                  <Text strong>下次执行时间：</Text> {selectedTask.next_execution_time ? new Date(selectedTask.next_execution_time).toLocaleString() : '未知'}
-                </Col>
-                <Col span={12}>
-                  <Text strong>最后执行时间：</Text> {selectedTask.last_execution_time ? new Date(selectedTask.last_execution_time).toLocaleString() : '未执行'}
-                </Col>
-                
-                <Col span={12}>
-                  <Text strong>失败重试次数：</Text> {selectedTask.retry_count}
-                </Col>
-                <Col span={12}>
-                  <Text strong>重试间隔时间：</Text> {selectedTask.retry_interval} 秒
-                </Col>
-                
-                <Col span={24}>
-                  <Text strong>描述：</Text> {selectedTask.description || '无'}
-                </Col>
-              </Row>
-            </StyledCard>
-            
-            <StyledCard title="处理器配置">
-              <Row gutter={[16, 16]}>
-                <Col span={24}>
-                  <Tag icon={HANDLER_TYPE_ICONS[handler.type as HandlerType]} color="blue">
-                    {handler.type === 'function' ? '函数处理器' : handler.type === 'http' ? 'HTTP请求处理器' : '服务处理器'}
-                  </Tag>
-                </Col>
-                
-                {handler.type === 'function' && (
-                  <>
-                    <Col span={24}>
-                      <Text strong>函数名称：</Text> {handler.functionName}
-                    </Col>
-                    <Col span={24}>
-                      <Text strong>函数参数：</Text>
-                      <pre>{JSON.stringify(handler.params || {}, null, 2)}</pre>
-                    </Col>
-                  </>
-                )}
-                
-                {handler.type === 'http' && (
-                  <>
-                    <Col span={12}>
-                      <Text strong>请求方法：</Text> {handler.method}
-                    </Col>
-                    <Col span={12}>
-                      <Text strong>超时时间：</Text> {handler.timeout || '默认'} 毫秒
-                    </Col>
-                    <Col span={24}>
-                      <Text strong>请求URL：</Text> {handler.url}
-                    </Col>
-                    <Col span={24}>
-                      <Text strong>请求头：</Text>
-                      <pre>{JSON.stringify(handler.headers || {}, null, 2)}</pre>
-                    </Col>
-                    <Col span={24}>
-                      <Text strong>请求体：</Text>
-                      <pre>{JSON.stringify(handler.body || {}, null, 2)}</pre>
-                    </Col>
-                  </>
-                )}
-                
-                {handler.type === 'service' && (
-                  <>
-                    <Col span={12}>
-                      <Text strong>服务名称：</Text> {handler.serviceName}
-                    </Col>
-                    <Col span={12}>
-                      <Text strong>方法名称：</Text> {handler.methodName}
-                    </Col>
-                    <Col span={24}>
-                      <Text strong>方法参数：</Text>
-                      <pre>{JSON.stringify(handler.params || {}, null, 2)}</pre>
-                    </Col>
-                  </>
-                )}
-              </Row>
-            </StyledCard>
-            
-            <Space style={{ marginTop: 16 }}>
-              <Button 
-                type="primary" 
-                icon={<EditOutlined />} 
-                onClick={() => handleOpenEditTaskModal(selectedTask)}
-              >
-                编辑任务
-              </Button>
-              
-              <Button 
-                icon={<PlayCircleOutlined />} 
-                onClick={() => handleTriggerTask(selectedTask.id)}
-                disabled={selectedTask.status !== 'enabled'}
-              >
-                手动触发
-              </Button>
-              
-              <Popconfirm
-                title="确定要删除该任务吗？"
-                onConfirm={() => handleDeleteTask(selectedTask.id)}
-                okText="确定"
-                cancelText="取消"
-              >
-                <Button danger icon={<DeleteOutlined />}>
-                  删除任务
-                </Button>
-              </Popconfirm>
-            </Space>
-          </TabPane>
-          
-          <TabPane tab="执行历史" key="history">
-            {renderExecutionHistoryTable()}
-          </TabPane>
-        </Tabs>
+        <Tabs
+          items={[
+            {
+              key: 'basic',
+              label: '基本信息',
+              children: (
+                <>
+                  <StyledCard>
+                    <Row gutter={[16, 16]}>
+                      <Col span={24}>
+                        <Title level={4}>{selectedTask.task_name}</Title>
+                        <Tag color={STATUS_COLORS[selectedTask.status]}>
+                          {selectedTask.status === 'enabled' ? '已启用' : selectedTask.status === 'disabled' ? '已禁用' : '已删除'}
+                        </Tag>
+                      </Col>
+                      
+                      <Col span={12}>
+                        <Text strong>任务键：</Text> {selectedTask.task_key}
+                      </Col>
+                      <Col span={12}>
+                        <Text strong>Cron表达式：</Text> <Tag color="processing">{selectedTask.cron_expression}</Tag>
+                      </Col>
+                      
+                      <Col span={12}>
+                        <Text strong>创建时间：</Text> {new Date(selectedTask.created_at).toLocaleString()}
+                      </Col>
+                      <Col span={12}>
+                        <Text strong>最后更新：</Text> {new Date(selectedTask.updated_at).toLocaleString()}
+                      </Col>
+                      
+                      <Col span={12}>
+                        <Text strong>下次执行时间：</Text> {selectedTask.next_execution_time ? new Date(selectedTask.next_execution_time).toLocaleString() : '未知'}
+                      </Col>
+                      <Col span={12}>
+                        <Text strong>最后执行时间：</Text> {selectedTask.last_execution_time ? new Date(selectedTask.last_execution_time).toLocaleString() : '未执行'}
+                      </Col>
+                      
+                      <Col span={12}>
+                        <Text strong>失败重试次数：</Text> {selectedTask.retry_count}
+                      </Col>
+                      <Col span={12}>
+                        <Text strong>重试间隔时间：</Text> {selectedTask.retry_interval} 秒
+                      </Col>
+                      
+                      <Col span={24}>
+                        <Text strong>描述：</Text> {selectedTask.description || '无'}
+                      </Col>
+                    </Row>
+                  </StyledCard>
+                  
+                  <StyledCard title="处理器配置">
+                    <Row gutter={[16, 16]}>
+                      <Col span={24}>
+                        <Tag icon={HANDLER_TYPE_ICONS[handler.type as HandlerType]} color="blue">
+                          {handler.type === 'function' ? '函数处理器' : handler.type === 'http' ? 'HTTP请求处理器' : '服务处理器'}
+                        </Tag>
+                      </Col>
+                      
+                      {handler.type === 'function' && (
+                        <>
+                          <Col span={24}>
+                            <Text strong>函数名称：</Text> {handler.functionName}
+                          </Col>
+                          <Col span={24}>
+                            <Text strong>函数参数：</Text>
+                            <pre>{JSON.stringify(handler.params || {}, null, 2)}</pre>
+                          </Col>
+                        </>
+                      )}
+                      
+                      {handler.type === 'http' && (
+                        <>
+                          <Col span={12}>
+                            <Text strong>请求方法：</Text> {handler.method}
+                          </Col>
+                          <Col span={12}>
+                            <Text strong>超时时间：</Text> {handler.timeout || '默认'} 毫秒
+                          </Col>
+                          <Col span={24}>
+                            <Text strong>请求URL：</Text> {handler.url}
+                          </Col>
+                          <Col span={24}>
+                            <Text strong>请求头：</Text>
+                            <pre>{JSON.stringify(handler.headers || {}, null, 2)}</pre>
+                          </Col>
+                          <Col span={24}>
+                            <Text strong>请求体：</Text>
+                            <pre>{JSON.stringify(handler.body || {}, null, 2)}</pre>
+                          </Col>
+                        </>
+                      )}
+                      
+                      {handler.type === 'service' && (
+                        <>
+                          <Col span={12}>
+                            <Text strong>服务名称：</Text> {handler.serviceName}
+                          </Col>
+                          <Col span={12}>
+                            <Text strong>方法名称：</Text> {handler.methodName}
+                          </Col>
+                          <Col span={24}>
+                            <Text strong>方法参数：</Text>
+                            <pre>{JSON.stringify(handler.params || {}, null, 2)}</pre>
+                          </Col>
+                        </>
+                      )}
+                    </Row>
+                  </StyledCard>
+                  
+                  <Space style={{ marginTop: 16 }}>
+                    <Button 
+                      type="primary" 
+                      icon={<EditOutlined />} 
+                      onClick={() => handleOpenEditTaskModal(selectedTask)}
+                    >
+                      编辑任务
+                    </Button>
+                    
+                    <Button 
+                      icon={<PlayCircleOutlined />} 
+                      onClick={() => handleTriggerTask(selectedTask.id)}
+                      disabled={selectedTask.status !== 'enabled'}
+                    >
+                      手动触发
+                    </Button>
+                    
+                    <Popconfirm
+                      title="确定要删除该任务吗？"
+                      onConfirm={() => handleDeleteTask(selectedTask.id)}
+                      okText="确定"
+                      cancelText="取消"
+                    >
+                      <Button danger icon={<DeleteOutlined />}>
+                        删除任务
+                      </Button>
+                    </Popconfirm>
+                  </Space>
+                </>
+              )
+            },
+            {
+              key: 'history',
+              label: '执行历史',
+              children: renderExecutionHistoryTable()
+            }
+          ]}
+        />
       </Spin>
     );
   };
@@ -1058,11 +1284,12 @@ const TaskManage: React.FC = () => {
       {/* 任务表单模态框 */}
       <Modal
         title={`${taskModalMode === 'create' ? '创建' : '编辑'}任务`}
-        visible={taskModalVisible}
+        open={taskModalVisible}
         onCancel={() => setTaskModalVisible(false)}
         onOk={() => taskForm.submit()}
-        width={700}
+        width={1200}
         confirmLoading={loading}
+        styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
       >
         {renderTaskForm()}
       </Modal>
@@ -1073,7 +1300,7 @@ const TaskManage: React.FC = () => {
         placement="right"
         width={600}
         onClose={() => setExecutionDrawerVisible(false)}
-        visible={executionDrawerVisible}
+        open={executionDrawerVisible}
       >
         {selectedExecution && (
           <div>
