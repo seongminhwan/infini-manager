@@ -1,21 +1,90 @@
 /**
  * HTTP客户端工具
  * 配置好拦截器的axios实例，所有服务都应该使用这个实例而不是直接导入axios
+ * 集成代理池功能，可以自动选择和使用代理
  */
-import axios, { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, { InternalAxiosRequestConfig, AxiosResponse, AxiosError, AxiosRequestConfig } from 'axios';
 import { AxiosLoggingService } from '../service/AxiosLoggingService';
+import { ProxyPoolService } from '../service/ProxyPoolService';
+
+// 创建代理池服务实例
+const proxyPoolService = new ProxyPoolService();
+
+// 默认代理池ID
+const DEFAULT_PROXY_POOL_ID = 1;
+
+// 扩展AxiosRequestConfig类型，添加代理池相关配置
+interface EnhancedRequestConfig extends AxiosRequestConfig {
+  useProxy?: boolean;          // 是否使用代理
+  proxyPoolId?: number;        // 使用的代理池ID
+  proxyServerId?: number;      // 使用特定的代理服务器ID
+  _currentProxyId?: number;    // 当前使用的代理ID（内部使用）
+}
 
 // 创建一个自定义的axios实例
 const httpClient = axios.create();
 
+/**
+ * 从代理池中选择代理并配置到请求中
+ * @param config axios请求配置
+ * @returns 配置了代理的请求配置
+ */
+const configureProxy = async (config: EnhancedRequestConfig): Promise<EnhancedRequestConfig> => {
+  // 如果明确指定不使用代理，直接返回原配置
+  if (config.useProxy === false) {
+    return config;
+  }
+  
+  try {
+    // 确定使用哪个代理池，默认使用ID为1的代理池
+    const poolId = config.proxyPoolId || DEFAULT_PROXY_POOL_ID;
+    
+    // 如果指定了具体的代理服务器ID，则获取该代理
+    if (config.proxyServerId) {
+      const proxyResult = await proxyPoolService.getProxyServer(config.proxyServerId);
+      if (proxyResult.success && proxyResult.data) {
+        const proxy = proxyResult.data;
+        // 记录当前使用的代理ID
+        config._currentProxyId = proxy.id;
+        
+        // 配置代理
+        return proxyPoolService.buildProxyConfig(proxy, config);
+      }
+    } else {
+      // 否则从代理池中选择代理
+      const proxy = await proxyPoolService.selectProxy(poolId);
+      if (proxy) {
+        // 记录当前使用的代理ID
+        config._currentProxyId = proxy.id;
+        
+        // 配置代理
+        return proxyPoolService.buildProxyConfig(proxy, config);
+      }
+    }
+    
+    console.log(`未找到可用代理，使用直连模式`);
+    return config;
+  } catch (error) {
+    console.error('配置代理失败:', error);
+    return config; // 出错时使用原配置
+  }
+};
+
 // 请求拦截器
 httpClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     // 为请求添加开始时间戳
     (config as any)._requestStartTime = Date.now();
     
     // 打印请求信息
     console.log(`发送${config.method?.toUpperCase()}请求: ${config.url}`);
+    
+    // 应用代理配置（如果需要）
+    const enhancedConfig = config as EnhancedRequestConfig;
+    if (enhancedConfig.useProxy !== false) {
+      const proxyConfig = await configureProxy(enhancedConfig);
+      Object.assign(config, proxyConfig);
+    }
     
     return config;
   },
@@ -81,6 +150,16 @@ httpClient.interceptors.response.use(
         response_body: responseBody,
         success: true // 修改字段名，与数据库列名保持一致
       });
+      
+      // 如果使用了代理，记录代理使用情况（成功）
+      const enhancedConfig = response.config as EnhancedRequestConfig;
+      if (enhancedConfig._currentProxyId) {
+        await proxyPoolService.recordProxyUsage(
+          enhancedConfig._currentProxyId,
+          true, // 成功
+          duration // 响应时间
+        );
+      }
     } catch (loggingError) {
       // 日志记录失败不应影响正常请求流程
       console.error('记录API请求日志失败:', loggingError);
@@ -135,6 +214,16 @@ httpClient.interceptors.response.use(
         error_message: error.message,
         success: false // 修改字段名，与数据库列名保持一致
       });
+      
+      // 如果使用了代理，记录代理使用情况（失败）
+      const enhancedConfig = config as EnhancedRequestConfig;
+      if (enhancedConfig._currentProxyId) {
+        await proxyPoolService.recordProxyUsage(
+          enhancedConfig._currentProxyId,
+          false, // 失败
+          duration // 响应时间
+        );
+      }
     } catch (loggingError) {
       // 日志记录失败不应影响正常请求流程
       console.error('记录失败的API请求日志时发生错误:', loggingError);
