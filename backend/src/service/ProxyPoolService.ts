@@ -227,7 +227,64 @@ export class ProxyPoolService {
           };
         } else if (response.status >= 400 && response.status < 500) {
           // 4xx 客户端错误，通常表示代理有问题或配置不正确
+          // 分析错误原因
           console.log(`[代理验证] 代理 ${proxy.name} 验证失败: 返回客户端错误 ${response.status}`);
+          
+          // 记录详细错误信息，帮助诊断为什么会返回400
+          let responseBody = '';
+          try {
+            if (response.data) {
+              if (typeof response.data === 'object') {
+                responseBody = JSON.stringify(response.data);
+              } else {
+                responseBody = String(response.data);
+              }
+            }
+            
+            console.log(`[代理验证] 400错误诊断 - 响应头:`, response.headers);
+            console.log(`[代理验证] 400错误诊断 - 响应体: ${responseBody}`);
+            
+            // 分析可能的错误原因
+            let errorReason = '未知原因';
+            if (responseBody.includes('Proxy Authentication Required')) {
+              errorReason = '代理需要认证';
+            } else if (responseBody.includes('Bad Request')) {
+              errorReason = '请求格式不正确';
+            } else if (responseBody.includes('blocked') || responseBody.includes('forbidden')) {
+              errorReason = '代理IP被目标网站封锁';
+            }
+            
+            console.log(`[代理验证] 400错误诊断 - 可能原因: ${errorReason}`);
+          } catch (diagError) {
+            console.error(`[代理验证] 400错误诊断失败:`, diagError);
+          }
+          
+          // 尝试使用不同的请求头再次测试
+          try {
+            console.log(`[代理验证] 尝试使用不同的User-Agent重新测试代理...`);
+            const retryResponse = await axios.get(testUrl, {
+              timeout,
+              ...proxyConfig,
+              validateStatus: () => true,
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+              }
+            });
+            
+            if (retryResponse.status >= 200 && retryResponse.status < 300) {
+              console.log(`[代理验证] 使用不同的User-Agent成功: 返回成功状态码 ${retryResponse.status}`);
+              return {
+                isValid: true,
+                responseTime,
+                error: undefined
+              };
+            } else {
+              console.log(`[代理验证] 使用不同的User-Agent仍然失败: 返回状态码 ${retryResponse.status}`);
+            }
+          } catch (retryError) {
+            console.error(`[代理验证] 使用不同的User-Agent重试失败:`, retryError);
+          }
           
           // 只有这一个URL返回了响应，即使是错误响应，也继续尝试其他URL
           if (testUrl !== testUrls[testUrls.length - 1]) {
