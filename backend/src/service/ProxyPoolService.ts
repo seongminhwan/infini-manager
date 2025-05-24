@@ -181,7 +181,7 @@ export class ProxyPoolService {
    * 改进后的验证逻辑：
    * 1. 依次尝试多个测试URL，而不是随机选择一个
    * 2. 更准确地区分不同类型的错误
-   * 3. 如果能够建立连接并获取任何响应，认为代理本身是有效的
+   * 3. 根据HTTP状态码准确判断代理有效性
    */
   async validateProxy(proxy: ProxyServer, timeout: number = 10000): Promise<{
     isValid: boolean;
@@ -216,13 +216,38 @@ export class ProxyPoolService {
         const responseTime = Date.now() - startTime;
         console.log(`[代理验证] 代理 ${proxy.name} 访问 ${testUrl} 获得响应: HTTP ${response.status} - 耗时: ${responseTime}ms`);
         
-        // 即使状态码不是2xx，但如果能获取到响应，说明代理本身是可以工作的
-        // 有些网站可能会封锁代理IP，返回403等错误
-        return {
-          isValid: true,  // 只要能获取响应，就认为代理是有效的
-          responseTime,
-          error: response.status >= 300 ? `HTTP ${response.status}: ${response.statusText}` : undefined
-        };
+        // 根据HTTP状态码判断代理有效性
+        if (response.status >= 200 && response.status < 300) {
+          // 2xx 状态码表示成功
+          console.log(`[代理验证] 代理 ${proxy.name} 验证成功: 返回成功状态码 ${response.status}`);
+          return {
+            isValid: true,
+            responseTime,
+            error: undefined
+          };
+        } else if (response.status >= 400 && response.status < 500) {
+          // 4xx 客户端错误，通常表示代理有问题或配置不正确
+          console.log(`[代理验证] 代理 ${proxy.name} 验证失败: 返回客户端错误 ${response.status}`);
+          
+          // 只有这一个URL返回了响应，即使是错误响应，也继续尝试其他URL
+          if (testUrl !== testUrls[testUrls.length - 1]) {
+            continue;
+          }
+          
+          return {
+            isValid: false,
+            responseTime,
+            error: `代理返回客户端错误: HTTP ${response.status} ${response.statusText}`
+          };
+        } else if (response.status >= 500) {
+          // 5xx 服务器错误，可能是目标网站问题，尝试下一个URL
+          console.log(`[代理验证] 代理 ${proxy.name} 访问 ${testUrl} 返回服务器错误 ${response.status}，尝试下一个URL`);
+          continue;
+        } else if (response.status >= 300 && response.status < 400) {
+          // 3xx 重定向，可能表示代理工作正常但需要重定向，尝试下一个URL
+          console.log(`[代理验证] 代理 ${proxy.name} 访问 ${testUrl} 返回重定向 ${response.status}，尝试下一个URL`);
+          continue;
+        }
       } catch (error: any) {
         // 记录错误，但继续尝试下一个URL
         console.error(`[代理验证] 代理 ${proxy.name} 访问 ${testUrl} 失败: ${error.message}`);
@@ -252,10 +277,10 @@ export class ProxyPoolService {
               error: `代理连接错误: ${error.message}`
             };
           } else {
-            // 其他错误可能是服务器端的问题，但代理本身可能是有效的
+            // 其他错误，认为代理无效
             console.log(`[代理验证] 代理 ${proxy.name} 验证过程中发生其他错误，响应时间: ${responseTime}ms`);
             return {
-              isValid: true, // 如果不是明确的超时或连接错误，我们认为代理可能是有效的
+              isValid: false, // 修改：对于未知错误，也认为代理无效
               responseTime,
               error: `代理验证时发生错误: ${error.message}`
             };
