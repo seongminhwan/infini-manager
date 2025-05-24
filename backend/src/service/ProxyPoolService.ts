@@ -376,21 +376,32 @@ export class ProxyPoolService {
         port: proxy.port
       };
       
+      // 根据用户反馈，处理特殊格式的认证字符串
       if (proxy.username && proxy.password) {
-        proxyConfig.auth = {
-          username: proxy.username,
-          password: proxy.password
-        };
+        if (proxy.username.includes(',') || proxy.password.includes(',')) {
+          // 特殊格式的认证字符串，整体作为auth
+          console.log(`[代理配置] 检测到特殊格式的认证字符串，使用完整认证字符串`);
+          proxyConfig.auth = `${proxy.username}:${proxy.password}`;
+        } else {
+          // 标准格式的用户名密码
+          proxyConfig.auth = {
+            username: proxy.username,
+            password: proxy.password
+          };
+        }
       }
       
       // 如果代理是HTTP类型但目标是HTTPS，设置隧道模式
       if (proxy.proxy_type === 'http' && isTargetHttps) {
         console.log(`[代理配置] 检测到HTTP代理访问HTTPS网站，启用隧道模式`);
         
-        // 修复：使用URL字符串格式创建HttpsProxyAgent实例
+        // 构建代理URL，考虑特殊格式的认证字符串
         let proxyUrl = `http://${proxy.host}:${proxy.port}`;
         if (proxy.username && proxy.password) {
-          proxyUrl = `http://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`;
+          // 使用encodeURIComponent确保特殊字符被正确编码
+          const authPart = encodeURIComponent(`${proxy.username}:${proxy.password}`);
+          proxyUrl = `http://${authPart}@${proxy.host}:${proxy.port}`;
+          console.log(`[代理配置] 使用认证信息构建代理URL（已编码特殊字符）`);
         }
         
         console.log(`[代理配置] 创建HTTP隧道，代理URL: ${proxyUrl}`);
