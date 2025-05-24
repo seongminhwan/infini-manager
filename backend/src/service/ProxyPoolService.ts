@@ -209,7 +209,9 @@ export class ProxyPoolService {
         
         const response = await axios.get(testUrl, {
           timeout,
-          ...proxyConfig,
+          proxy: {
+            ...proxyConfig.proxy
+          },
           validateStatus: () => true // 允许所有状态码
         });
         
@@ -369,7 +371,7 @@ export class ProxyPoolService {
     console.log(`[代理配置] 目标URL: ${targetUrl || '未指定'}, 是否HTTPS: ${isTargetHttps}`);
     
     if (proxy.proxy_type === 'http' || proxy.proxy_type === 'https') {
-      // HTTP/HTTPS代理
+      // 构建基本代理配置
       const proxyConfig: AxiosProxyConfig = {
         protocol: proxy.proxy_type,
         host: proxy.host,
@@ -379,38 +381,56 @@ export class ProxyPoolService {
       // 设置认证信息
       if (proxy.username && proxy.password) {
         console.log(`[代理配置] 使用认证信息: ${proxy.username}:${proxy.password}`);
-        // 始终使用标准格式，符合AxiosProxyConfig类型定义
         proxyConfig.auth = {
           username: proxy.username,
           password: proxy.password
         };
       }
       
-      // 如果代理是HTTP类型但目标是HTTPS，设置隧道模式
+      // 如果代理是HTTP类型但目标是HTTPS，单独处理
       if (proxy.proxy_type === 'http' && isTargetHttps) {
-        console.log(`[代理配置] 检测到HTTP代理访问HTTPS网站，启用隧道模式`);
+        console.log(`[代理配置] 检测到HTTP代理访问HTTPS网站，采用特殊处理`);
         
-        // 构建代理URL字符串，特殊处理认证部分
+        // 构建代理URL字符串
         let proxyUrl;
         if (proxy.username && proxy.password) {
-          // 直接使用完整认证字符串，而不是分解为用户名和密码
-          // 例如："0b33e1763712d63e6a04__cr.us,ca:c5a4e336b003e13e@gw.dataimpulse.com:823"
+          // 使用完整认证字符串，不分解或编码
           proxyUrl = `http://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`;
-          console.log(`[代理配置] 创建HTTP隧道，使用完整认证字符串`);
+          console.log(`[代理配置] 使用完整认证字符串: ${proxyUrl}`);
         } else {
           proxyUrl = `http://${proxy.host}:${proxy.port}`;
         }
         
-        console.log(`[代理配置] 创建HTTP隧道，代理URL: ${proxyUrl}`);
+        console.log(`[代理配置] HTTP代理访问HTTPS站点，模拟curl行为`);
         
-        // 设置代理配置（用于非HTTPS请求）
-        config.proxy = proxyConfig;
-        
-        // 创建HttpsProxyAgent（专用于HTTPS请求的隧道）
+        // 关键修改：不同时使用proxy和httpsAgent配置，只使用httpsAgent
+        // 这避免了axios内部处理的冲突
         const httpsAgent = new HttpsProxyAgent(proxyUrl);
         config.httpsAgent = httpsAgent;
         
-        console.log(`[代理配置] HTTP代理隧道模式配置完成`);
+        // 为了调试，输出完整的代理配置
+        console.log(`[代理配置] 使用HttpsProxyAgent创建隧道，完整URL: ${proxyUrl}`);
+        
+        // 模拟curl的行为，添加一些必要的头部
+        if (!config.headers) {
+          config.headers = {};
+        }
+        
+        // 确保有正确的Accept和Connection头部
+        if (!config.headers['Accept']) {
+          config.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
+        }
+        
+        if (!config.headers['Connection']) {
+          config.headers['Connection'] = 'close';
+        }
+        
+        // 这些设置帮助确保axios使用CONNECT方法建立隧道
+        config.maxRedirects = 5;
+        config.maxBodyLength = Infinity;
+        config.decompress = true;
+        
+        console.log(`[代理配置] HTTP代理访问HTTPS站点配置完成，使用隧道模式`);
       } else {
         // 普通情况，直接使用代理配置
         config.proxy = proxyConfig;
