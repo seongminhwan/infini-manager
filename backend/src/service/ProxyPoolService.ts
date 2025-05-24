@@ -391,7 +391,7 @@ export class ProxyPoolService {
         // 设置Axios配置，强制使用隧道
         config.httpsAgent = new HttpsProxyAgent({
           host: proxy.host,
-          port: proxy.port,
+          port: String(proxy.port), // 转换为字符串类型，HttpsProxyAgent需要
           auth: proxy.username && proxy.password ? 
             `${proxy.username}:${proxy.password}` : undefined,
           rejectUnauthorized: false  // 不验证HTTPS证书，提高兼容性
