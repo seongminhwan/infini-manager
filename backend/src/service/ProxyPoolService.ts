@@ -190,28 +190,34 @@ export class ProxyPoolService {
   }> {
     const startTime = Date.now();
     
-    // 测试目标URL（按优先级排序）
+    // 添加HTTP测试URL（不仅是HTTPS）
     const testUrls = [
       'https://httpbin.org/ip',
       'https://api.ipify.org',
       'https://icanhazip.com',
+      'http://httpbin.org/ip',  // 添加HTTP版本
       'https://www.google.com',
-      'https://www.baidu.com'  // 添加百度作为中国区域测试点
+      'https://www.baidu.com'
     ];
-    
-    // 构建代理配置
-    const proxyConfig = this.buildProxyConfig(proxy);
     
     // 依次尝试每个测试URL
     for (const testUrl of testUrls) {
       try {
         console.log(`[代理验证] 正在验证代理 ${proxy.name} (${proxy.proxy_type}://${proxy.host}:${proxy.port}) 访问 ${testUrl}`);
         
+        // 对每个特定URL构建完整的代理配置
+        const proxyConfig = this.buildProxyConfig(proxy, testUrl);
+        console.log(`[代理验证] 详细代理配置: ${JSON.stringify({
+          hasProxy: !!proxyConfig.proxy,
+          hasHttpsAgent: !!proxyConfig.httpsAgent,
+          hasHttpAgent: !!proxyConfig.httpAgent,
+          hasHeaders: !!proxyConfig.headers
+        })}`);
+        
+        // 使用完整的代理配置
         const response = await axios.get(testUrl, {
           timeout,
-          proxy: {
-            ...proxyConfig.proxy
-          },
+          ...proxyConfig, // 使用完整配置，包含httpsAgent和所有必要头信息
           validateStatus: () => true // 允许所有状态码
         });
         
