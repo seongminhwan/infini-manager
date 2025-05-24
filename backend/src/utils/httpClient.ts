@@ -184,7 +184,7 @@ httpClient.interceptors.response.use(
       });
       
       // 如果使用了代理，记录代理使用情况（成功）
-      const enhancedConfig = response.config as EnhancedRequestConfig;
+      // 重用上面已声明的enhancedConfig变量
       if (enhancedConfig._currentProxyId) {
         console.log(`[代理日志] 记录代理 #${enhancedConfig._currentProxyId} 使用成功 - 响应时间: ${duration}ms`);
         try {
@@ -259,7 +259,7 @@ httpClient.interceptors.response.use(
       });
       
       // 如果使用了代理，记录代理使用情况（失败）
-      const enhancedConfig = config as EnhancedRequestConfig;
+      // 重用上面已声明的enhancedConfig变量
       if (enhancedConfig._currentProxyId) {
         console.log(`[代理日志] 记录代理 #${enhancedConfig._currentProxyId} 使用失败 - 响应时间: ${duration}ms - 错误: ${error.message}`);
         try {
