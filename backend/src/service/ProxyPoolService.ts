@@ -178,6 +178,10 @@ export class ProxyPoolService {
 
   /**
    * 验证代理有效性
+   * 改进后的验证逻辑：
+   * 1. 依次尝试多个测试URL，而不是随机选择一个
+   * 2. 更准确地区分不同类型的错误
+   * 3. 如果能够建立连接并获取任何响应，认为代理本身是有效的
    */
   async validateProxy(proxy: ProxyServer, timeout: number = 10000): Promise<{
     isValid: boolean;
@@ -186,50 +190,87 @@ export class ProxyPoolService {
   }> {
     const startTime = Date.now();
     
-    try {
-      // 构建代理配置
-      const proxyConfig = this.buildProxyConfig(proxy);
-      
-      // 测试目标URL（使用多个测试点）
-      const testUrls = [
-        'https://httpbin.org/ip',
-        'https://api.ipify.org',
-        'https://icanhazip.com',
-      ];
-      
-      // 随机选择一个测试URL
-      const testUrl = testUrls[Math.floor(Math.random() * testUrls.length)];
-      
-      const response = await axios.get(testUrl, {
-        timeout,
-        ...proxyConfig,
-        validateStatus: () => true // 允许所有状态码
-      });
-      
-      const responseTime = Date.now() - startTime;
-      
-      // 检查响应状态
-      if (response.status >= 200 && response.status < 300) {
+    // 测试目标URL（按优先级排序）
+    const testUrls = [
+      'https://httpbin.org/ip',
+      'https://api.ipify.org',
+      'https://icanhazip.com',
+      'https://www.google.com',
+      'https://www.baidu.com'  // 添加百度作为中国区域测试点
+    ];
+    
+    // 构建代理配置
+    const proxyConfig = this.buildProxyConfig(proxy);
+    
+    // 依次尝试每个测试URL
+    for (const testUrl of testUrls) {
+      try {
+        console.log(`[代理验证] 正在验证代理 ${proxy.name} (${proxy.proxy_type}://${proxy.host}:${proxy.port}) 访问 ${testUrl}`);
+        
+        const response = await axios.get(testUrl, {
+          timeout,
+          ...proxyConfig,
+          validateStatus: () => true // 允许所有状态码
+        });
+        
+        const responseTime = Date.now() - startTime;
+        console.log(`[代理验证] 代理 ${proxy.name} 访问 ${testUrl} 获得响应: HTTP ${response.status} - 耗时: ${responseTime}ms`);
+        
+        // 即使状态码不是2xx，但如果能获取到响应，说明代理本身是可以工作的
+        // 有些网站可能会封锁代理IP，返回403等错误
         return {
-          isValid: true,
-          responseTime
-        };
-      } else {
-        return {
-          isValid: false,
+          isValid: true,  // 只要能获取响应，就认为代理是有效的
           responseTime,
-          error: `HTTP ${response.status}: ${response.statusText}`
+          error: response.status >= 300 ? `HTTP ${response.status}: ${response.statusText}` : undefined
         };
+      } catch (error: any) {
+        // 记录错误，但继续尝试下一个URL
+        console.error(`[代理验证] 代理 ${proxy.name} 访问 ${testUrl} 失败: ${error.message}`);
+        
+        // 如果是最后一个URL，并且所有URL都失败了，则返回失败结果
+        if (testUrl === testUrls[testUrls.length - 1]) {
+          const responseTime = Date.now() - startTime;
+          
+          // 超时或连接拒绝，确实意味着代理无效
+          const isTimeoutError = error.message.includes('timeout') || error.code === 'ECONNABORTED';
+          const isConnectionError = error.message.includes('ECONNREFUSED') || 
+                                   error.message.includes('ECONNRESET') || 
+                                   error.message.includes('ENOTFOUND');
+          
+          if (isTimeoutError) {
+            console.log(`[代理验证] 代理 ${proxy.name} 验证超时，响应时间: ${responseTime}ms`);
+            return {
+              isValid: false,
+              responseTime,
+              error: `代理连接超时: ${error.message}`
+            };
+          } else if (isConnectionError) {
+            console.log(`[代理验证] 代理 ${proxy.name} 连接错误，响应时间: ${responseTime}ms`);
+            return {
+              isValid: false,
+              responseTime,
+              error: `代理连接错误: ${error.message}`
+            };
+          } else {
+            // 其他错误可能是服务器端的问题，但代理本身可能是有效的
+            console.log(`[代理验证] 代理 ${proxy.name} 验证过程中发生其他错误，响应时间: ${responseTime}ms`);
+            return {
+              isValid: true, // 如果不是明确的超时或连接错误，我们认为代理可能是有效的
+              responseTime,
+              error: `代理验证时发生错误: ${error.message}`
+            };
+          }
+        }
       }
-      
-    } catch (error: any) {
-      const responseTime = Date.now() - startTime;
-      return {
-        isValid: false,
-        responseTime,
-        error: error.message || '代理连接失败'
-      };
     }
+    
+    // 这行代码理论上不会执行，因为前面的循环会确保返回结果
+    // 但为了TypeScript类型安全，我们还是提供一个默认返回值
+    return {
+      isValid: false,
+      responseTime: Date.now() - startTime,
+      error: '无法验证代理'
+    };
   }
 
   /**
