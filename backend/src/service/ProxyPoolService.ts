@@ -561,6 +561,308 @@ export class ProxyPoolService {
   }
 
   /**
+   * 更新代理池配置
+   */
+  async updateProxyPool(id: number, poolData: Partial<Omit<ProxyPool, 'id' | 'created_at' | 'updated_at'>>): Promise<ApiResponse> {
+    try {
+      const pool = await db('proxy_pools').where({ id }).first();
+      if (!pool) {
+        return {
+          success: false,
+          message: '代理池不存在'
+        };
+      }
+      
+      await db('proxy_pools')
+        .where({ id })
+        .update({
+          ...poolData,
+          updated_at: new Date().toISOString()
+        });
+      
+      const updatedPool = await db('proxy_pools').where({ id }).first();
+      
+      return {
+        success: true,
+        message: '代理池更新成功',
+        data: updatedPool
+      };
+    } catch (error) {
+      console.error('更新代理池失败:', error);
+      return {
+        success: false,
+        message: `更新代理池失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 删除代理池
+   */
+  async deleteProxyPool(id: number): Promise<ApiResponse> {
+    try {
+      // 检查是否存在
+      const pool = await db('proxy_pools').where({ id }).first();
+      if (!pool) {
+        return {
+          success: false,
+          message: '代理池不存在'
+        };
+      }
+      
+      // 删除代理池（关联的代理服务器会通过外键级联删除）
+      const deleted = await db('proxy_pools').where({ id }).del();
+      
+      if (deleted === 0) {
+        return {
+          success: false,
+          message: '代理池删除失败'
+        };
+      }
+      
+      return {
+        success: true,
+        message: '代理池删除成功'
+      };
+    } catch (error) {
+      console.error('删除代理池失败:', error);
+      return {
+        success: false,
+        message: `删除代理池失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 获取单个代理服务器
+   */
+  async getProxyServer(id: number): Promise<ApiResponse> {
+    try {
+      const server = await db('proxy_servers').where({ id }).first();
+      
+      if (!server) {
+        return {
+          success: false,
+          message: '代理服务器不存在'
+        };
+      }
+      
+      return {
+        success: true,
+        data: server
+      };
+    } catch (error) {
+      console.error('获取代理服务器失败:', error);
+      return {
+        success: false,
+        message: `获取代理服务器失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 更新代理服务器
+   */
+  async updateProxyServer(id: number, serverData: Partial<Omit<ProxyServer, 'id' | 'created_at' | 'updated_at'>>): Promise<ApiResponse> {
+    try {
+      const server = await db('proxy_servers').where({ id }).first();
+      if (!server) {
+        return {
+          success: false,
+          message: '代理服务器不存在'
+        };
+      }
+      
+      await db('proxy_servers')
+        .where({ id })
+        .update({
+          ...serverData,
+          updated_at: new Date().toISOString()
+        });
+      
+      const updatedServer = await db('proxy_servers').where({ id }).first();
+      
+      return {
+        success: true,
+        message: '代理服务器更新成功',
+        data: updatedServer
+      };
+    } catch (error) {
+      console.error('更新代理服务器失败:', error);
+      return {
+        success: false,
+        message: `更新代理服务器失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 获取代理使用统计数据
+   */
+  async getProxyUsageStats(proxyId: number, dateRange?: { startDate: string, endDate: string }): Promise<ApiResponse> {
+    try {
+      let query = db('proxy_usage_stats').where({ proxy_id: proxyId });
+      
+      if (dateRange) {
+        query = query.whereBetween('date', [dateRange.startDate, dateRange.endDate]);
+      }
+      
+      const stats = await query.orderBy('date', 'desc');
+      
+      // 计算总计和平均值
+      const summary = stats.reduce((acc, curr) => {
+        acc.total_requests += curr.request_count;
+        acc.total_success += curr.success_count;
+        acc.total_failure += curr.failure_count;
+        acc.avg_response_time = (acc.avg_response_time * acc.count + curr.avg_response_time) / (acc.count + 1);
+        acc.count += 1;
+        return acc;
+      }, { total_requests: 0, total_success: 0, total_failure: 0, avg_response_time: 0, count: 0 });
+      
+      // 计算成功率
+      summary.success_rate = summary.total_requests > 0 
+        ? (summary.total_success / summary.total_requests * 100).toFixed(2) + '%' 
+        : '0%';
+      
+      return {
+        success: true,
+        data: {
+          stats,
+          summary
+        }
+      };
+    } catch (error) {
+      console.error('获取代理使用统计数据失败:', error);
+      return {
+        success: false,
+        message: `获取代理使用统计数据失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 刷新代理（使用refreshUrl）
+   */
+  async refreshProxy(id: number): Promise<ApiResponse> {
+    try {
+      // 获取代理服务器信息
+      const server = await db('proxy_servers').where({ id }).first();
+      
+      if (!server) {
+        return {
+          success: false,
+          message: '代理服务器不存在'
+        };
+      }
+      
+      // 检查是否有刷新URL
+      const proxyString = `${server.proxy_type}://${server.username ? `${server.username}:${server.password}@` : ''}${server.host}:${server.port}`;
+      const parsedProxy = this.parseProxyString(proxyString);
+      
+      if (!parsedProxy?.refreshUrl) {
+        return {
+          success: false,
+          message: '该代理没有配置刷新URL'
+        };
+      }
+      
+      // 访问刷新URL
+      try {
+        console.log(`刷新代理 ${server.name}，URL: ${parsedProxy.refreshUrl}`);
+        const response = await axios.get(parsedProxy.refreshUrl, { timeout: 10000 });
+        
+        // 检查响应状态
+        if (response.status >= 200 && response.status < 300) {
+          // 刷新成功，更新代理信息
+          await db('proxy_servers')
+            .where({ id })
+            .update({
+              is_healthy: true,
+              last_check_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          
+          return {
+            success: true,
+            message: '代理刷新成功',
+            data: { 
+              status: response.status, 
+              message: response.statusText,
+              responseData: response.data
+            }
+          };
+        } else {
+          return {
+            success: false,
+            message: `代理刷新失败: HTTP ${response.status} ${response.statusText}`
+          };
+        }
+      } catch (error: any) {
+        return {
+          success: false,
+          message: `代理刷新失败: ${error.message || '未知错误'}`
+        };
+      }
+    } catch (error) {
+      console.error('刷新代理失败:', error);
+      return {
+        success: false,
+        message: `刷新代理失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 验证单个代理服务器
+   * 与healthCheckAll不同，这个方法会更新服务器的健康状态并返回验证结果
+   */
+  async validateServer(serverId: number): Promise<ApiResponse> {
+    try {
+      const server = await db('proxy_servers').where({ id: serverId }).first();
+      
+      if (!server) {
+        return {
+          success: false,
+          message: '代理服务器不存在'
+        };
+      }
+      
+      const result = await this.validateProxy(server);
+      
+      // 更新代理服务器状态
+      await db('proxy_servers')
+        .where({ id: serverId })
+        .update({
+          is_healthy: result.isValid,
+          response_time: result.responseTime,
+          last_check_at: new Date().toISOString(),
+          success_count: db.raw(`success_count + ${result.isValid ? 1 : 0}`),
+          failure_count: db.raw(`failure_count + ${result.isValid ? 0 : 1}`),
+          updated_at: new Date().toISOString()
+        });
+      
+      // 记录代理使用统计
+      await this.recordProxyUsage(serverId, result.isValid, result.responseTime);
+      
+      return {
+        success: true,
+        message: result.isValid ? '代理验证成功' : `代理验证失败: ${result.error}`,
+        data: {
+          is_healthy: result.isValid,
+          response_time: result.responseTime,
+          error: result.error
+        }
+      };
+    } catch (error) {
+      console.error('验证代理服务器失败:', error);
+      return {
+        success: false,
+        message: `验证代理服务器失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
    * 删除代理服务器
    */
   async deleteProxyServer(id: number): Promise<ApiResponse> {
