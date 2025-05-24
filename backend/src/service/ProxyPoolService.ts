@@ -234,6 +234,7 @@ export class ProxyPoolService {
 
   /**
    * 构建axios代理配置
+   * @private 仅供内部使用
    */
   private buildProxyConfig(proxy: ProxyServer): any {
     const config: any = {};
@@ -267,6 +268,18 @@ export class ProxyPoolService {
     }
     
     return config;
+  }
+
+  /**
+   * 为HTTP请求配置代理
+   * 公开接口，供httpClient等使用
+   * @param proxy 代理服务器
+   * @param requestConfig axios请求配置（可选）
+   * @returns 配置了代理的请求配置
+   */
+  configureRequestProxy(proxy: ProxyServer, requestConfig: any = {}): any {
+    const proxyConfig = this.buildProxyConfig(proxy);
+    return { ...requestConfig, ...proxyConfig };
   }
 
   /**
