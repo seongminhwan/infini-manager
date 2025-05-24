@@ -48,7 +48,7 @@ const configureProxy = async (config: EnhancedRequestConfig): Promise<EnhancedRe
         config._currentProxyId = proxy.id;
         
         // 配置代理
-        return proxyPoolService.buildProxyConfig(proxy, config);
+        return proxyPoolService.configureRequestProxy(proxy, config);
       }
     } else {
       // 否则从代理池中选择代理
@@ -58,7 +58,7 @@ const configureProxy = async (config: EnhancedRequestConfig): Promise<EnhancedRe
         config._currentProxyId = proxy.id;
         
         // 配置代理
-        return proxyPoolService.buildProxyConfig(proxy, config);
+        return proxyPoolService.configureRequestProxy(proxy, config);
       }
     }
     
