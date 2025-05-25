@@ -31,7 +31,7 @@ import {
   InfoCircleOutlined,
   PlusOutlined
 } from '@ant-design/icons';
-import { infiniAccountApi, api, totpToolApi } from '../services/api';
+import api, { infiniAccountApi, totpToolApi } from '../services/api';
 
 const { Text, Title, Paragraph } = Typography;
 const { TextArea } = Input;
