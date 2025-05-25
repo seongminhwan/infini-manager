@@ -1,423 +1,585 @@
 /**
  * 批量恢复账户模态框组件
- * 用于批量恢复Infini账户，包含批量输入账户邮箱并逐个进行恢复操作
+ * 用于批量恢复Infini账户
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   Button,
   Input,
+  Space,
+  Typography,
   message,
+  Table,
+  Tag,
+  Card,
   Row,
   Col,
-  Typography,
-  List,
-  Card,
   Statistic,
-  Divider,
   Progress,
-  Tag,
-  Space,
-  Alert
+  Divider,
+  Empty,
+  Spin,
+  List
 } from 'antd';
 import {
-  MailOutlined,
   SyncOutlined,
+  MailOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  InfoCircleOutlined,
   LoadingOutlined,
-  UnlockOutlined,
-  SafetyCertificateOutlined
+  InfoCircleOutlined
 } from '@ant-design/icons';
 import { infiniAccountApi } from '../services/api';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Title, Paragraph } = Typography;
 const { TextArea } = Input;
 
-// 账户恢复状态
-type RecoveryStatus = 'pending' | 'processing' | 'success' | 'failed';
+// 账户状态类型
+type AccountStatus = 'pending' | 'processing' | 'success' | 'failed';
 
-// 恢复阶段
-type RecoveryStage = 'sendVerificationCode' | 'resetPassword' | 'getGoogle2faQrcode' | 'unbindGoogle2fa' | 'bindGoogle2fa' | 'complete';
+// 处理阶段类型
+type ProcessStage = 'verificationCode' | 'resetPassword' | 'getQrcode' | 'unbind2fa' | 'setup2fa' | 'completed';
 
-// 恢复阶段中文描述
-const stageNames: Record<RecoveryStage, string> = {
-  sendVerificationCode: '发送验证码',
-  resetPassword: '重置密码',
-  getGoogle2faQrcode: '获取2FA信息',
-  unbindGoogle2fa: '解绑2FA',
-  bindGoogle2fa: '绑定2FA',
-  complete: '完成恢复'
-};
-
-// 账户恢复信息接口
-interface AccountRecoveryInfo {
+// 账户信息接口
+interface AccountInfo {
   email: string;
-  status: RecoveryStatus;
-  stage?: RecoveryStage;
-  message?: string;
+  key: string;
+  status: AccountStatus;
+  errorMsg?: string;
   logs: string[];
+  currentStage?: ProcessStage;
+  progress: number; // 进度百分比(0-100)
 }
 
+// 处理结果统计接口
+interface ProcessStats {
+  total: number;
+  processing: number;
+  success: number;
+  failed: number;
+  currentEmail: string;
+  currentStage: string;
+  currentProgress: number;
+}
+
+// 模态框属性接口
 interface BatchRecoverAccountModalProps {
   visible: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
+// 批量恢复账户模态框组件
 const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
   visible,
   onClose,
   onSuccess
 }) => {
-  // 文本输入
-  const [inputText, setInputText] = useState<string>('');
-  // 解析后的邮箱列表
-  const [emailList, setEmailList] = useState<string[]>([]);
-  // 账户恢复信息
-  const [recoveryInfos, setRecoveryInfos] = useState<AccountRecoveryInfo[]>([]);
-  // 当前处理的账户索引
-  const [currentIndex, setCurrentIndex] = useState<number>(-1);
-  // 恢复中标志
-  const [recovering, setRecovering] = useState<boolean>(false);
-  // 统计信息
-  const [stats, setStats] = useState<{
-    total: number;
-    success: number;
-    failed: number;
-    processing: number;
-  }>({
+  // 账户状态
+  const [accounts, setAccounts] = useState<AccountInfo[]>([]);
+  const [batchText, setBatchText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processStats, setProcessStats] = useState<ProcessStats>({
     total: 0,
+    processing: 0,
     success: 0,
     failed: 0,
-    processing: 0
+    currentEmail: '',
+    currentStage: '',
+    currentProgress: 0
   });
-
-  // 解析文本，提取邮箱
-  const parseEmails = () => {
-    if (!inputText.trim()) {
-      message.warning('请输入邮箱列表');
-      return;
-    }
-
-    const lines = inputText.trim().split('\n');
-    const emails: string[] = [];
-    
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-      if (trimmedLine) {
-        // 简单的邮箱格式验证
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (emailRegex.test(trimmedLine)) {
-          emails.push(trimmedLine);
-        } else {
-          message.warning(`忽略无效的邮箱格式: ${trimmedLine}`);
-        }
-      }
-    }
-
-    if (emails.length === 0) {
-      message.warning('未解析到有效的邮箱地址');
-      return;
-    }
-
-    // 去重
-    const uniqueEmails = Array.from(new Set(emails));
-    setEmailList(uniqueEmails);
-    
-    // 初始化恢复信息
-    const initialInfos: AccountRecoveryInfo[] = uniqueEmails.map(email => ({
-      email,
-      status: 'pending',
-      logs: []
-    }));
-    setRecoveryInfos(initialInfos);
-    
-    // 更新统计信息
-    setStats({
-      total: uniqueEmails.length,
-      success: 0,
-      failed: 0,
-      processing: 0
-    });
-
-    message.success(`成功解析 ${uniqueEmails.length} 个邮箱地址`);
+  
+  // 日志和自动滚动
+  const [logs, setLogs] = useState<string[]>([]);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+  
+  // 当前处理的账户索引
+  const currentIndexRef = useRef<number>(0);
+  
+  // 判断是否所有账户都已处理完成
+  const isAllCompleted = () => {
+    return accounts.every(account => account.status === 'success' || account.status === 'failed');
   };
-
-  // 添加邮箱
-  const addEmail = (email: string) => {
-    if (!email.trim()) {
-      message.warning('请输入有效的邮箱地址');
-      return;
-    }
-
-    // 简单的邮箱格式验证
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      message.warning(`无效的邮箱格式: ${email}`);
-      return;
-    }
-
-    // 检查是否已存在
-    if (emailList.includes(email.trim())) {
-      message.warning(`邮箱 ${email} 已在列表中`);
-      return;
-    }
-
-    const newEmailList = [...emailList, email.trim()];
-    setEmailList(newEmailList);
-
-    // 更新恢复信息
-    const newRecoveryInfos = [
-      ...recoveryInfos,
-      {
-        email: email.trim(),
-        status: 'pending',
-        logs: []
-      }
-    ];
-    setRecoveryInfos(newRecoveryInfos);
-    
-    // 更新统计信息
-    setStats(prev => ({
-      ...prev,
-      total: prev.total + 1
-    }));
-
-    message.success(`成功添加邮箱: ${email}`);
-  };
-
-  // 删除邮箱
-  const removeEmail = (email: string) => {
-    const newEmailList = emailList.filter(e => e !== email);
-    setEmailList(newEmailList);
-
-    // 更新恢复信息
-    const newRecoveryInfos = recoveryInfos.filter(info => info.email !== email);
-    setRecoveryInfos(newRecoveryInfos);
-    
-    // 更新统计信息
-    setStats({
-      total: newRecoveryInfos.length,
-      success: newRecoveryInfos.filter(info => info.status === 'success').length,
-      failed: newRecoveryInfos.filter(info => info.status === 'failed').length,
-      processing: newRecoveryInfos.filter(info => info.status === 'processing').length
-    });
-
-    message.success(`已移除邮箱: ${email}`);
-  };
-
-  // 更新账户恢复日志
-  const updateAccountLog = (email: string, log: string) => {
-    setRecoveryInfos(prevInfos => {
-      return prevInfos.map(info => {
-        if (info.email === email) {
-          return {
-            ...info,
-            logs: [...info.logs, log]
-          };
-        }
-        return info;
-      });
-    });
-  };
-
-  // 更新账户恢复状态
-  const updateAccountStatus = (email: string, status: RecoveryStatus, stage?: RecoveryStage, message?: string) => {
-    setRecoveryInfos(prevInfos => {
-      return prevInfos.map(info => {
-        if (info.email === email) {
-          return {
-            ...info,
-            status,
-            stage,
-            message
-          };
-        }
-        return info;
-      });
-    });
-
-    // 更新统计信息
-    setStats(prev => {
-      let success = prev.success;
-      let failed = prev.failed;
-      let processing = prev.processing;
-
-      // 根据状态变化更新计数
-      if (status === 'success') {
-        success += 1;
-        if (prevState === 'processing') processing -= 1;
-      } else if (status === 'failed') {
-        failed += 1;
-        if (prevState === 'processing') processing -= 1;
-      } else if (status === 'processing') {
-        processing += 1;
-      }
-
-      return {
-        total: prev.total,
-        success,
-        failed,
-        processing
-      };
-    });
-
-    // 获取当前状态用于比较
-    const prevState = recoveryInfos.find(info => info.email === email)?.status;
-  };
-
+  
   // 重置状态
   const resetState = () => {
-    setInputText('');
-    setEmailList([]);
-    setRecoveryInfos([]);
-    setCurrentIndex(-1);
-    setRecovering(false);
-    setStats({
+    setAccounts([]);
+    setBatchText('');
+    setLogs([]);
+    setIsProcessing(false);
+    setProcessStats({
       total: 0,
+      processing: 0,
       success: 0,
       failed: 0,
-      processing: 0
+      currentEmail: '',
+      currentStage: '',
+      currentProgress: 0
     });
+    currentIndexRef.current = 0;
   };
-
-  // 开始批量恢复账户
-  const startBatchRecover = async () => {
-    if (emailList.length === 0) {
-      message.warning('请先解析邮箱列表');
-      return;
-    }
-
-    if (recovering) {
-      message.warning('正在恢复账户，请稍后再试');
-      return;
-    }
-
-    setRecovering(true);
-    setCurrentIndex(0);
-
-    try {
-      // 逐个恢复账户
-      for (let i = 0; i < emailList.length; i++) {
-        setCurrentIndex(i);
-        const email = emailList[i];
-        
-        // 更新状态为处理中
-        updateAccountStatus(email, 'processing', 'sendVerificationCode');
-        updateAccountLog(email, `开始恢复账户: ${email}`);
-        
-        try {
-          // 调用单个账户恢复接口
-          await recoverAccount(email);
-          
-          // 更新状态为成功
-          updateAccountStatus(email, 'success', 'complete');
-          updateAccountLog(email, '账户恢复成功');
-        } catch (error: any) {
-          // 更新状态为失败
-          updateAccountStatus(email, 'failed', undefined, error.message || '恢复失败');
-          updateAccountLog(email, `恢复失败: ${error.message || '未知错误'}`);
+  
+  // 处理关闭
+  const handleClose = () => {
+    if (isProcessing) {
+      Modal.confirm({
+        title: '确认取消',
+        content: '恢复账户处理正在进行中，确定要取消吗？',
+        okText: '确定',
+        cancelText: '继续处理',
+        onOk: () => {
+          resetState();
+          onClose();
         }
+      });
+      return;
+    }
+    
+    resetState();
+    onClose();
+  };
+  
+  // 处理成功完成
+  const handleSuccess = () => {
+    if (processStats.success > 0) {
+      message.success(`成功恢复 ${processStats.success} 个账户`);
+      onSuccess();
+    }
+    resetState();
+    onClose();
+  };
+  
+  // 处理文本输入变化
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setBatchText(e.target.value);
+  };
+  
+  // 解析文本，提取邮箱
+  const parseEmails = (text: string): string[] => {
+    if (!text.trim()) return [];
+    
+    const lines = text.split('\n');
+    const emails = lines
+      .map(line => line.trim())
+      .filter(line => line && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(line));
+    
+    return emails;
+  };
+  
+  // 解析文本并生成账户列表
+  const parseTextToAccounts = () => {
+    if (!batchText.trim()) {
+      message.warning('请先输入账户邮箱');
+      return;
+    }
+    
+    const emails = parseEmails(batchText);
+    
+    if (emails.length === 0) {
+      message.warning('未找到有效的邮箱地址');
+      return;
+    }
+    
+    // 处理去重和覆盖逻辑
+    const uniqueEmails = new Set<string>();
+    const newAccounts: AccountInfo[] = [];
+    
+    // 添加新解析的邮箱
+    emails.forEach(email => {
+      const lowerEmail = email.toLowerCase();
+      if (!uniqueEmails.has(lowerEmail)) {
+        uniqueEmails.add(lowerEmail);
+        newAccounts.push({
+          email,
+          key: `${lowerEmail}_${Date.now()}`,
+          status: 'pending',
+          logs: [],
+          progress: 0
+        });
       }
-
-      message.success(`批量恢复完成: 成功 ${stats.success} 个，失败 ${stats.failed} 个`);
-      if (stats.success > 0) {
-        onSuccess(); // 调用成功回调函数更新账户列表
-      }
-    } catch (error: any) {
-      message.error(`批量恢复失败: ${error.message || '未知错误'}`);
-    } finally {
-      setRecovering(false);
-      setCurrentIndex(-1);
+    });
+    
+    // 检查是否与现有账户有重复
+    if (accounts.length > 0) {
+      const mergedAccounts = [...accounts];
+      const existingEmails = new Set(accounts.map(acc => acc.email.toLowerCase()));
+      
+      // 合并新账户
+      newAccounts.forEach(newAcc => {
+        const lowerEmail = newAcc.email.toLowerCase();
+        if (!existingEmails.has(lowerEmail)) {
+          mergedAccounts.push(newAcc);
+        }
+      });
+      
+      setAccounts(mergedAccounts);
+      message.success(`解析成功：新增 ${newAccounts.length} 个账户`);
+    } else {
+      setAccounts(newAccounts);
+      message.success(`解析成功：${newAccounts.length} 个账户`);
     }
   };
-
-  // 单个账户恢复流程
-  const recoverAccount = async (email: string) => {
-    // 阶段1: 发送验证码
-    updateAccountStatus(email, 'processing', 'sendVerificationCode');
-    updateAccountLog(email, '开始获取恢复邮箱验证码...');
+  
+  // 手动添加账户
+  const addAccount = () => {
+    const newEmail = prompt('请输入账户邮箱');
+    if (!newEmail) return;
+    
+    const email = newEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      message.error('请输入有效的邮箱地址');
+      return;
+    }
+    
+    const lowerEmail = email.toLowerCase();
+    
+    // 检查是否已存在
+    if (accounts.some(acc => acc.email.toLowerCase() === lowerEmail)) {
+      message.warning('该邮箱已在列表中');
+      return;
+    }
+    
+    // 添加新账户
+    const newAccount: AccountInfo = {
+      email,
+      key: `${lowerEmail}_${Date.now()}`,
+      status: 'pending',
+      logs: [],
+      progress: 0
+    };
+    
+    setAccounts([...accounts, newAccount]);
+    message.success(`已添加账户: ${email}`);
+  };
+  
+  // 移除账户
+  const removeAccount = (key: string) => {
+    const newAccounts = accounts.filter(acc => acc.key !== key);
+    setAccounts(newAccounts);
+  };
+  
+  // 添加日志
+  const addLog = (text: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = `[${timestamp}] ${text}`;
+    setLogs(prevLogs => [...prevLogs, logEntry]);
+  };
+  
+  // 更新账户日志
+  const updateAccountLog = (index: number, text: string) => {
+    setAccounts(prevAccounts => {
+      const newAccounts = [...prevAccounts];
+      if (newAccounts[index]) {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = `[${timestamp}] ${text}`;
+        newAccounts[index] = {
+          ...newAccounts[index],
+          logs: [...newAccounts[index].logs, logEntry]
+        };
+      }
+      return newAccounts;
+    });
+    
+    // 全局日志
+    addLog(`[${accounts[index]?.email}] ${text}`);
+  };
+  
+  // 更新账户状态
+  const updateAccountStatus = (index: number, status: AccountStatus, errorMsg?: string) => {
+    setAccounts(prevAccounts => {
+      const newAccounts = [...prevAccounts];
+      if (newAccounts[index]) {
+        newAccounts[index] = {
+          ...newAccounts[index],
+          status,
+          errorMsg
+        };
+      }
+      return newAccounts;
+    });
+    
+    // 更新统计信息
+    if (status === 'success') {
+      setProcessStats(prev => ({
+        ...prev,
+        success: prev.success + 1,
+        processing: prev.processing - 1
+      }));
+    } else if (status === 'failed') {
+      setProcessStats(prev => ({
+        ...prev,
+        failed: prev.failed + 1,
+        processing: prev.processing - 1
+      }));
+    } else if (status === 'processing') {
+      setProcessStats(prev => ({
+        ...prev,
+        processing: prev.processing + 1,
+        currentEmail: accounts[index]?.email || '',
+      }));
+    }
+  };
+  
+  // 更新账户进度和阶段
+  const updateAccountProgress = (index: number, stage: ProcessStage, progress: number) => {
+    setAccounts(prevAccounts => {
+      const newAccounts = [...prevAccounts];
+      if (newAccounts[index]) {
+        newAccounts[index] = {
+          ...newAccounts[index],
+          currentStage: stage,
+          progress
+        };
+      }
+      return newAccounts;
+    });
+    
+    // 更新统计信息
+    setProcessStats(prev => ({
+      ...prev,
+      currentStage: getStageDisplayName(stage),
+      currentProgress: progress
+    }));
+  };
+  
+  // 获取阶段显示名称
+  const getStageDisplayName = (stage: ProcessStage): string => {
+    switch (stage) {
+      case 'verificationCode': return '获取验证码';
+      case 'resetPassword': return '重置密码';
+      case 'getQrcode': return '获取2FA信息';
+      case 'unbind2fa': return '解绑2FA';
+      case 'setup2fa': return '重新绑定2FA';
+      case 'completed': return '完成';
+      default: return '';
+    }
+  };
+  
+  // 处理单个账户恢复
+  const processAccount = async (index: number) => {
+    const account = accounts[index];
+    if (!account) return false;
+    
+    // 更新账户状态为处理中
+    updateAccountStatus(index, 'processing');
     
     try {
-      // 发送验证码，类型为1（恢复账户）
-      const sendCodeResult = await infiniAccountApi.sendVerificationCode(email, 1);
-      if (!sendCodeResult.success) {
-        throw new Error(`发送验证码失败: ${sendCodeResult.message}`);
-      }
-      updateAccountLog(email, '验证码发送成功');
+      // 1. 获取验证码
+      updateAccountProgress(index, 'verificationCode', 20);
+      updateAccountLog(index, '开始获取验证码...');
       
-      // 等待获取验证码
-      updateAccountLog(email, '等待获取验证码...');
-      // 这里模拟等待，实际应该采用轮询或推送方式获取验证码
+      const verifyCodeResponse = await infiniAccountApi.sendVerificationCode(account.email, 1);
+      if (!verifyCodeResponse.success) {
+        throw new Error(`获取验证码失败: ${verifyCodeResponse.message}`);
+      }
+      
+      updateAccountLog(index, '验证码发送成功，等待获取验证码...');
+      
+      // 等待一段时间，确保验证码已发送到邮箱
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // 获取验证码
-      const codeResult = await infiniAccountApi.fetchVerificationCode(email);
-      if (!codeResult.success || !codeResult.data) {
-        throw new Error('获取验证码失败');
-      }
-      const verificationCode = codeResult.data;
-      updateAccountLog(email, '获取到验证码');
-      
-      // 阶段2: 重置密码
-      updateAccountStatus(email, 'processing', 'resetPassword');
-      updateAccountLog(email, '开始重置密码...');
-      
-      const resetResult = await infiniAccountApi.resetPassword(email, verificationCode);
-      if (!resetResult.success) {
-        throw new Error(`重置密码失败: ${resetResult.message}`);
-      }
-      updateAccountLog(email, '重置密码成功');
-      
-      // 阶段3: 获取2FA信息
-      updateAccountStatus(email, 'processing', 'getGoogle2faQrcode');
-      updateAccountLog(email, '开始获取2FA信息...');
-      
-      const accountId = resetResult.data?.id;
-      if (!accountId) {
-        throw new Error('获取账户ID失败');
+      const codeResponse = await infiniAccountApi.fetchVerificationCode(account.email);
+      if (!codeResponse.success || !codeResponse.data) {
+        throw new Error('无法获取验证码，请手动检查邮箱');
       }
       
-      const qrcodeResult = await infiniAccountApi.getGoogle2faQrcode(accountId.toString());
-      if (!qrcodeResult.success) {
-        throw new Error(`获取2FA信息失败: ${qrcodeResult.message}`);
+      const verificationCode = codeResponse.data;
+      updateAccountLog(index, `获取到验证码: ${verificationCode}`);
+      
+      // 2. 重置密码
+      updateAccountProgress(index, 'resetPassword', 40);
+      updateAccountLog(index, '开始重置密码...');
+      
+      const resetResponse = await infiniAccountApi.resetPassword(account.email, verificationCode);
+      if (!resetResponse.success) {
+        throw new Error(`重置密码失败: ${resetResponse.message}`);
       }
-      updateAccountLog(email, '获取2FA信息成功');
       
-      // 阶段4: 解绑2FA
-      updateAccountStatus(email, 'processing', 'unbindGoogle2fa');
-      updateAccountLog(email, '开始解绑2FA...');
+      updateAccountLog(index, '密码重置成功');
       
-      const unbindResult = await infiniAccountApi.unbindGoogle2fa(accountId.toString());
-      if (!unbindResult.success) {
-        throw new Error(`解绑2FA失败: ${unbindResult.message}`);
+      // 3. 获取2FA信息
+      updateAccountProgress(index, 'getQrcode', 60);
+      updateAccountLog(index, '获取2FA信息...');
+      
+      const qrcodeResponse = await infiniAccountApi.getGoogle2faQrcode(account.email);
+      if (!qrcodeResponse.success) {
+        throw new Error(`获取2FA信息失败: ${qrcodeResponse.message}`);
       }
-      updateAccountLog(email, '解绑2FA成功');
       
-      // 阶段5: 重新绑定2FA
-      updateAccountStatus(email, 'processing', 'bindGoogle2fa');
-      updateAccountLog(email, '开始重新绑定2FA...');
+      updateAccountLog(index, '获取2FA信息成功');
       
-      const bindResult = await infiniAccountApi.autoBindGoogle2fa(accountId.toString());
-      if (!bindResult.success) {
-        throw new Error(`绑定2FA失败: ${bindResult.message}`);
+      // 4. 解绑2FA
+      updateAccountProgress(index, 'unbind2fa', 80);
+      updateAccountLog(index, '开始解绑2FA...');
+      
+      // 获取账户信息，获取密码和2FA相关信息
+      const accountResponse = await infiniAccountApi.getAccountByEmail(account.email);
+      if (!accountResponse.success || !accountResponse.data) {
+        throw new Error(`获取账户信息失败: ${accountResponse.message}`);
       }
-      updateAccountLog(email, '绑定2FA成功');
+      
+      const accountData = accountResponse.data;
+      if (!accountData.password) {
+        throw new Error('账户密码未找到');
+      }
+      
+      // 获取2FA验证码
+      const totpResponse = await infiniAccountApi.generateTotpCode(accountData.id.toString());
+      if (!totpResponse.success || !totpResponse.data) {
+        throw new Error(`生成TOTP验证码失败: ${totpResponse.message}`);
+      }
+      
+      const google2faToken = totpResponse.data;
+      
+      // 解绑2FA
+      const unbindResponse = await infiniAccountApi.unbindGoogle2fa(
+        accountData.id.toString(),
+        google2faToken,
+        accountData.password
+      );
+      
+      if (!unbindResponse.success) {
+        throw new Error(`解绑2FA失败: ${unbindResponse.message}`);
+      }
+      
+      updateAccountLog(index, '解绑2FA成功');
+      
+      // 5. 重新绑定2FA
+      updateAccountProgress(index, 'setup2fa', 90);
+      updateAccountLog(index, '开始重新绑定2FA...');
+      
+      // 发送2FA验证邮件
+      const verify2faResponse = await infiniAccountApi.sendGoogle2faVerificationEmail(account.email);
+      if (!verify2faResponse.success) {
+        throw new Error(`发送2FA验证邮件失败: ${verify2faResponse.message}`);
+      }
+      
+      updateAccountLog(index, '2FA验证邮件发送成功，等待获取验证码...');
+      
+      // 等待一段时间，确保验证码已发送到邮箱
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 获取2FA验证码
+      const code2faResponse = await infiniAccountApi.fetchVerificationCode(account.email);
+      if (!code2faResponse.success || !code2faResponse.data) {
+        throw new Error('无法获取2FA验证码，请手动检查邮箱');
+      }
+      
+      const verification2faCode = code2faResponse.data;
+      updateAccountLog(index, `获取到2FA验证码: ${verification2faCode}`);
+      
+      // 生成新的TOTP验证码
+      const newTotpResponse = await infiniAccountApi.generateTotpCode(accountData.id.toString());
+      if (!newTotpResponse.success || !newTotpResponse.data) {
+        throw new Error(`生成新TOTP验证码失败: ${newTotpResponse.message}`);
+      }
+      
+      const newGoogle2faToken = newTotpResponse.data;
+      
+      // 绑定2FA
+      const bindResponse = await infiniAccountApi.bindGoogle2fa(
+        accountData.id.toString(),
+        verification2faCode,
+        newGoogle2faToken
+      );
+      
+      if (!bindResponse.success) {
+        throw new Error(`绑定2FA失败: ${bindResponse.message}`);
+      }
+      
+      updateAccountLog(index, '重新绑定2FA成功');
+      
+      // 6. 完成恢复
+      updateAccountProgress(index, 'completed', 100);
+      updateAccountLog(index, '账户恢复完成');
+      updateAccountStatus(index, 'success');
       
       return true;
     } catch (error: any) {
-      updateAccountLog(email, `恢复过程出错: ${error.message}`);
-      throw error;
+      const errorMessage = error.message || '账户恢复失败';
+      updateAccountLog(index, `错误: ${errorMessage}`);
+      updateAccountStatus(index, 'failed', errorMessage);
+      return false;
     }
   };
-
-  // 渲染账户状态标签
-  const renderStatusTag = (status: RecoveryStatus) => {
+  
+  // 批量处理账户
+  const startProcessing = async () => {
+    if (accounts.length === 0) {
+      message.warning('请先添加要恢复的账户');
+      return;
+    }
+    
+    // 已处理过的账户，可以继续处理未完成的账户
+    const pendingAccounts = accounts.filter(acc => acc.status === 'pending');
+    
+    if (pendingAccounts.length === 0) {
+      message.warning('没有需要处理的账户');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setIsProcessing(true);
+      
+      // 初始化统计信息
+      setProcessStats({
+        total: accounts.length,
+        processing: 0,
+        success: processStats.success,
+        failed: processStats.failed,
+        currentEmail: '',
+        currentStage: '',
+        currentProgress: 0
+      });
+      
+      // 记录当前处理索引
+      currentIndexRef.current = accounts.findIndex(acc => acc.status === 'pending');
+      
+      // 循环处理账户
+      while (currentIndexRef.current >= 0 && currentIndexRef.current < accounts.length) {
+        const account = accounts[currentIndexRef.current];
+        
+        if (account.status === 'pending') {
+          await processAccount(currentIndexRef.current);
+        }
+        
+        // 找到下一个待处理的账户
+        currentIndexRef.current = accounts.findIndex(
+          (acc, idx) => idx > currentIndexRef.current && acc.status === 'pending'
+        );
+      }
+      
+      // 处理完成
+      if (isAllCompleted()) {
+        message.success(`批量恢复完成：成功 ${processStats.success} 个，失败 ${processStats.failed} 个`);
+      } else {
+        message.info('批量恢复已暂停');
+      }
+    } catch (error: any) {
+      message.error(`批量恢复出错: ${error.message}`);
+      console.error('批量恢复出错:', error);
+    } finally {
+      setLoading(false);
+      setIsProcessing(false);
+    }
+  };
+  
+  // 自动滚动日志到底部
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
+  
+  // 渲染账户状态图标
+  const renderStatusIcon = (status: AccountStatus) => {
     switch (status) {
       case 'pending':
-        return <Tag>待处理</Tag>;
+        return <Tag color="default">待处理</Tag>;
       case 'processing':
         return <Tag color="processing" icon={<SyncOutlined spin />}>处理中</Tag>;
       case 'success':
@@ -428,234 +590,232 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
         return null;
     }
   };
-
-  // 渲染处理进度
-  const renderProgress = (info: AccountRecoveryInfo) => {
-    if (info.status !== 'processing' || !info.stage) return null;
-    
-    // 根据当前阶段计算进度
-    const stages: RecoveryStage[] = [
-      'sendVerificationCode',
-      'resetPassword',
-      'getGoogle2faQrcode',
-      'unbindGoogle2fa',
-      'bindGoogle2fa',
-      'complete'
-    ];
-    
-    const currentStageIndex = stages.indexOf(info.stage);
-    const totalStages = stages.length - 1; // 减去complete阶段
-    const percent = Math.round((currentStageIndex / totalStages) * 100);
-    
-    return (
-      <div style={{ marginTop: 8 }}>
-        <Text>正在{stageNames[info.stage]}...</Text>
-        <Progress percent={percent} size="small" status="active" />
-      </div>
-    );
-  };
-
-  // 处理关闭模态框
-  const handleClose = () => {
-    if (recovering) {
-      Modal.confirm({
-        title: '确认关闭',
-        content: '正在恢复账户中，关闭将中断恢复过程。确定要关闭吗？',
-        onOk: () => {
-          resetState();
-          onClose();
-        }
-      });
-    } else {
-      resetState();
-      onClose();
+  
+  // 表格列定义
+  const columns = [
+    {
+      title: '邮箱',
+      dataIndex: 'email',
+      key: 'email',
+      render: (text: string) => (
+        <div>
+          <MailOutlined style={{ marginRight: 8 }} />
+          {text}
+        </div>
+      )
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: AccountStatus) => renderStatusIcon(status)
+    },
+    {
+      title: '进度',
+      dataIndex: 'progress',
+      key: 'progress',
+      render: (progress: number, record: AccountInfo) => (
+        <Progress 
+          percent={progress} 
+          size="small" 
+          status={
+            record.status === 'processing' ? 'active' : 
+            record.status === 'success' ? 'success' : 
+            record.status === 'failed' ? 'exception' : 'normal'
+          }
+        />
+      )
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_: any, record: AccountInfo) => (
+        <Button 
+          danger 
+          size="small" 
+          disabled={record.status === 'processing' || isProcessing}
+          onClick={() => removeAccount(record.key)}
+        >
+          删除
+        </Button>
+      )
     }
-  };
-
+  ];
+  
   return (
     <Modal
-      title="批量恢复Infini账户"
+      title="批量恢复账户"
       open={visible}
       onCancel={handleClose}
-      width={900}
+      width={1000}
       footer={[
-        <Button key="cancel" onClick={handleClose}>
+        <Button key="cancel" onClick={handleClose} disabled={isProcessing}>
           取消
         </Button>,
         <Button
-          key="recover"
+          key="success"
           type="primary"
-          loading={recovering}
-          onClick={startBatchRecover}
-          disabled={emailList.length === 0 || recovering}
+          onClick={handleSuccess}
+          disabled={!isAllCompleted() || (processStats.success === 0 && processStats.failed === 0)}
         >
-          {recovering ? '正在恢复' : '开始批量恢复'}
+          完成
+        </Button>,
+        <Button
+          key="start"
+          type="primary"
+          loading={loading}
+          onClick={startProcessing}
+          disabled={accounts.length === 0 || isProcessing || isAllCompleted()}
+        >
+          {isProcessing ? '处理中...' : '批量恢复'}
         </Button>
       ]}
     >
-      <div style={{ marginBottom: 16 }}>
-        <Alert
-          message="请输入需要恢复的Infini账户邮箱列表，每行一个邮箱"
-          description="系统将依次恢复这些账户，包括重置密码、解绑并重新绑定2FA等操作。"
-          type="info"
-          showIcon
-        />
-      </div>
-
-      {/* 文本输入区域 */}
-      <div style={{ marginBottom: 16 }}>
-        <TextArea
-          rows={5}
-          value={inputText}
-          onChange={e => setInputText(e.target.value)}
-          placeholder="请输入需要恢复的账户邮箱，每行一个邮箱
-example@email.com
-another@email.com
-..."
-          disabled={recovering}
-        />
-        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
-          <Space>
-            <Button
-              onClick={parseEmails}
-              icon={<SyncOutlined />}
-              disabled={!inputText.trim() || recovering}
-            >
-              解析文本
-            </Button>
-          </Space>
+      <div>
+        <div style={{ marginBottom: 16 }}>
+          <Text>请输入账户邮箱，每行一个邮箱</Text>
+          <div style={{ position: 'relative' }}>
+            <TextArea
+              rows={5}
+              value={batchText}
+              onChange={handleTextChange}
+              placeholder="example@email.com
+another@email.com"
+              disabled={isProcessing}
+            />
+            <Space style={{ position: 'absolute', bottom: 8, right: 8 }}>
+              <Button 
+                icon={<SyncOutlined />}
+                onClick={parseTextToAccounts}
+                disabled={!batchText.trim() || isProcessing}
+              >
+                解析文本
+              </Button>
+            </Space>
+          </div>
         </div>
-      </div>
-
-      {/* 恢复进度统计 */}
-      {emailList.length > 0 && (
+        
+        {/* 统计信息卡片 */}
         <Card style={{ marginBottom: 16 }}>
           <Row gutter={16}>
             <Col span={6}>
-              <Statistic
-                title="总账户数"
-                value={stats.total}
+              <Statistic 
+                title="总账户数" 
+                value={processStats.total} 
                 suffix={`个`}
               />
             </Col>
             <Col span={6}>
-              <Statistic
-                title="成功数量"
-                value={stats.success}
+              <Statistic 
+                title="成功" 
+                value={processStats.success} 
+                suffix={`个`}
                 valueStyle={{ color: '#3f8600' }}
-                suffix={`个`}
               />
             </Col>
             <Col span={6}>
-              <Statistic
-                title="失败数量"
-                value={stats.failed}
+              <Statistic 
+                title="失败" 
+                value={processStats.failed} 
+                suffix={`个`}
                 valueStyle={{ color: '#cf1322' }}
-                suffix={`个`}
               />
             </Col>
             <Col span={6}>
-              <Statistic
-                title="成功率"
-                value={stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0}
+              <Statistic 
+                title="成功率" 
+                value={processStats.total > 0 ? Math.round(processStats.success / processStats.total * 100) : 0} 
                 suffix={`%`}
                 precision={0}
               />
             </Col>
           </Row>
-          {recovering && currentIndex >= 0 && currentIndex < emailList.length && (
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
-              <Text>
-                正在处理: <strong>{emailList[currentIndex]}</strong> ({currentIndex + 1}/{emailList.length})
-              </Text>
+          
+          {isProcessing && (
+            <div style={{ marginTop: 16 }}>
+              <Text strong>正在处理账户: </Text>
+              <Text>{processStats.currentEmail}</Text>
+              <br />
+              <Text strong>当前阶段: </Text>
+              <Text>{processStats.currentStage} ({Math.round(processStats.currentProgress)}%)</Text>
+              <Progress 
+                percent={processStats.currentProgress} 
+                status="active"
+                strokeColor={{
+                  '0%': '#108ee9',
+                  '100%': '#87d068',
+                }}
+              />
             </div>
           )}
         </Card>
-      )}
-
-      {/* 恢复列表和详情 */}
-      {emailList.length > 0 && (
+        
         <Row gutter={16}>
-          {/* 左侧：账户列表 */}
           <Col span={12}>
-            <div style={{ border: '1px solid #f0f0f0', borderRadius: 4, height: 400, overflow: 'auto' }}>
-              <List
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Title level={5}>账户列表</Title>
+              <Button 
+                type="primary" 
                 size="small"
-                header={<div style={{ fontWeight: 'bold' }}>恢复账户列表</div>}
-                bordered={false}
-                dataSource={recoveryInfos}
-                renderItem={info => (
-                  <List.Item
-                    actions={[
-                      <Button
-                        type="text"
-                        danger
-                        size="small"
-                        icon={<CloseCircleOutlined />}
-                        onClick={() => removeEmail(info.email)}
-                        disabled={recovering}
-                      />
-                    ]}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                      <MailOutlined style={{ marginRight: 8 }} />
-                      <Text style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }} ellipsis>
-                        {info.email}
-                      </Text>
-                      <div style={{ marginLeft: 8 }}>
-                        {renderStatusTag(info.status)}
-                      </div>
-                    </div>
-                    {renderProgress(info)}
-                  </List.Item>
-                )}
-              />
+                icon={<PlusOutlined />} 
+                onClick={addAccount}
+                disabled={isProcessing}
+              >
+                添加账户
+              </Button>
             </div>
+            
+            <Table
+              dataSource={accounts}
+              columns={columns}
+              rowKey="key"
+              pagination={false}
+              size="small"
+              scroll={{ y: 300 }}
+              loading={loading && !isProcessing}
+            />
           </Col>
-
-          {/* 右侧：当前恢复详情 */}
+          
           <Col span={12}>
-            <div style={{ border: '1px solid #f0f0f0', borderRadius: 4, height: 400, overflow: 'auto', padding: 16 }}>
-              {currentIndex >= 0 && currentIndex < emailList.length ? (
-                <>
-                  <Title level={5}>
-                    <Space>
-                      <span>正在处理账户</span>
-                      <MailOutlined />
-                      <span>{emailList[currentIndex]}</span>
-                    </Space>
-                  </Title>
-
-                  <div style={{ marginBottom: 8 }}>
-                    {recoveryInfos[currentIndex]?.stage && (
-                      <div>
-                        <Text>当前进度: </Text>
-                        <Text strong>{stageNames[recoveryInfos[currentIndex].stage!]}</Text>
-                        <Text> ({stages.indexOf(recoveryInfos[currentIndex].stage!) + 1}/5)</Text>
-                      </div>
-                    )}
-                  </div>
-
-                  <Divider orientation="left">操作日志</Divider>
-                  <div style={{ maxHeight: 240, overflow: 'auto', padding: 8, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
-                    {recoveryInfos[currentIndex]?.logs.map((log, index) => (
-                      <div key={index} style={{ marginBottom: 4 }}>
-                        <Text code>{log}</Text>
-                      </div>
-                    ))}
-                  </div>
-                </>
+            <div style={{ marginBottom: 16 }}>
+              <Title level={5}>处理日志</Title>
+            </div>
+            
+            <div 
+              style={{ 
+                height: 350, 
+                overflowY: 'auto',
+                padding: 8,
+                border: '1px solid #d9d9d9',
+                borderRadius: 2,
+                backgroundColor: '#f5f5f5'
+              }}
+            >
+              {logs.length > 0 ? (
+                <List
+                  size="small"
+                  dataSource={logs}
+                  renderItem={log => (
+                    <List.Item style={{ padding: '4px 0' }}>
+                      <Text code style={{ fontSize: 12 }}>{log}</Text>
+                    </List.Item>
+                  )}
+                />
               ) : (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                  <Text type="secondary">
-                    {recovering ? '正在准备恢复...' : '请点击"开始批量恢复"按钮开始恢复账户'}
-                  </Text>
-                </div>
+                <Empty description="暂无日志" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               )}
+              <div ref={logsEndRef} />
             </div>
           </Col>
         </Row>
-      )}
+        
+        <Divider />
+        
+        <Paragraph type="secondary">
+          <InfoCircleOutlined style={{ marginRight: 8 }} />
+          恢复流程: 获取验证码 → 重置密码 → 获取2FA信息 → 解绑2FA → 重新绑定2FA
+        </Paragraph>
+      </div>
     </Modal>
   );
 };
