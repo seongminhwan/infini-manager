@@ -3332,6 +3332,464 @@ export class InfiniAccountService {
   }
 
   /**
+   * 重置密码
+   * @param email 邮箱地址
+   * @param verificationCode 验证码
+   * @returns 重置结果
+   */
+  async resetPassword(email: string, verificationCode: string): Promise<ApiResponse> {
+    try {
+      if (!email || !verificationCode) {
+        return {
+          success: false,
+          message: '邮箱和验证码是必填项'
+        };
+      }
+
+      console.log(`开始重置账户 ${email} 的密码，验证码: ${verificationCode}`);
+
+      // 调用Infini API重置密码
+      const response = await httpClient.post(
+        `${INFINI_API_BASE_URL}/user/verify-email`,
+        {
+          email: email,
+          type: 1,
+          email_verify_code: verificationCode
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en',
+            'Cache-Control': 'no-cache',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+            'Referer': 'https://app.infini.money/',
+            'Origin': 'https://app.infini.money',
+            'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'Pragma': 'no-cache',
+            'Priority': 'u=1, i'
+          }
+        }
+      );
+
+      console.log('Infini 重置密码API响应:', response.data);
+
+      if (response.data.code === 0) {
+        console.log(`账户 ${email} 密码重置成功`);
+        return {
+          success: true,
+          data: response.data.data,
+          message: '密码重置成功'
+        };
+      } else {
+        console.error(`Infini API返回错误: ${response.data.message || '未知错误'}`);
+        return {
+          success: false,
+          message: `密码重置失败: ${response.data.message || '未知错误'}`
+        };
+      }
+    } catch (error) {
+      console.error('重置密码失败:', error);
+      return {
+        success: false,
+        message: `重置密码失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 解绑2FA
+   * @param accountId Infini账户ID
+   * @param google2faToken 2FA验证码
+   * @param password 账户密码
+   * @returns 解绑结果
+   */
+  async unbindGoogle2fa(accountId: string, google2faToken: string, password?: string): Promise<ApiResponse> {
+    try {
+      if (!google2faToken) {
+        return {
+          success: false,
+          message: '2FA验证码是必填项'
+        };
+      }
+
+      // 查找账户
+      const account = await db('infini_accounts')
+        .where('id', accountId)
+        .first();
+
+      if (!account) {
+        console.error(`解绑2FA失败: 找不到ID为${accountId}的Infini账户`);
+        return {
+          success: false,
+          message: '找不到指定的Infini账户'
+        };
+      }
+
+      // 获取有效Cookie
+      const cookie = await this.getCookieForAccount(account, '解绑2FA失败，');
+
+      if (!cookie) {
+        console.error(`解绑2FA失败: 无法获取账户${account.email}的有效登录凭证`);
+        return {
+          success: false,
+          message: '解绑2FA失败，无法获取有效的登录凭证'
+        };
+      }
+
+      // 使用账户自身的密码（如果未提供）
+      const userPassword = password || account.password;
+      
+      if (!userPassword) {
+        return {
+          success: false,
+          message: '解绑2FA失败，缺少密码参数'
+        };
+      }
+
+      // 调用Infini API解绑2FA
+      const response = await httpClient.post(
+        `${INFINI_API_BASE_URL}/user/unbind-google-2fa`,
+        {
+          google2fa_token: google2faToken,
+          password: userPassword
+        },
+        {
+          headers: {
+            'Cookie': cookie,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en',
+            'Cache-Control': 'no-cache',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+            'Referer': 'https://app.infini.money/',
+            'Origin': 'https://app.infini.money',
+            'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'Pragma': 'no-cache',
+            'Priority': 'u=1, i'
+          }
+        }
+      );
+
+      console.log('Infini 解绑2FA API响应:', response.data);
+
+      if (response.data.code === 0) {
+        // 更新账户的2FA状态
+        await db('infini_accounts')
+          .where('id', accountId)
+          .update({
+            google_2fa_is_bound: false,
+            last_sync_at: new Date()
+          });
+
+        console.log(`账户 ${account.email} 解绑2FA成功`);
+        return {
+          success: true,
+          data: response.data.data,
+          message: '2FA解绑成功'
+        };
+      } else {
+        console.error(`Infini API返回错误: ${response.data.message || '未知错误'}`);
+        return {
+          success: false,
+          message: `解绑2FA失败: ${response.data.message || '未知错误'}`
+        };
+      }
+    } catch (error) {
+      console.error('解绑2FA失败:', error);
+      return {
+        success: false,
+        message: `解绑2FA失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 恢复账户
+   * @param email 邮箱地址
+   * @returns 恢复结果
+   */
+  async recoverAccount(email: string): Promise<ApiResponse> {
+    try {
+      if (!email) {
+        return {
+          success: false,
+          message: '邮箱地址是必填项'
+        };
+      }
+
+      console.log(`开始恢复账户 ${email}`);
+
+      // 第一步：发送验证码
+      console.log(`为账户 ${email} 发送验证码...`);
+      const sendVerificationCodeResponse = await this.sendVerificationCode(email, 1);
+      if (!sendVerificationCodeResponse.success) {
+        console.error(`为账户 ${email} 发送验证码失败:`, sendVerificationCodeResponse.message);
+        return {
+          success: false,
+          message: `发送验证码失败: ${sendVerificationCodeResponse.message}`
+        };
+      }
+
+      // 第二步：获取验证码
+      console.log(`获取账户 ${email} 的验证码...`);
+      const fetchVerificationCodeResponse = await this.fetchVerificationCode(email);
+      if (!fetchVerificationCodeResponse.success || !fetchVerificationCodeResponse.data?.code) {
+        console.error(`获取账户 ${email} 的验证码失败:`, fetchVerificationCodeResponse.message);
+        return {
+          success: false,
+          message: `获取验证码失败: ${fetchVerificationCodeResponse.message}`
+        };
+      }
+
+      const verificationCode = fetchVerificationCodeResponse.data.code;
+
+      // 第三步：重置密码
+      console.log(`重置账户 ${email} 的密码...`);
+      const resetPasswordResponse = await this.resetPassword(email, verificationCode);
+      if (!resetPasswordResponse.success) {
+        console.error(`重置账户 ${email} 的密码失败:`, resetPasswordResponse.message);
+        return {
+          success: false,
+          message: `重置密码失败: ${resetPasswordResponse.message}`
+        };
+      }
+
+      // 第四步：查找账户或创建新账户
+      console.log(`查找或创建账户 ${email} 的记录...`);
+      let account = await db('infini_accounts')
+        .where('email', email)
+        .first();
+
+      if (!account) {
+        // 账户不存在，创建新账户
+        console.log(`数据库中不存在账户 ${email}，将创建新账户`);
+        // 尝试登录获取信息
+        const loginResponse = await this.loginInfiniAccount(email, 'K9@iuptLL@wJ55X'); // 使用默认密码
+        if (!loginResponse.success) {
+          console.error(`登录账户 ${email} 失败:`, loginResponse.message);
+          return {
+            success: false,
+            message: `登录账户失败: ${loginResponse.message}`
+          };
+        }
+
+        // 创建账户
+        const createAccountResponse = await this.createInfiniAccount(email, 'K9@iuptLL@wJ55X');
+        if (!createAccountResponse.success) {
+          console.error(`创建账户 ${email} 失败:`, createAccountResponse.message);
+          return {
+            success: false,
+            message: `创建账户失败: ${createAccountResponse.message}`
+          };
+        }
+
+        account = createAccountResponse.data;
+      } else {
+        // 账户存在，更新密码
+        console.log(`更新账户 ${email} 的密码...`);
+        await db('infini_accounts')
+          .where('id', account.id)
+          .update({
+            password: 'K9@iuptLL@wJ55X',
+            cookie: null,
+            cookie_expires_at: null,
+            updated_at: new Date()
+          });
+      }
+
+      // 第五步：获取2FA二维码
+      console.log(`获取账户 ${email} 的2FA二维码...`);
+      const get2faQrcodeResponse = await this.getGoogle2faQrcode(account.id.toString());
+      if (!get2faQrcodeResponse.success) {
+        console.error(`获取账户 ${email} 的2FA二维码失败:`, get2faQrcodeResponse.message);
+        return {
+          success: false,
+          message: `获取2FA二维码失败: ${get2faQrcodeResponse.message}`
+        };
+      }
+
+      const secretKey = get2faQrcodeResponse.data.secret_key;
+
+      // 第六步：解绑2FA（如果已绑定）
+      if (account.google_2fa_is_bound) {
+        console.log(`账户 ${email} 已绑定2FA，尝试解绑...`);
+
+        // 使用TotpToolService生成2FA验证码
+        const totpService = new TotpToolService();
+        const totpResult = await totpService.generateTotpCode(secretKey);
+
+        if (!totpResult.success || !totpResult.data || !totpResult.data.code) {
+          console.error(`为账户 ${email} 生成2FA验证码失败:`, totpResult.message);
+          return {
+            success: false,
+            message: `生成2FA验证码失败: ${totpResult.message}`
+          };
+        }
+
+        const google2faToken = totpResult.data.code;
+
+        // 解绑2FA
+        console.log(`使用验证码 ${google2faToken} 解绑账户 ${email} 的2FA...`);
+        const unbind2faResponse = await this.unbindGoogle2fa(account.id.toString(), google2faToken);
+        if (!unbind2faResponse.success) {
+          console.error(`解绑账户 ${email} 的2FA失败:`, unbind2faResponse.message);
+          return {
+            success: false,
+            message: `解绑2FA失败: ${unbind2faResponse.message}`
+          };
+        }
+      }
+
+      // 第七步：重新绑定2FA
+      console.log(`为账户 ${email} 发送2FA验证邮件...`);
+      const send2faVerificationResponse = await this.sendGoogle2faVerificationEmail(email, account.id.toString());
+      if (!send2faVerificationResponse.success) {
+        console.error(`为账户 ${email} 发送2FA验证邮件失败:`, send2faVerificationResponse.message);
+        return {
+          success: false,
+          message: `发送2FA验证邮件失败: ${send2faVerificationResponse.message}`
+        };
+      }
+
+      // 获取2FA验证码
+      console.log(`获取账户 ${email} 的2FA验证码...`);
+      const fetch2faVerificationResponse = await this.fetchVerificationCode(email);
+      if (!fetch2faVerificationResponse.success || !fetch2faVerificationResponse.data?.code) {
+        console.error(`获取账户 ${email} 的2FA验证码失败:`, fetch2faVerificationResponse.message);
+        return {
+          success: false,
+          message: `获取2FA验证码失败: ${fetch2faVerificationResponse.message}`
+        };
+      }
+
+      const twoFaVerificationCode = fetch2faVerificationResponse.data.code;
+
+      // 使用TotpToolService生成2FA验证码
+      const totpService = new TotpToolService();
+      const totpResult = await totpService.generateTotpCode(secretKey);
+
+      if (!totpResult.success || !totpResult.data || !totpResult.data.code) {
+        console.error(`为账户 ${email} 生成2FA验证码失败:`, totpResult.message);
+        return {
+          success: false,
+          message: `生成2FA验证码失败: ${totpResult.message}`
+        };
+      }
+
+      const google2faCode = totpResult.data.code;
+
+      // 绑定2FA
+      console.log(`使用验证码 ${twoFaVerificationCode} 和2FA码 ${google2faCode} 绑定账户 ${email} 的2FA...`);
+      const bind2faResponse = await this.bindGoogle2fa(twoFaVerificationCode, google2faCode, account.id.toString());
+      if (!bind2faResponse.success) {
+        console.error(`绑定账户 ${email} 的2FA失败:`, bind2faResponse.message);
+        return {
+          success: false,
+          message: `绑定2FA失败: ${bind2faResponse.message}`
+        };
+      }
+
+      console.log(`账户 ${email} 恢复成功`);
+      return {
+        success: true,
+        data: {
+          accountId: account.id,
+          email: account.email,
+          status: 'recovered'
+        },
+        message: '账户恢复成功'
+      };
+    } catch (error) {
+      console.error('恢复账户失败:', error);
+      return {
+        success: false,
+        message: `恢复账户失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 批量恢复账户
+   * @param emails 邮箱地址数组
+   * @returns 批量恢复结果
+   */
+  async batchRecoverAccounts(emails: string[]): Promise<ApiResponse> {
+    try {
+      if (!emails || emails.length === 0) {
+        return {
+          success: false,
+          message: '邮箱地址列表不能为空'
+        };
+      }
+
+      console.log(`开始批量恢复账户，共 ${emails.length} 个账户`);
+
+      // 结果统计
+      const results = {
+        total: emails.length,
+        success: 0,
+        failed: 0,
+        accounts: [] as Array<{
+          email: string;
+          success: boolean;
+          message?: string;
+          accountId?: string;
+        }>
+      };
+
+      // 逐个处理账户
+      for (const email of emails) {
+        try {
+          console.log(`处理账户 ${email}...`);
+          const recoverResult = await this.recoverAccount(email);
+          
+          if (recoverResult.success) {
+            results.success++;
+            results.accounts.push({
+              email,
+              success: true,
+              message: '恢复成功',
+              accountId: recoverResult.data?.accountId
+            });
+          } else {
+            results.failed++;
+            results.accounts.push({
+              email,
+              success: false,
+              message: recoverResult.message
+            });
+          }
+        } catch (error) {
+          console.error(`处理账户 ${email} 时出错:`, error);
+          results.failed++;
+          results.accounts.push({
+            email,
+            success: false,
+            message: (error as Error).message
+          });
+        }
+      }
+
+      return {
+        success: true,
+        data: results,
+        message: `批量恢复完成: 总计${results.total}个账户, 成功${results.success}个, 失败${results.failed}个`
+      };
+    } catch (error) {
+      console.error('批量恢复账户失败:', error);
+      return {
+        success: false,
+        message: `批量恢复账户失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
    * 获取所有账户分组
    * @returns 包含所有分组信息的响应对象
    */
