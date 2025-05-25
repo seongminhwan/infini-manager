@@ -405,9 +405,9 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       updateAccountProgress(index, 'getQrcode', 60);
       updateAccountLog(index, '获取2FA信息...');
       
-      const qrcodeResponse = await api.get(`/api/infini-accounts/2fa/qrcode?email=${account.email}`);
-      if (!qrcodeResponse.data.success) {
-        throw new Error(`获取2FA信息失败: ${qrcodeResponse.data.message}`);
+      const qrcodeResponse = await infiniAccountApi.getGoogle2faQrCode(account.email);
+      if (!qrcodeResponse.success) {
+        throw new Error(`获取2FA信息失败: ${qrcodeResponse.message}`);
       }
       
       updateAccountLog(index, '获取2FA信息成功');
