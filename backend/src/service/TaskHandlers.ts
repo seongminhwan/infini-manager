@@ -4,6 +4,7 @@
  */
 import { InfiniAccountService } from './InfiniAccountService';
 import db from '../db/db';
+import EmailSyncService from './EmailSyncService'; // 导入 EmailSyncService
 
 /**
  * 同步账户信息处理器
@@ -146,9 +147,77 @@ export const syncAccountsInfo = async (params: any): Promise<{ success: boolean;
  * 其他任务处理器可以在这里添加
  */
 
-// 导出所有处理器
-export const taskHandlers = {
-  syncAccountsInfo
+/**
+ * 增量同步所有活动邮箱的邮件
+ * @param params 任务参数 (当前未使用)
+ */
+export const syncAllEmailsIncrementally = async (params: any): Promise<{ success: boolean; message: string; data?: any }> => {
+  try {
+    console.log('开始执行增量邮件同步任务，参数:', JSON.stringify(params, null, 2));
+    const emailSyncService = EmailSyncService; // 使用导入的单例
+
+    const results = {
+      totalAccounts: 0,
+      syncedAccounts: 0,
+      failedAccounts: 0,
+      errors: [] as { accountId: number; error: string }[]
+    };
+
+    // 1. 获取所有状态为 'active' 的邮箱账户
+    const activeAccounts = await db('email_accounts').where({ status: 'active' }).select('id');
+    results.totalAccounts = activeAccounts.length;
+
+    if (results.totalAccounts === 0) {
+      return {
+        success: true,
+        message: '没有找到活动的邮箱账户进行同步',
+        data: results
+      };
+    }
+
+    console.log(`找到 ${results.totalAccounts} 个活动邮箱账户，开始同步...`);
+
+    // 2. 遍历这些账户，并为每个账户调用增量同步
+    for (const account of activeAccounts) {
+      const accountId = account.id;
+      try {
+        console.log(`开始为账户 ID: ${accountId} 执行增量邮件同步`);
+        // 默认同步 INBOX，不指定日期范围，由 EmailSyncService 内部逻辑处理增量
+        const syncLogId = await emailSyncService.syncEmails(accountId, 'incremental');
+        console.log(`账户 ID: ${accountId} 的增量同步任务已启动，同步日志 ID: ${syncLogId}`);
+        results.syncedAccounts++;
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error(`为账户 ID: ${accountId} 执行增量邮件同步失败:`, errMsg);
+        results.failedAccounts++;
+        results.errors.push({ accountId, error: errMsg });
+      }
+    }
+
+    const message = `增量邮件同步任务完成。总账户数: ${results.totalAccounts}, 成功启动同步: ${results.syncedAccounts}, 启动失败: ${results.failedAccounts}`;
+    console.log(message);
+
+    return {
+      success: true,
+      message,
+      data: results
+    };
+
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('增量邮件同步任务执行失败:', errMsg);
+    return {
+      success: false,
+      message: `增量邮件同步任务执行失败: ${errMsg}`
+    };
+  }
 };
 
-export default taskHandlers; 
+
+// 导出所有处理器
+export const taskHandlers = {
+  syncAccountsInfo,
+  syncAllEmailsIncrementally // 添加新的处理器
+};
+
+export default taskHandlers;

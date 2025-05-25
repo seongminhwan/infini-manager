@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "quoted-printable": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/quoted-printable": "^1.0.2"
+  }
+}

@@ -5,6 +5,8 @@
 import IMAP = require('node-imap');
 import * as nodemailer from 'nodemailer';
 import { simpleParser } from 'mailparser';
+import * as iconv from 'iconv-lite';
+import * as quotedPrintable from 'quoted-printable';
 import { 
   GmailConfig, 
   GmailMessage, 
@@ -147,13 +149,11 @@ class GmailClient {
   private searchMessages(criteria: any[], options: GmailQueryOptions): Promise<GmailMessage[]> {
     return new Promise((resolve, reject) => {
       const fetchOptions = options.fetchOptions || {
-        bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)', 'TEXT'],
-        struct: true,
+        // 请求完整的邮件头和正文，确保获取所有内容
+        bodies: ['HEADER', 'TEXT', ''],  // 空字符串''表示完整邮件体(RFC822)
+        struct: true, 
         markSeen: options.markSeen || false
       };
-      
-      const messages: GmailMessage[] = [];
-      let messageCount = 0;
       
       // 限制邮件数量
       const limit = options.limit || 10;
@@ -177,70 +177,234 @@ class GmailClient {
           uids = uids.slice(0, limit);
         }
 
+        // 为每个邮件创建一个Promise
+        const messagePromises: Promise<GmailMessage>[] = [];
         const fetch = this.imapClient.fetch(uids, fetchOptions);
 
         fetch.on('message', (msg, seqno) => {
-          const message: GmailMessage = {
-            uid: 0,
-            seqno,
-            headers: []
-          };
+          // 为每个邮件创建一个Promise
+          const messagePromise = new Promise<GmailMessage>((resolveMessage, rejectMessage) => {
+            const message: GmailMessage = {
+              uid: 0,
+              seqno,
+              headers: []
+            };
 
-          msg.on('body', (stream, info) => {
-            let buffer = '';
+            // 用于跟踪各个部分的处理状态
+            const partsStatus = {
+              headerDone: false,
+              bodyDone: false,
+              attributesDone: false
+            };
 
-            stream.on('data', (chunk) => {
-              buffer += chunk.toString('utf8');
-            });
+            // 当所有部分处理完毕时解析Promise
+            const checkAllPartsDone = () => {
+              if (partsStatus.headerDone && partsStatus.bodyDone && partsStatus.attributesDone) {
+                resolveMessage(message);
+              }
+            };
 
-            stream.once('end', () => {
-              if (info.which.indexOf('HEADER') === 0) {
-                const headers = IMAP.parseHeader(buffer);
-                
-                // 转换标准邮件头
-                message.subject = headers.subject?.[0] || '';
-                message.from = headers.from?.[0] || '';
-                message.to = headers.to?.[0] || '';
-                message.date = headers.date ? new Date(headers.date[0]) : undefined;
-                
-                // 保存所有头信息
-                Object.keys(headers).forEach(key => {
-                  if (headers[key]?.[0]) {
-                    message.headers?.push({
-                      name: key,
-                      value: headers[key][0]
-                    });
+            // 处理邮件各个部分
+            msg.on('body', (stream, info) => {
+              // 如果是 HEADER 部分
+              if (info.which.toUpperCase().startsWith('HEADER')) {
+                let headerBuffer = '';
+                stream.on('data', (chunk) => {
+                  headerBuffer += chunk.toString('utf8');
+                });
+                stream.once('end', () => {
+                  const headers = IMAP.parseHeader(headerBuffer);
+                  message.subject = headers.subject?.[0] || '';
+                  message.from = headers.from?.[0] || '';
+                  message.to = headers.to?.[0] || '';
+                  message.date = headers.date ? new Date(headers.date[0]) : undefined;
+                  message.headers = [];
+                  Object.keys(headers).forEach(key => {
+                    if (headers[key]?.[0]) {
+                      message.headers?.push({ name: key, value: headers[key][0] });
+                    }
+                  });
+                  
+                  partsStatus.headerDone = true;
+                  checkAllPartsDone();
+                });
+              } else if (info.which === 'TEXT') {
+                // 处理邮件正文内容部分 - 根据实际测试，TEXT部分包含文本内容
+                const chunks: Buffer[] = [];
+                stream.on('data', (chunk) => {
+                  chunks.push(chunk as Buffer);
+                });
+                stream.once('end', () => {
+                  const rawEmail = Buffer.concat(chunks);
+                  
+                  // 尝试检测编码并转换内容
+                  try {
+                    // 先尝试检查是否是quoted-printable编码
+                    const rawString = rawEmail.toString();
+                    let decodedText = '';
+                    
+                    // 检查是否包含quoted-printable编码的特征
+                    if (rawString.includes('=?') && rawString.includes('?=')) {
+                      try {
+                        // 解码quoted-printable内容
+                        decodedText = quotedPrintable.decode(rawString);
+                      } catch (qpError) {
+                        console.warn(`Quoted-printable解码失败:`, qpError);
+                        decodedText = rawString;
+                      }
+                    } else {
+                      decodedText = rawString;
+                    }
+                    
+                    // 检测并转换字符编码
+                    // 常见的非UTF-8编码，特别是中文邮件可能使用的编码
+                    const encodings = ['utf-8', 'gb2312', 'gbk', 'big5', 'iso-8859-1'];
+                    
+                    // 尝试不同编码进行转换
+                    let convertedText = decodedText;
+                    for (const encoding of encodings) {
+                      try {
+                        // 先转为Buffer，然后使用指定编码解码
+                        const tempBuffer = iconv.encode(decodedText, 'utf-8');
+                        const tempText = iconv.decode(tempBuffer, encoding);
+                        
+                        // 如果转换后的文本不包含乱码特征，则使用该编码
+                        if (!tempText.includes('�') && tempText.length > 0) {
+                          convertedText = tempText;
+                          console.log(`成功使用${encoding}编码转换邮件内容`);
+                          break;
+                        }
+                      } catch (encError) {
+                        console.warn(`使用${encoding}编码转换失败:`, encError);
+                      }
+                    }
+                    
+                    // 设置转换后的文本内容
+                    message.text = convertedText;
+                    message.html = convertedText;
+                  } catch (error) {
+                    console.error(`邮件内容编码转换失败:`, error);
+                    // 回退到原始内容
+                    message.text = rawEmail.toString();
+                    message.html = rawEmail.toString();
                   }
+                  
+                  // 使用Promise处理异步解析
+                  simpleParser(rawEmail)
+                    .then(parsed => {
+                      // 根据截图中实际解析对象的结构进行赋值
+                      // message.text = parsed.text || '';
+                      
+                      // // 特别处理html内容，优先使用parsed.html，如果不存在则使用textAsHtml
+                      // if (parsed.html) {
+                      //   message.html = parsed.html;
+                      // } else if (parsed.textAsHtml) {
+                      //   message.html = parsed.textAsHtml;
+                      // } else {
+                      //   message.html = '';
+                      // }
+                      
+                      // 优先使用parsed的头信息
+                      message.subject = parsed.subject || message.subject;
+                      message.date = parsed.date || message.date;
+                      
+                      // 处理发件人信息
+                      if (parsed.from) {
+                        message.from = parsed.from.text || message.from;
+                      }
+
+                      // 处理收件人信息
+                      if (parsed.to) {
+                        message.to = Array.isArray(parsed.to)
+                                     ? parsed.to.map(addrObj => addrObj.text).join(', ')
+                                     : parsed.to.text;
+                      } else if (message.to === undefined) {
+                         message.to = '';
+                      }
+
+                      // 处理抄送人信息
+                      if (parsed.cc) {
+                        message.cc = Array.isArray(parsed.cc)
+                                     ? parsed.cc.map(addrObj => addrObj.text).join(', ')
+                                     : parsed.cc.text;
+                      } else {
+                        message.cc = undefined;
+                      }
+
+                      // 处理密送人信息
+                      if (parsed.bcc) {
+                        message.bcc = Array.isArray(parsed.bcc)
+                                     ? parsed.bcc.map(addrObj => addrObj.text).join(', ')
+                                     : parsed.bcc.text;
+                      } else {
+                        message.bcc = undefined;
+                      }
+                      
+                      message.messageId = parsed.messageId || message.messageId;
+
+                      // 处理附件信息
+                      if (parsed.attachments && parsed.attachments.length > 0) {
+                        message.attachments = parsed.attachments.map(att => ({
+                          filename: att.filename || 'untitled',
+                          contentType: att.contentType || 'application/octet-stream',
+                          content: att.content,
+                          contentDisposition: att.contentDisposition,
+                          contentId: att.cid,
+                          size: att.size
+                        } as GmailAttachment));
+                      }
+                    })
+                    .catch(parseError => {
+                      console.error(`mailparser 解析邮件内容失败 (UID: ${message.uid}, SeqNo: ${seqno}):`, parseError);
+                      // 回退处理
+                      const fallbackText = rawEmail.toString('utf8');
+                      message.text = fallbackText;
+                      message.html = fallbackText;
+                    })
+                    .finally(() => {
+                      partsStatus.bodyDone = true;
+                      checkAllPartsDone();
+                    });
                 });
               } else {
-                // 解析邮件正文
-                simpleParser(buffer)
-                  .then(parsed => {
-                    message.text = parsed.text || '';
-                    message.html = parsed.html || '';
-                    message.attachments = parsed.attachments as GmailAttachment[];
-                  })
-                  .catch(e => console.error('解析邮件内容失败:', e));
+                // 其他特定部分
+                stream.on('data', () => {});
+                stream.once('end', () => {});
               }
+            });
+
+            msg.once('attributes', (attrs) => {
+              message.uid = attrs.uid;
+              message.flags = attrs.flags;
+              message.attributes = attrs;
+              message.messageId = attrs.envelope?.messageId;
+              
+              partsStatus.attributesDone = true;
+              checkAllPartsDone();
+            });
+
+            // 处理邮件结束事件
+            msg.once('end', () => {
+              // 确保即使某些部分没有触发也能正常处理
+              setTimeout(() => {
+                if (!partsStatus.headerDone) {
+                  console.warn(`邮件(UID: ${message.uid}, SeqNo: ${seqno})的头部信息未完成处理`);
+                  partsStatus.headerDone = true;
+                }
+                if (!partsStatus.bodyDone) {
+                  console.warn(`邮件(UID: ${message.uid}, SeqNo: ${seqno})的内容未完成处理`);
+                  partsStatus.bodyDone = true;
+                }
+                if (!partsStatus.attributesDone) {
+                  console.warn(`邮件(UID: ${message.uid}, SeqNo: ${seqno})的属性未完成处理`);
+                  partsStatus.attributesDone = true;
+                }
+                checkAllPartsDone();
+              }, 1000); // 等待1秒，确保其他事件有机会触发
             });
           });
 
-          msg.once('attributes', (attrs) => {
-            message.uid = attrs.uid;
-            message.flags = attrs.flags;
-            message.attributes = attrs;
-            message.messageId = attrs.envelope?.messageId;
-          });
-
-          msg.once('end', () => {
-            messages.push(message);
-            messageCount++;
-            
-            if (messageCount === uids.length) {
-              // 所有邮件都已处理完毕
-              resolve(messages);
-            }
-          });
+          messagePromises.push(messagePromise);
         });
 
         fetch.once('error', (err) => {
@@ -248,10 +412,19 @@ class GmailClient {
         });
 
         fetch.once('end', () => {
-          // 可能没有任何邮件处理
-          if (messageCount === 0) {
+          if (messagePromises.length === 0) {
             resolve([]);
+            return;
           }
+          
+          // 等待所有邮件处理完成后返回结果
+          Promise.all(messagePromises)
+            .then(messages => {
+              resolve(messages);
+            })
+            .catch(error => {
+              reject(error);
+            });
         });
       });
     });

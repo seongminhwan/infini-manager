@@ -3,7 +3,7 @@
  */
 import { Request, Response } from 'express';
 import TaskService from '../service/TaskService';
-import { TaskStatus, TaskDTO } from '../types/scheduledTask';
+import { TaskStatus, TaskDTO, HandlerType } from '../types/scheduledTask'; // 添加 HandlerType
 import { ApiResponse } from '../types';
 import { taskHandlers } from '../service/TaskHandlers';
 
@@ -25,8 +25,106 @@ export const initializeTaskService = async (): Promise<void> => {
     // 初始化任务服务
     await taskService.initialize();
     console.log('任务服务初始化成功');
+
+    // 确保内置邮件同步任务存在
+    const builtinTaskKey = 'BUILTIN_INCREMENTAL_EMAIL_SYNC';
+    // 使用正确的 HandlerType.FUNCTION 结构
+    const expectedHandler = JSON.stringify({
+      type: HandlerType.FUNCTION,
+      functionName: 'syncAllEmailsIncrementally',
+      params: {}
+    });
+    const expectedCron = '*/5 * * * * *'; // 默认cron
+    const taskDefaults = {
+      task_name: '内置邮件增量同步',
+      task_key: builtinTaskKey,
+      cron_expression: expectedCron,
+      handler: expectedHandler,
+      status: TaskStatus.ENABLED, // 使用枚举成员初始化
+      retry_count: 3,
+      retry_interval: 60,
+      description: '内置定时任务，每5秒调用一次增量同步接口，同步所有邮箱中的邮件内容。此任务不可删除。',
+    };
+
+    console.log(`[TaskInit] 检查内置任务: ${builtinTaskKey}`);
+    const existingBuiltinTask = await db('infini_scheduled_tasks').where({ task_key: builtinTaskKey }).first();
+
+    if (!existingBuiltinTask) {
+      console.log(`[TaskInit] 内置任务 ${builtinTaskKey} 不存在，尝试创建...`);
+      try {
+        await db('infini_scheduled_tasks').insert(taskDefaults);
+        console.log(`[TaskInit] 内置任务 ${builtinTaskKey} 插入完成。`);
+        const newlyCreatedTask = await db('infini_scheduled_tasks').where({ task_key: builtinTaskKey }).first();
+        if (newlyCreatedTask) {
+          // 简化日志
+          console.log(`[TaskInit] 内置任务 ${builtinTaskKey} 已成功创建/验证: ID=${newlyCreatedTask.id}, Status=${newlyCreatedTask.status}`);
+        } else {
+          console.error(`[TaskInit] 严重错误：内置任务 ${builtinTaskKey} 插入后未能查询到！`);
+        }
+      } catch (insertError) {
+        console.error(`[TaskInit] 创建内置任务 ${builtinTaskKey} 失败:`, insertError);
+        throw insertError;
+      }
+    } else {
+      // 简化日志
+      console.log(`[TaskInit] 内置任务 ${builtinTaskKey} 已存在: ID=${existingBuiltinTask.id}, Status=${existingBuiltinTask.status}, TaskName=${existingBuiltinTask.task_name}`);
+      // 定义一个对象来收集需要更新的字段
+      const updates: Partial<typeof taskDefaults & { updated_at: any }> = {};
+      let needsUpdate = false;
+
+      // 1. 如果状态是 'deleted'，则恢复为 'enabled'
+      if (existingBuiltinTask.status === TaskStatus.DELETED) { // 使用枚举成员进行比较
+        updates.status = TaskStatus.ENABLED; // 使用枚举成员进行赋值
+        console.log(`[TaskInit] 内置任务 ${builtinTaskKey} 状态为 'deleted'，将恢复为 'enabled'。`);
+        needsUpdate = true;
+      }
+
+      // 2. 确保 handler 是正确的 (因为 handler 不允许用户修改)
+      if (existingBuiltinTask.handler !== expectedHandler) {
+        updates.handler = expectedHandler;
+        console.log(`[TaskInit] 内置任务 ${builtinTaskKey} handler 不正确，将恢复为预设值。`);
+        needsUpdate = true;
+      }
+      
+      // 3. 确保 task_name 是正确的 (因为 task_name 不允许用户修改)
+      if (existingBuiltinTask.task_name !== taskDefaults.task_name) {
+        updates.task_name = taskDefaults.task_name;
+        console.log(`[TaskInit] 内置任务 ${builtinTaskKey} task_name 不正确，将恢复为预设值。`);
+        needsUpdate = true;
+      }
+
+      // 4. 确保 description 是正确的 (如果描述也视为核心属性)
+      //    或者，如果description允许用户修改，则不应在此处强制更新，除非是从deleted状态恢复。
+      //    当前需求是“其他的均不可修改”，但cron和status可以。description未明确。暂时不强制更新description。
+      // if (existingBuiltinTask.description !== taskDefaults.description) {
+      //   updates.description = taskDefaults.description;
+      //   console.log(`[TaskInit] 内置任务 ${builtinTaskKey} description 不正确，将恢复为预设值。`);
+      //   needsUpdate = true;
+      // }
+
+
+      if (needsUpdate) {
+        updates.updated_at = new Date(); // 使用 new Date() 代替 db.fn.now()
+        console.log(`[TaskInit] 内置任务 ${builtinTaskKey} 需要更新，更新内容 (部分): status=${updates.status}, handler=${updates.handler ? 'changed' : 'unchanged'}, task_name=${updates.task_name || 'unchanged'}`);
+        try {
+          await db('infini_scheduled_tasks').where({ id: existingBuiltinTask.id }).update(updates);
+          const updatedTask = await db('infini_scheduled_tasks').where({ id: existingBuiltinTask.id }).first();
+          // 简化日志，避免循环引用问题，只记录关键信息
+          if (updatedTask) {
+            console.log(`[TaskInit] 内置任务 ${builtinTaskKey} 更新完成: ID=${updatedTask.id}, Status=${updatedTask.status}, TaskName=${updatedTask.task_name}`);
+          } else {
+            console.error(`[TaskInit] 严重错误：内置任务 ${builtinTaskKey} 更新后未能查询到！`);
+          }
+        } catch (updateError) {
+          console.error(`[TaskInit] 更新内置任务 ${builtinTaskKey} 失败:`, updateError);
+          throw updateError;
+        }
+      } else {
+        console.log(`[TaskInit] 内置任务 ${builtinTaskKey} 状态、handler 和 task_name 正确，无需更新。`);
+      }
+    }
   } catch (error) {
-    console.error('任务服务初始化失败:', error);
+    console.error('任务服务初始化或内置任务检查/创建/更新过程中发生错误:', error);
   }
 };
 
@@ -208,11 +306,11 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
     const taskDTO: Partial<TaskDTO> = req.body;
     
     // 检查任务是否存在
-    const task = await db('infini_scheduled_tasks')
+    const existingTask = await db('infini_scheduled_tasks')
       .where('id', taskId)
       .first();
     
-    if (!task) {
+    if (!existingTask) {
       const response: ApiResponse = {
         success: false,
         message: `任务ID ${taskId} 不存在`
@@ -220,6 +318,22 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
       
       res.status(404).json(response);
       return;
+    }
+
+    // 如果是内置任务，则限制可修改的字段
+    if (existingTask.task_key && existingTask.task_key.startsWith('BUILTIN_')) {
+      const forbiddenUpdates = ['task_key', 'handler', 'task_name'];
+      const updates = Object.keys(taskDTO);
+      const forbiddenUpdateAttempt = updates.find(key => forbiddenUpdates.includes(key));
+
+      if (forbiddenUpdateAttempt) {
+        const response: ApiResponse = {
+          success: false,
+          message: `内置任务 (task_key: ${existingTask.task_key}) 的 '${forbiddenUpdateAttempt}' 字段不允许修改。只允许修改 cron_expression, status, retry_count, retry_interval, description。`
+        };
+        res.status(403).json(response);
+        return;
+      }
     }
     
     // 更新任务
@@ -252,6 +366,17 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
 export const deleteTask = async (req: Request, res: Response): Promise<void> => {
   try {
     const { taskId } = req.params;
+
+    // 检查是否为内置任务
+    const taskToDelete = await db('infini_scheduled_tasks').where({ id: taskId }).first();
+    if (taskToDelete && taskToDelete.task_key && taskToDelete.task_key.startsWith('BUILTIN_')) {
+      const response: ApiResponse = {
+        success: false,
+        message: `内置任务 (task_key: ${taskToDelete.task_key}) 不允许删除。`
+      };
+      res.status(403).json(response); // 403 Forbidden
+      return;
+    }
     
     // 删除任务
     await taskService.deleteTask(parseInt(taskId, 10));

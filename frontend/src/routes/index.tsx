@@ -9,6 +9,7 @@ import AccountRegister from '../pages/AccountRegister';
 import NotificationManage from '../pages/NotificationManage';
 import TriggerManage from '../pages/TriggerManage';
 import EmailManage from '../pages/EmailManage';
+import EmailViewer from '../pages/EmailViewer';
 import KycImageManage from '../pages/KycImageManage';
 import RandomUserManage from '../pages/RandomUserManage';
 import AccountGroupManage from '../pages/AccountGroupManage';
@@ -42,6 +43,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/notification-manage" element={<NotificationManage />} />
         <Route path="/trigger-manage" element={<TriggerManage />} />
         <Route path="/email-manage" element={<EmailManage />} />
+        <Route path="/email-viewer" element={<EmailViewer />} />
         <Route path="/kyc-image-manage" element={<KycImageManage />} />
         <Route path="/random-user-manage" element={<RandomUserManage />} />
         {/* AFF返现相关路由 */}

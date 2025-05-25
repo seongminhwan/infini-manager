@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import { Layout, Menu, Button, Space } from 'antd';
 import styled from 'styled-components';
+import { configApi, emailAccountApi } from '../services/api';
 import {
   DashboardOutlined,
   MonitorOutlined,
@@ -112,12 +113,59 @@ const DevBadge = styled.span`
   font-weight: bold;
 `;
 
+// 定义菜单项接口
+interface MenuItem {
+  key: string;
+  icon?: ReactNode;
+  label: ReactNode | string;
+  children?: MenuItem[];
+  showWhenDisabled?: boolean;
+  requiresEmailAccount?: boolean;
+}
+
 const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [disableRegisterFeatures, setDisableRegisterFeatures] = useState<boolean>(false);
+  const [hasEmailAccounts, setHasEmailAccounts] = useState<boolean>(false);
+  
+  // 获取配置
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await configApi.getConfigByKey('disable_register_features');
+        if (response.success && response.data) {
+          // 将字符串转换为布尔值
+          const disabled = response.data.value === 'true';
+          setDisableRegisterFeatures(disabled);
+        }
+      } catch (error) {
+        console.error('获取配置失败:', error);
+      }
+    };
+    
+    fetchConfig();
+    
+    // 检查是否有邮箱账户配置
+    const checkEmailAccounts = async () => {
+      try {
+        const response = await emailAccountApi.getAllEmailAccounts();
+        if (response.success && response.data && response.data.length > 0) {
+          setHasEmailAccounts(true);
+        } else {
+          setHasEmailAccounts(false);
+        }
+      } catch (error) {
+        console.error('获取邮箱账户列表失败:', error);
+        setHasEmailAccounts(false);
+      }
+    };
+    
+    checkEmailAccounts();
+  }, []);
   
   // 菜单项配置 - 按功能模块重新组织
-  const menuItems = [
+  const allMenuItems: MenuItem[] = [
     // ------------ 总览监控 ------------
     {
       key: '/overview',
@@ -135,16 +183,19 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       key: '/account-register',
       icon: <UserAddOutlined />,
       label: '账户批量注册机',
+      showWhenDisabled: false, // 当禁用注册功能时不显示
     },
     {
       key: '/random-user-manage',
       icon: <IdcardOutlined />,
       label: '模拟用户数据管理',
+      showWhenDisabled: false, // 当禁用注册功能时不显示
     },
     {
       key: '/account-group-manage',
       icon: <TeamOutlined />,
       label: '账户分组管理',
+      showWhenDisabled: true, // 当禁用注册功能时仍然显示
     },
     
     // ------------ 资金管理 ------------
@@ -182,6 +233,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       key: '/batch-card-apply',
       icon: <CreditCardOutlined />,
       label: '批量开卡',
+      showWhenDisabled: false, // 当禁用注册功能时不显示
     },
     
     // ------------ 推广返现 ------------
@@ -203,14 +255,31 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
     
     // ------------ 支持工具 ------------
     {
-      key: '/email-manage',
+      key: 'email-ops',
       icon: <MailOutlined />,
-      label: '主邮箱管理',
+      label: '邮箱管理',
+      children: [
+        {
+          key: '/email-manage',
+          label: '邮箱账户管理',
+        },
+        {
+          key: '/email-viewer',
+          label: (
+            <Space>
+              邮件持久化系统
+              <BetaBadge>Beta</BetaBadge>
+            </Space>
+          ),
+          requiresEmailAccount: true, // 标记需要邮箱账户的菜单项
+        }
+      ]
     },
     {
       key: '/kyc-image-manage',
       icon: <FileImageOutlined />,
       label: 'KYC图片管理',
+      showWhenDisabled: false, // 当禁用注册功能时不显示
     },
     {
       key: '/proxy-pool-manage',
@@ -233,6 +302,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
           <BetaBadge>Beta</BetaBadge>
         </Space>
       ),
+      showWhenDisabled: false, // 当禁用注册功能时不显示
     },
     {
       key: '/task-manage',
@@ -275,6 +345,21 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       ),
     },
   ];
+  
+  // 根据配置筛选菜单项
+  const menuItems = allMenuItems.filter((item: MenuItem) => {
+    // 检查是否需要邮箱账户但尚未配置
+    if (item.requiresEmailAccount && !hasEmailAccounts) {
+      return false;
+    }
+    
+    // 检查注册功能是否被禁用
+    if (item.showWhenDisabled === undefined || !disableRegisterFeatures) {
+      return true;
+    }
+    // 如果是被禁用的功能，但设置了showWhenDisabled为true，则显示
+    return item.showWhenDisabled;
+  });
 
   const handleMenuClick = (key: string) => {
     navigate(key);

@@ -213,7 +213,7 @@ export interface GmailQueryOptions {
   limit?: number;
   since?: Date;
   before?: Date;
-  searchFilter?: string[];
+  searchFilter?: any[]; // 改为 any[] 以支持更复杂的 IMAP 搜索条件，如 [['UID', '1:*']]
   markSeen?: boolean;
   fetchOptions?: {
     bodies?: string | string[];

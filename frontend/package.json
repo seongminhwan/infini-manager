@@ -18,8 +18,10 @@
     "antd": "^5.24.9",
     "axios": "^1.9.0",
     "dayjs": "^1.11.13",
+    "emailjs-mime-parser": "^2.0.7",
     "http-proxy-middleware": "^3.0.3",
     "lodash": "^4.17.21",
+    "moment": "^2.30.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-resizable": "^3.0.5",
@@ -54,5 +56,8 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:33201"
+  "proxy": "http://localhost:33201",
+  "devDependencies": {
+    "@types/moment": "^2.13.0"
+  }
 }

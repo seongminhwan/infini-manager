@@ -2130,6 +2130,9 @@ const AccountMonitor: React.FC = () => {
     { threshold: 0, color: 'default', backgroundColor: '', textColor: '' }
   ]);
   
+  // 禁用注册功能配置状态
+  const [disableRegisterFeatures, setDisableRegisterFeatures] = useState<boolean>(false);
+  
   // 为保存配置创建防抖函数
   const debouncedSaveColumnWidths = useRef<DebouncedFunc<(widths: Record<string, number>) => void>>(
     debounce((widths: Record<string, number>) => {
@@ -3119,6 +3122,14 @@ const AccountMonitor: React.FC = () => {
   useEffect(() => {
     const loadConfigs = async () => {
       try {
+        // 获取禁用注册功能配置
+        const disableRegisterResponse = await configApi.getConfigByKey('disable_register_features');
+        if (disableRegisterResponse.success && disableRegisterResponse.data) {
+          // 将字符串转换为布尔值
+          const disabled = disableRegisterResponse.data.value === 'true';
+          setDisableRegisterFeatures(disabled);
+        }
+        
         // 加载列宽配置
         const widthsResponse = await configApi.getConfigByKey('account_monitor_column_widths');
         if (widthsResponse.success && widthsResponse.data && widthsResponse.data.value) {
@@ -3724,33 +3735,35 @@ const AccountMonitor: React.FC = () => {
                 批量同步 <DownOutlined />
               </Button>
             </Dropdown>
-              <Dropdown
-                overlay={
-                  <Menu>
-                    <Menu.Item key="register" onClick={() => setRegisterModalVisible(true)}>
-                      注册账户
-                    </Menu.Item>
-                    <Menu.Item key="randomRegister" onClick={() => setRandomUserRegisterModalVisible(true)}>
-                      注册随机用户
-                    </Menu.Item>
-                    <Menu.Item key="oneClickSetup" onClick={() => setOneClickSetupModalVisible(true)}>
-                      一键注册随机用户
-                    </Menu.Item>
-                    <Menu.Item key="batchRegister" onClick={() => setBatchRegisterModalVisible(true)}>
-                      批量注册随机用户
-                    </Menu.Item>
-                  </Menu>
-                }
-                trigger={['click']}
-              >
-                <Button 
-                  type="primary" 
-                  icon={<UserAddOutlined />}
-                  style={{ marginRight: 8 }}
+              {!disableRegisterFeatures && (
+                <Dropdown
+                  overlay={
+                    <Menu>
+                      <Menu.Item key="register" onClick={() => setRegisterModalVisible(true)}>
+                        注册账户
+                      </Menu.Item>
+                      <Menu.Item key="randomRegister" onClick={() => setRandomUserRegisterModalVisible(true)}>
+                        注册随机用户
+                      </Menu.Item>
+                      <Menu.Item key="oneClickSetup" onClick={() => setOneClickSetupModalVisible(true)}>
+                        一键注册随机用户
+                      </Menu.Item>
+                      <Menu.Item key="batchRegister" onClick={() => setBatchRegisterModalVisible(true)}>
+                        批量注册随机用户
+                      </Menu.Item>
+                    </Menu>
+                  }
+                  trigger={['click']}
                 >
-                  注册账户 <DownOutlined />
-                </Button>
-              </Dropdown>
+                  <Button 
+                    type="primary" 
+                    icon={<UserAddOutlined />}
+                    style={{ marginRight: 8 }}
+                  >
+                    注册账户 <DownOutlined />
+                  </Button>
+                </Dropdown>
+              )}
             <Dropdown
               overlay={
                 <Menu>
