@@ -33,6 +33,11 @@ import {
   oneClickAccountSetup,
   // 分页获取Infini账户
   getPaginatedInfiniAccounts,
+  // 恢复账户相关控制器
+  resetPassword,
+  unbindGoogle2fa,
+  recoverAccount,
+  batchRecoverAccounts,
   // 账户分组相关控制器
   getAllAccountGroups,
   getAccountGroupById,
@@ -932,6 +937,142 @@ router.post('/groups/account/remove', removeAccountFromGroup);
  *         description: 服务器错误
  */
 router.post('/groups/accounts/remove', removeAccountsFromGroup);
+
+/**
+ * @swagger
+ * /api/infini-accounts/reset-password:
+ *   post:
+ *     summary: 重置账户密码
+ *     description: 重置Infini账户的密码
+ *     tags: [InfiniAccounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: 账户邮箱
+ *                 example: "user@example.com"
+ *               verificationCode:
+ *                 type: string
+ *                 description: 验证码
+ *                 example: "123456"
+ *             required:
+ *               - email
+ *               - verificationCode
+ *     responses:
+ *       200:
+ *         description: 重置密码成功
+ *       400:
+ *         description: 请求参数错误
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/reset-password', resetPassword);
+
+/**
+ * @swagger
+ * /api/infini-accounts/unbind-2fa:
+ *   post:
+ *     summary: 解绑2FA
+ *     description: 解绑Infini账户的2FA
+ *     tags: [InfiniAccounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               accountId:
+ *                 type: string
+ *                 description: 账户ID
+ *                 example: "1"
+ *               google2faToken:
+ *                 type: string
+ *                 description: 2FA验证码
+ *                 example: "123456"
+ *               password:
+ *                 type: string
+ *                 description: 账户密码
+ *                 example: "password123"
+ *             required:
+ *               - accountId
+ *               - google2faToken
+ *     responses:
+ *       200:
+ *         description: 解绑2FA成功
+ *       400:
+ *         description: 请求参数错误
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/unbind-2fa', unbindGoogle2fa);
+
+/**
+ * @swagger
+ * /api/infini-accounts/recover:
+ *   post:
+ *     summary: 恢复账户
+ *     description: 恢复Infini账户
+ *     tags: [InfiniAccounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: 账户邮箱
+ *                 example: "user@example.com"
+ *             required:
+ *               - email
+ *     responses:
+ *       200:
+ *         description: 恢复账户成功
+ *       400:
+ *         description: 请求参数错误
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/recover', recoverAccount);
+
+/**
+ * @swagger
+ * /api/infini-accounts/batch-recover:
+ *   post:
+ *     summary: 批量恢复账户
+ *     description: 批量恢复Infini账户
+ *     tags: [InfiniAccounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               emails:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 账户邮箱列表
+ *                 example: ["user1@example.com", "user2@example.com"]
+ *             required:
+ *               - emails
+ *     responses:
+ *       200:
+ *         description: 批量恢复账户成功
+ *       400:
+ *         description: 请求参数错误
+ *       500:
+ *         description: 服务器错误
+ */
+router.post('/batch-recover', batchRecoverAccounts);
 
 /**
  * @swagger
