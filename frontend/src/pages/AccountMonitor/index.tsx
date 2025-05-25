@@ -80,6 +80,7 @@ import CardDetailModal from '../../components/CardDetailModal';
 import RedPacketModal from '../../components/RedPacketModal';
 import OneClickSetupModal from '../../components/OneClickSetupModal';
 import BatchRegisterModal from '../../components/BatchRegisterModal';
+import BatchRecoverAccountModal from '../../components/BatchRecoverAccountModal';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
 import { infiniCardApi } from '../../services/api';
@@ -2326,6 +2327,7 @@ const AccountMonitor: React.FC = () => {
   // 一键注册级用户模态框状态
   const [oneClickSetupModalVisible, setOneClickSetupModalVisible] = useState(false);
   const [batchRegisterModalVisible, setBatchRegisterModalVisible] = useState(false);
+  const [batchRecoverModalVisible, setBatchRecoverModalVisible] = useState(false);
 
   // 打开红包领取模态框
   const openRedPacketModal = () => {
@@ -3773,6 +3775,9 @@ const AccountMonitor: React.FC = () => {
                   <Menu.Item key="batchAddAccount" onClick={() => setBatchAddModalVisible(true)}>
                     批量添加账户
                   </Menu.Item>
+                  <Menu.Item key="batchRecoverAccount" onClick={() => setBatchRecoverModalVisible(true)}>
+                    批量恢复账户
+                  </Menu.Item>
                 </Menu>
               }
               trigger={['click']}
@@ -3828,6 +3833,13 @@ const AccountMonitor: React.FC = () => {
           setDetailModalVisible(false);
           setSelectedAccount(null);
         }}
+        onSuccess={fetchAccounts}
+      />
+      
+      {/* 批量恢复账户模态框 */}
+      <BatchRecoverAccountModal
+        visible={batchRecoverModalVisible}
+        onClose={() => setBatchRecoverModalVisible(false)}
         onSuccess={fetchAccounts}
       />
       
