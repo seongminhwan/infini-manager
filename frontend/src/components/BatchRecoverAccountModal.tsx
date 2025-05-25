@@ -398,8 +398,8 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
         email: account.email,
         verificationCode
       });
-      if (!resetResponse.success) {
-        throw new Error(`重置密码失败: ${resetResponse.message}`);
+      if (!resetResponse.data.success) {
+        throw new Error(`重置密码失败: ${resetResponse.data.message}`);
       }
       
       updateAccountLog(index, '密码重置成功');
@@ -409,8 +409,8 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       updateAccountLog(index, '获取2FA信息...');
       
       const qrcodeResponse = await api.get(`/api/infini-accounts/2fa/qrcode?email=${account.email}`);
-      if (!qrcodeResponse.success) {
-        throw new Error(`获取2FA信息失败: ${qrcodeResponse.message}`);
+      if (!qrcodeResponse.data.success) {
+        throw new Error(`获取2FA信息失败: ${qrcodeResponse.data.message}`);
       }
       
       updateAccountLog(index, '获取2FA信息成功');
@@ -421,11 +421,12 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       
       // 获取账户信息，获取密码和2FA相关信息
       const accountResponse = await api.get(`/api/infini-accounts/by-email?email=${account.email}`);
-      if (!accountResponse.success || !accountResponse.data) {
-        throw new Error(`获取账户信息失败: ${accountResponse.message}`);
+      if (!accountResponse.data.success || !accountResponse.data.data) {
+        throw new Error(`获取账户信息失败: ${accountResponse.data.message}`);
       }
       
-      const accountData = accountResponse.data;
+      const accountData = accountResponse.data.data;
+      
       if (!accountData.password) {
         throw new Error('账户密码未找到');
       }
@@ -445,8 +446,8 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
         password: accountData.password
       });
       
-      if (!unbindResponse.success) {
-        throw new Error(`解绑2FA失败: ${unbindResponse.message}`);
+      if (!unbindResponse.data.success) {
+        throw new Error(`解绑2FA失败: ${unbindResponse.data.message}`);
       }
       
       updateAccountLog(index, '解绑2FA成功');
