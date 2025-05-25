@@ -520,9 +520,29 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       updateAccountLog(index, '开始解绑2FA...');
       
       // 获取账户信息，获取密码和2FA相关信息
-      const accountResponse = await api.get(`/api/infini-accounts/by-email?email=${account.email}`);
-      if (!accountResponse.data.success || !accountResponse.data.data) {
-        throw new Error(`获取账户信息失败: ${accountResponse.data.message}`);
+      // 先查找是否有账户ID
+      let accountData;
+      try {
+        // 尝试使用分页接口搜索账户
+        const searchResponse = await api.get(`/api/infini-accounts/paginated`, {
+          params: {
+            filters: JSON.stringify({
+              email: account.email
+            }),
+            page: 1,
+            pageSize: 1
+          }
+        });
+        
+        if (searchResponse.data.success && 
+            searchResponse.data.data?.accounts?.length > 0) {
+          accountData = searchResponse.data.data.accounts[0];
+          updateAccountLog(index, `找到账户ID: ${accountData.id}`);
+        } else {
+          throw new Error('未找到账户');
+        }
+      } catch (error) {
+        throw new Error(`获取账户信息失败: ${error.message}`);
       }
       
       const accountData = accountResponse.data.data;
