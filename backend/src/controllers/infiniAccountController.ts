@@ -1716,6 +1716,138 @@ export const removeAccountsFromGroup = async (req: Request, res: Response): Prom
 };
 
 /**
+ * 重置密码
+ */
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, verificationCode } = req.body;
+    
+    if (!email || !verificationCode) {
+      res.status(400).json({
+        success: false,
+        message: '邮箱和验证码是必填项'
+      });
+      return;
+    }
+    
+    console.log(`接收到重置密码请求，邮箱: ${email}`);
+    
+    const response = await infiniAccountService.resetPassword(email, verificationCode);
+    
+    if (response.success) {
+      res.json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('重置密码失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `重置密码失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 解绑2FA
+ */
+export const unbindGoogle2fa = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { accountId, google2faToken, password } = req.body;
+    
+    if (!accountId || !google2faToken) {
+      res.status(400).json({
+        success: false,
+        message: '账户ID和2FA验证码是必填项'
+      });
+      return;
+    }
+    
+    console.log(`接收到解绑2FA请求，账户ID: ${accountId}`);
+    
+    const response = await infiniAccountService.unbindGoogle2fa(accountId, google2faToken, password);
+    
+    if (response.success) {
+      res.json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('解绑2FA失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `解绑2FA失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 恢复账户
+ */
+export const recoverAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      res.status(400).json({
+        success: false,
+        message: '邮箱地址是必填项'
+      });
+      return;
+    }
+    
+    console.log(`接收到恢复账户请求，邮箱: ${email}`);
+    
+    const response = await infiniAccountService.recoverAccount(email);
+    
+    if (response.success) {
+      res.json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('恢复账户失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `恢复账户失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
+ * 批量恢复账户
+ */
+export const batchRecoverAccounts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { emails } = req.body;
+    
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: '邮箱地址列表不能为空'
+      });
+      return;
+    }
+    
+    console.log(`接收到批量恢复账户请求，邮箱数量: ${emails.length}`);
+    
+    const response = await infiniAccountService.batchRecoverAccounts(emails);
+    
+    if (response.success) {
+      res.json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('批量恢复账户失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `批量恢复账户失败: ${(error as Error).message}`
+    });
+  }
+};
+
+/**
  * 获取分页的Infini账户列表
  * 支持分页、筛选和排序功能
  */
