@@ -3354,7 +3354,9 @@ export class InfiniAccountService {
         {
           email: email,
           type: 1,
-          email_verify_code: verificationCode
+          email_verify_code: {
+            code: verificationCode
+          }
         },
         {
           headers: {
