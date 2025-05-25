@@ -394,12 +394,9 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       updateAccountProgress(index, 'resetPassword', 40);
       updateAccountLog(index, '开始重置密码...');
       
-      const resetResponse = await api.post(`/api/infini-accounts/reset-password`, {
-        email: account.email,
-        verificationCode
-      });
-      if (!resetResponse.data.success) {
-        throw new Error(`重置密码失败: ${resetResponse.data.message}`);
+      const resetResponse = await infiniAccountApi.resetPassword(account.email, verificationCode);
+      if (!resetResponse.success) {
+        throw new Error(`重置密码失败: ${resetResponse.message}`);
       }
       
       updateAccountLog(index, '密码重置成功');
