@@ -502,9 +502,20 @@ export const infiniAccountApi = {
         verificationCode
       });
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('重置密码失败:', error);
-      throw error;
+      
+      // 从错误响应中提取有用的信息
+      if (error.response && error.response.data) {
+        // 返回API错误响应，保持API返回的格式
+        return error.response.data;
+      }
+      
+      // 如果没有response或data，则构造一个标准错误响应
+      return {
+        success: false,
+        message: error.message || '重置密码失败，请重试'
+      };
     }
   },
   
