@@ -28,9 +28,10 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   LoadingOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  PlusOutlined
 } from '@ant-design/icons';
-import { infiniAccountApi } from '../services/api';
+import { infiniAccountApi, api, totpToolApi } from '../services/api';
 
 const { Text, Title, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -393,7 +394,10 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       updateAccountProgress(index, 'resetPassword', 40);
       updateAccountLog(index, '开始重置密码...');
       
-      const resetResponse = await infiniAccountApi.resetPassword(account.email, verificationCode);
+      const resetResponse = await api.post(`/api/infini-accounts/reset-password`, {
+        email: account.email,
+        verificationCode
+      });
       if (!resetResponse.success) {
         throw new Error(`重置密码失败: ${resetResponse.message}`);
       }
@@ -404,7 +408,7 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       updateAccountProgress(index, 'getQrcode', 60);
       updateAccountLog(index, '获取2FA信息...');
       
-      const qrcodeResponse = await infiniAccountApi.getGoogle2faQrcode(account.email);
+      const qrcodeResponse = await api.get(`/api/infini-accounts/2fa/qrcode?email=${account.email}`);
       if (!qrcodeResponse.success) {
         throw new Error(`获取2FA信息失败: ${qrcodeResponse.message}`);
       }
@@ -416,7 +420,7 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       updateAccountLog(index, '开始解绑2FA...');
       
       // 获取账户信息，获取密码和2FA相关信息
-      const accountResponse = await infiniAccountApi.getAccountByEmail(account.email);
+      const accountResponse = await api.get(`/api/infini-accounts/by-email?email=${account.email}`);
       if (!accountResponse.success || !accountResponse.data) {
         throw new Error(`获取账户信息失败: ${accountResponse.message}`);
       }
@@ -427,7 +431,7 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       }
       
       // 获取2FA验证码
-      const totpResponse = await infiniAccountApi.generateTotpCode(accountData.id.toString());
+      const totpResponse = await totpToolApi.generateTotpCode(accountData.id.toString());
       if (!totpResponse.success || !totpResponse.data) {
         throw new Error(`生成TOTP验证码失败: ${totpResponse.message}`);
       }
@@ -435,11 +439,11 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       const google2faToken = totpResponse.data;
       
       // 解绑2FA
-      const unbindResponse = await infiniAccountApi.unbindGoogle2fa(
-        accountData.id.toString(),
+      const unbindResponse = await api.post(`/api/infini-accounts/unbind-2fa`, {
+        accountId: accountData.id.toString(),
         google2faToken,
-        accountData.password
-      );
+        password: accountData.password
+      });
       
       if (!unbindResponse.success) {
         throw new Error(`解绑2FA失败: ${unbindResponse.message}`);
@@ -452,7 +456,7 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       updateAccountLog(index, '开始重新绑定2FA...');
       
       // 发送2FA验证邮件
-      const verify2faResponse = await infiniAccountApi.sendGoogle2faVerificationEmail(account.email);
+      const verify2faResponse = await infiniAccountApi.sendGoogle2faVerificationEmail(account.email, accountData.id.toString());
       if (!verify2faResponse.success) {
         throw new Error(`发送2FA验证邮件失败: ${verify2faResponse.message}`);
       }
@@ -472,7 +476,7 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       updateAccountLog(index, `获取到2FA验证码: ${verification2faCode}`);
       
       // 生成新的TOTP验证码
-      const newTotpResponse = await infiniAccountApi.generateTotpCode(accountData.id.toString());
+      const newTotpResponse = await totpToolApi.generateTotpCode(accountData.id.toString());
       if (!newTotpResponse.success || !newTotpResponse.data) {
         throw new Error(`生成新TOTP验证码失败: ${newTotpResponse.message}`);
       }
