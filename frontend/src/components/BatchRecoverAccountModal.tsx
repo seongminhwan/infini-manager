@@ -420,20 +420,16 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       // 先查找是否有账户ID
       let accountData: any;
       try {
-        // 尝试使用分页接口搜索账户
-        const searchResponse = await api.get(`/api/infini-accounts/paginated`, {
-          params: {
-            filters: JSON.stringify({
-              email: account.email
-            }),
-            page: 1,
-            pageSize: 1
-          }
-        });
+        // 使用分页接口搜索账户
+        const searchResponse = await infiniAccountApi.getPaginatedInfiniAccounts(
+          1, // 页码
+          1, // 每页数量
+          { email: account.email } // 筛选条件
+        );
         
-        if (searchResponse.data.success && 
-            searchResponse.data.data?.accounts?.length > 0) {
-          accountData = searchResponse.data.data.accounts[0];
+        if (searchResponse.success && 
+            searchResponse.data?.accounts?.length > 0) {
+          accountData = searchResponse.data.accounts[0];
           updateAccountLog(index, `找到账户ID: ${accountData.id}`);
         } else {
           throw new Error('未找到账户');
