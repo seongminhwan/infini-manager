@@ -639,7 +639,18 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: AccountStatus) => renderStatusIcon(status)
+      render: (status: AccountStatus, record: AccountInfo) => (
+        <div>
+          {renderStatusIcon(status)}
+          {record.status === 'failed' && record.errorMsg && (
+            <div style={{ marginTop: 4 }}>
+              <Text type="danger" style={{ fontSize: '12px' }}>
+                {record.errorMsg}
+              </Text>
+            </div>
+          )}
+        </div>
+      )
     },
     {
       title: '进度',
