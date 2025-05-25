@@ -401,11 +401,19 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       
       updateAccountLog(index, '密码重置成功');
       
+      // 从重置密码响应中获取账户ID
+      const accountId = resetResponse.data?.id;
+      if (!accountId) {
+        throw new Error('重置密码成功但未获取到账户ID');
+      }
+      
+      updateAccountLog(index, `获取到账户ID: ${accountId}`);
+      
       // 3. 获取2FA信息
       updateAccountProgress(index, 'getQrcode', 60);
       updateAccountLog(index, '获取2FA信息...');
       
-      const qrcodeResponse = await infiniAccountApi.getGoogle2faQrCode(account.email);
+      const qrcodeResponse = await infiniAccountApi.getGoogle2faQrCode(accountId.toString());
       if (!qrcodeResponse.success) {
         throw new Error(`获取2FA信息失败: ${qrcodeResponse.message}`);
       }
