@@ -398,7 +398,7 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       if (!resetResponse.success) {
         // 特别处理"账户不存在"的情况
         if (resetResponse.message === '账户不存在') {
-          const errorMsg = `重置密码失败: 账户不存在 (${account.email})`;
+          const errorMsg = `账户不存在`;
           updateAccountLog(index, errorMsg);
           updateAccountStatus(index, 'failed', errorMsg);
           return false;
