@@ -3335,9 +3335,9 @@ export class InfiniAccountService {
    * 重置密码
    * @param email 邮箱地址
    * @param verificationCode 验证码
-   * @returns 重置结果
+   * @returns 重置结果，成功时返回账户ID
    */
-  async resetPassword(email: string, verificationCode: string): Promise<ApiResponse> {
+  async resetPassword(email: string, verificationCode: string): Promise<ApiResponse<{id: number}>> {
     try {
       if (!email || !verificationCode) {
         return {
@@ -3377,10 +3377,19 @@ export class InfiniAccountService {
       console.log('Infini 重置密码API响应:', response.data);
 
       if (response.data.code === 0) {
-        console.log(`账户 ${email} 密码重置成功`);
+        // 获取对应的账户信息
+        const accountsRes = await db('infini_accounts')
+          .where({ email })
+          .first();
+
+        if (!accountsRes) {
+          return { success: false, message: '账户不存在' };
+        }
+        
+        console.log(`账户 ${email} 密码重置成功，账户ID: ${accountsRes.id}`);
         return {
           success: true,
-          data: response.data.data,
+          data: { id: accountsRes.id },
           message: '密码重置成功'
         };
       } else {
