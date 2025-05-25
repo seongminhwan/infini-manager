@@ -644,7 +644,7 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
           {renderStatusIcon(status)}
           {record.status === 'failed' && record.errorMsg && (
             <div style={{ marginTop: 4 }}>
-              <Text type="danger" style={{ fontSize: '12px' }}>
+              <Text type="danger" style={{ fontSize: '13px', fontWeight: 'bold' }}>
                 {record.errorMsg}
               </Text>
             </div>
