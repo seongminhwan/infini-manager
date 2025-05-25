@@ -451,14 +451,14 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       const google2faToken = totpResponse.data;
       
       // 解绑2FA
-      const unbindResponse = await api.post(`/api/infini-accounts/unbind-2fa`, {
-        accountId: accountData.id.toString(),
+      const unbindResponse = await infiniAccountApi.unbindGoogle2fa(
+        accountData.id.toString(),
         google2faToken,
-        password: accountData.password
-      });
+        accountData.password
+      );
       
-      if (!unbindResponse.data.success) {
-        throw new Error(`解绑2FA失败: ${unbindResponse.data.message}`);
+      if (!unbindResponse.success) {
+        throw new Error(`解绑2FA失败: ${unbindResponse.message}`);
       }
       
       updateAccountLog(index, '解绑2FA成功');
