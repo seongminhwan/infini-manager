@@ -521,7 +521,7 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       
       // 获取账户信息，获取密码和2FA相关信息
       // 先查找是否有账户ID
-      let accountData;
+      let accountData: any;
       try {
         // 尝试使用分页接口搜索账户
         const searchResponse = await api.get(`/api/infini-accounts/paginated`, {
@@ -541,11 +541,9 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
         } else {
           throw new Error('未找到账户');
         }
-      } catch (error) {
+      } catch (error: any) {
         throw new Error(`获取账户信息失败: ${error.message}`);
       }
-      
-      const accountData = accountResponse.data.data;
       
       if (!accountData.password) {
         throw new Error('账户密码未找到');
