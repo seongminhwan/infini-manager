@@ -493,6 +493,65 @@ export const infiniAccountApi = {
     }
   },
   
+  // 重置密码
+  resetPassword: async (email: string, verificationCode: string) => {
+    try {
+      console.log(`重置密码，邮箱: ${email}`);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/reset-password`, {
+        email,
+        verificationCode
+      });
+      return response.data;
+    } catch (error) {
+      console.error('重置密码失败:', error);
+      throw error;
+    }
+  },
+  
+  // 解绑2FA
+  unbindGoogle2fa: async (accountId: string, google2faToken: string, password: string) => {
+    try {
+      console.log(`解绑2FA，账户ID: ${accountId}`);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/unbind-2fa`, {
+        accountId,
+        google2faToken,
+        password
+      });
+      return response.data;
+    } catch (error) {
+      console.error('解绑2FA失败:', error);
+      throw error;
+    }
+  },
+  
+  // 恢复账户
+  recoverAccount: async (email: string) => {
+    try {
+      console.log(`恢复账户，邮箱: ${email}`);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/recover`, {
+        email
+      });
+      return response.data;
+    } catch (error) {
+      console.error('恢复账户失败:', error);
+      throw error;
+    }
+  },
+  
+  // 批量恢复账户
+  batchRecoverAccounts: async (emails: string[]) => {
+    try {
+      console.log(`批量恢复账户，数量: ${emails.length}`);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/batch-recover`, {
+        emails
+      });
+      return response.data;
+    } catch (error) {
+      console.error('批量恢复账户失败:', error);
+      throw error;
+    }
+  },
+  
   // 发送2FA验证邮件
   sendGoogle2faVerificationEmail: async (email: string, accountId: string) => {
     try {
