@@ -4741,22 +4741,44 @@ const BatchAddAccountModal: React.FC<{
     onClose();
   };
   
-  // 解析文本，提取邮箱和密码
-  const parseText = (text: string): Array<{email: string; password: string; key: string}> => {
+  // 解析文本，提取邮箱和密码以及自定义邮箱配置
+  const parseText = (text: string): Array<BatchAddAccountItem> => {
     if (!text.trim()) return [];
     
     const lines = text.split('\n');
     const parsedAccounts = lines.map((line, index) => {
+      // 支持两种格式：
+      // 1. 基础格式：email password
+      // 2. 扩展格式：email password customEmail customPassword customImapHost customImapPort customSmtpHost customSmtpPort
       const parts = line.trim().split(/\s+/);
       if (parts.length >= 2) {
-        return {
+        const account = {
           key: `text_${index}_${Date.now()}`,
           email: parts[0],
           password: parts[1]
-        };
+        } as BatchAddAccountItem;
+        
+        // 检查是否包含自定义邮箱配置信息
+        if (parts.length >= 4) { // 至少包含自定义邮箱和密码
+          return {
+            ...account,
+            useCustomEmail: true,
+            customEmailAddress: parts[2],
+            customEmailPassword: parts[3],
+            customImapHost: parts.length > 4 ? parts[4] : '',
+            customImapPort: parts.length > 5 ? Number(parts[5]) : 993,
+            customSmtpHost: parts.length > 6 ? parts[6] : '',
+            customSmtpPort: parts.length > 7 ? Number(parts[7]) : 465,
+            customImapSecure: true,
+            customSmtpSecure: true,
+            customEmailStatus: 'active' as 'active' | 'disabled'
+          };
+        }
+        
+        return account;
       }
       return null;
-    }).filter(account => account !== null) as Array<{email: string; password: string; key: string}>;
+    }).filter(account => account !== null) as Array<BatchAddAccountItem>;
     
     return parsedAccounts;
   };
@@ -4850,7 +4872,7 @@ const BatchAddAccountModal: React.FC<{
         return;
       }
       
-      // 移除key字段，只发送email和password
+      // 为每个账户准备提交数据，包括自定义邮箱配置
       const accountsToSubmit = accountsToProcess.map(({ email, password }) => ({ email, password }));
       
       // 循环调用单个账户创建API
@@ -4869,6 +4891,31 @@ const BatchAddAccountModal: React.FC<{
             password: account.password,
             // mock_user_id: account.mockUserId, // 如果批量添加也支持关联随机用户
           };
+
+          if (account.useCustomEmail && account.customEmailAddress && account.customEmailPassword) {
+            const customEmailConfig: any = {
+              email: account.customEmailAddress,
+              password: account.customEmailPassword,
+              imap_host: account.customImapHost || '',
+              imap_port: (account.customImapPort !== undefined && !isNaN(Number(account.customImapPort))) ? Number(account.customImapPort) : 993,
+              imap_secure: account.customImapSecure !== undefined ? account.customImapSecure : true,
+              smtp_host: account.customSmtpHost || '',
+              smtp_port: (account.customSmtpPort !== undefined && !isNaN(Number(account.customSmtpPort))) ? Number(account.customSmtpPort) : 465,
+              smtp_secure: account.customSmtpSecure !== undefined ? account.customSmtpSecure : true,
+              status: account.customEmailStatus || 'active',
+              extra_config: null,
+            };
+            if (account.customExtraConfig && typeof account.customExtraConfig === 'string') {
+              try {
+                customEmailConfig.extra_config = JSON.parse(account.customExtraConfig);
+              } catch (e) {
+                console.warn(`账户 ${account.email} 的自定义邮箱额外配置JSON解析失败: ${account.customExtraConfig}`);
+              }
+            } else if (account.customExtraConfig && typeof account.customExtraConfig === 'object') {
+              customEmailConfig.extra_config = account.customExtraConfig;
+            }
+            accountPayload.customEmailConfig = customEmailConfig;
+          }
 
           if (account.useCustomEmail && account.customEmailAddress && account.customEmailPassword) {
             const customEmailConfig: any = {
@@ -5350,6 +5397,11 @@ const BatchAddAccountModal: React.FC<{
       <div>
         <div style={{ marginBottom: 16 }}>
           <Text>请输入账户信息，每行一个账户，格式为"邮箱 密码"（以空格分隔）</Text>
+          <div style={{ marginTop: 8 }}>
+            <Text type="secondary">
+              扩展格式：邮箱 密码 自定义邮箱 自定义邮箱密码 [IMAP主机 IMAP端口 SMTP主机 SMTP端口]
+            </Text>
+          </div>
           <div style={{ position: 'relative' }}>
             <Input.TextArea
               rows={5}
