@@ -20,7 +20,8 @@ import {
   Divider,
   Empty,
   Spin,
-  List
+  List,
+  Tooltip // 添加 Tooltip
 } from 'antd';
 import {
   SyncOutlined,
@@ -98,6 +99,7 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
   
   // 当前处理的账户索引
   const currentIndexRef = useRef<number>(0);
+  const [logDisplayAccountKey, setLogDisplayAccountKey] = useState<string | null>(null);
   
   // 判断是否所有账户都已处理完成
   const isAllCompleted = () => {
@@ -362,9 +364,12 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
   const processAccount = async (index: number) => {
     const account = accounts[index];
     if (!account) return false;
+
+    let currentSecretKey: string | undefined = undefined; // 统一的 secretKey 变量
     
     // 更新账户状态为处理中
     updateAccountStatus(index, 'processing');
+    setLogDisplayAccountKey(account.key); // 自动显示当前正在处理的账户日志
     
     try {
       // 1. 获取验证码
@@ -394,7 +399,11 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       updateAccountProgress(index, 'resetPassword', 40);
       updateAccountLog(index, '开始重置密码...');
       
-      const resetResponse = await infiniAccountApi.resetPassword(account.email, verificationCode);
+      // 生成新密码
+      const newPassword = Math.random().toString(36).slice(2) + 'aA1!'; // 示例密码
+      updateAccountLog(index, `已为此账户生成新密码: [PROTECTED]`);
+
+      const resetResponse = await infiniAccountApi.resetPassword(account.email, verificationCode, newPassword);
       if (!resetResponse.success) {
         // 特别处理"账户不存在"的情况
         if (resetResponse.message === '账户不存在') {
@@ -409,81 +418,99 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       updateAccountLog(index, '密码重置成功');
       
       // 从重置密码响应中获取账户ID
-      const accountId = resetResponse.data?.id;
-      if (!accountId) {
+      const internalAccountId = resetResponse.data?.id; // 重命名以明确这是我们系统内部的ID
+      if (!internalAccountId) {
         throw new Error('重置密码成功但未获取到账户ID');
       }
       
-      updateAccountLog(index, `获取到账户ID: ${accountId}`);
+      updateAccountLog(index, `获取到内部账户ID: ${internalAccountId}`);
+
+      // 新步骤：刷新账户信息以获取最新的 2FA 绑定状态
+      updateAccountLog(index, '正在刷新账户信息...');
+      const syncResponse = await infiniAccountApi.syncAccount(internalAccountId.toString());
       
-      // 3. 获取2FA信息
-      updateAccountProgress(index, 'getQrcode', 60);
-      updateAccountLog(index, '获取2FA信息...');
-      
-      const qrcodeResponse = await infiniAccountApi.getGoogle2faQrCode(accountId.toString());
-      if (!qrcodeResponse.success) {
-        throw new Error(`获取2FA信息失败: ${qrcodeResponse.message}`);
+      let refreshedAccountData: any = null;
+      if (syncResponse.success && syncResponse.data) {
+        updateAccountLog(index, '账户信息同步成功。');
+        refreshedAccountData = syncResponse.data;
+      } else {
+        updateAccountLog(index, `警告: 刷新账户信息失败: ${syncResponse.message || '未知错误'}. 将尝试继续，但2FA状态可能不准确。`);
+        // 即使同步失败，也尝试获取一次二维码信息，因为后续绑定也需要它
       }
+
+      const isCurrentlyBound = refreshedAccountData ? !!refreshedAccountData.google2faIsBound : false;
+      updateAccountLog(index, `根据刷新后的信息，账户2FA绑定状态: ${isCurrentlyBound ? '已绑定' : '未绑定'}`);
       
-      updateAccountLog(index, '获取2FA信息成功');
-      
-      // 4. 解绑2FA
-      updateAccountProgress(index, 'unbind2fa', 80);
-      updateAccountLog(index, '开始解绑2FA...');
-      
-      // 获取账户信息，获取密码和2FA相关信息
-      // 先查找是否有账户ID
-      let accountData: any;
-      try {
-        // 使用分页接口搜索账户
-        const searchResponse = await infiniAccountApi.getPaginatedInfiniAccounts(
-          1, // 页码
-          1, // 每页数量
-          { email: account.email } // 筛选条件
-        );
-        
-        if (searchResponse.success && 
-            searchResponse.data?.accounts?.length > 0) {
-          accountData = searchResponse.data.accounts[0];
-          updateAccountLog(index, `找到账户ID: ${accountData.id}`);
+      // let secretKeyFor解绑: string | undefined = undefined; // 移除单独的声明
+
+      if (isCurrentlyBound) {
+        // 只有在确定已绑定的情况下，才获取用于解绑的secretKey
+        updateAccountProgress(index, 'getQrcode', 65); // 调整进度
+        updateAccountLog(index, '账户已绑定2FA，获取其当前SecretKey以进行解绑...');
+        const qrCodeResponseForUnbind = await infiniAccountApi.getGoogle2faQrCode(internalAccountId.toString());
+        if (qrCodeResponseForUnbind.success && qrCodeResponseForUnbind.data) {
+          currentSecretKey = qrCodeResponseForUnbind.data.secretKey || qrCodeResponseForUnbind.data.secret_key; // 赋值给 currentSecretKey
+          if (currentSecretKey) {
+            updateAccountLog(index, `获取到用于解绑的SecretKey: [PROTECTED]`);
+          } else {
+            updateAccountLog(index, `警告: 账户标记为已绑定2FA，但未能获取到SecretKey。`);
+          }
         } else {
-          throw new Error('未找到账户');
+          updateAccountLog(index, `警告: 获取用于解绑的SecretKey失败: ${qrCodeResponseForUnbind.message || '未返回数据'}.`);
         }
-      } catch (error: any) {
-        throw new Error(`获取账户信息失败: ${error.message}`);
+
+        if (currentSecretKey) { // 使用 currentSecretKey
+          updateAccountProgress(index, 'unbind2fa', 70);
+          updateAccountLog(index, '开始解绑2FA...');
+          const totpResponse = await totpToolApi.generateTotpCode(currentSecretKey); // 使用 currentSecretKey
+          if (!totpResponse.success || !totpResponse.data || typeof totpResponse.data.code !== 'string') {
+            throw new Error(`为解绑生成TOTP验证码失败: ${totpResponse.message || '未返回有效的code字符串'}`);
+          }
+          const google2faToken = totpResponse.data.code;
+          updateAccountLog(index, `为解绑生成TOTP: ${google2faToken}`);
+          
+          const unbindResponse = await infiniAccountApi.unbindGoogle2fa(
+            internalAccountId.toString(),
+            google2faToken,
+            newPassword
+          );
+          
+          if (!unbindResponse.success) {
+            if (unbindResponse.message && unbindResponse.message.includes('User not bind google 2fa')) {
+              updateAccountLog(index, '尝试解绑，但用户实际未绑定2FA，忽略此步骤。');
+            } else {
+              throw new Error(`解绑2FA失败: ${unbindResponse.message}`);
+            }
+          } else {
+            updateAccountLog(index, '解绑2FA成功');
+          }
+        } else { // isCurrentlyBound is true, but no secretKeyFor解绑
+             updateAccountLog(index, '账户标记为已绑定2FA，但未能获取SecretKey进行解绑，跳过解绑。');
+        }
+      } else { // isCurrentlyBound is false
+        updateAccountLog(index, '账户未绑定2FA，跳过解绑步骤。');
       }
       
-      if (!accountData.password) {
-        throw new Error('账户密码未找到');
+      // 5. 重新绑定2FA (无论之前是否绑定，都尝试重新绑定一个新的)
+      updateAccountProgress(index, 'getQrcode', 80); // 为获取新的二维码/密钥设置进度
+      updateAccountLog(index, '为重新绑定获取新的2FA信息...');
+      const newQrCodeResponseForBind = await infiniAccountApi.getGoogle2faQrCode(internalAccountId.toString());
+      if (!newQrCodeResponseForBind.success || !newQrCodeResponseForBind.data) {
+        throw new Error(`为重新绑定获取新2FA信息失败: ${newQrCodeResponseForBind.message || '未返回数据'}`);
       }
-      
-      // 获取2FA验证码
-      const totpResponse = await totpToolApi.generateTotpCode(accountData.id.toString());
-      if (!totpResponse.success || !totpResponse.data) {
-        throw new Error(`生成TOTP验证码失败: ${totpResponse.message}`);
+      const secretKeyForBind = newQrCodeResponseForBind.data.secretKey || newQrCodeResponseForBind.data.secret_key;
+      if (!secretKeyForBind) {
+        throw new Error('为重新绑定获取新2FA信息成功，但未找到secretKey');
       }
-      
-      const google2faToken = totpResponse.data;
-      
-      // 解绑2FA
-      const unbindResponse = await infiniAccountApi.unbindGoogle2fa(
-        accountData.id.toString(),
-        google2faToken,
-        accountData.password
-      );
-      
-      if (!unbindResponse.success) {
-        throw new Error(`解绑2FA失败: ${unbindResponse.message}`);
-      }
-      
-      updateAccountLog(index, '解绑2FA成功');
-      
-      // 5. 重新绑定2FA
+      updateAccountLog(index, `为重新绑定获取到新的SecretKey: [PROTECTED]`);
+      currentSecretKey = secretKeyForBind; // <--- 更新 currentSecretKey
+
+      // 使用这个新的 currentSecretKey 来生成TOTP码并进行绑定
       updateAccountProgress(index, 'setup2fa', 90);
       updateAccountLog(index, '开始重新绑定2FA...');
       
       // 发送2FA验证邮件
-      const verify2faResponse = await infiniAccountApi.sendGoogle2faVerificationEmail(account.email, accountData.id.toString());
+      const verify2faResponse = await infiniAccountApi.sendGoogle2faVerificationEmail(account.email, internalAccountId.toString()); // 使用 internalAccountId
       if (!verify2faResponse.success) {
         throw new Error(`发送2FA验证邮件失败: ${verify2faResponse.message}`);
       }
@@ -495,26 +522,30 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       
       // 获取2FA验证码
       const code2faResponse = await infiniAccountApi.fetchVerificationCode(account.email);
-      if (!code2faResponse.success || !code2faResponse.data) {
-        throw new Error('无法获取2FA验证码，请手动检查邮箱');
+      if (!code2faResponse.success || !code2faResponse.data || typeof code2faResponse.data.code !== 'string') {
+        throw new Error(`无法获取2FA验证码，或返回的数据格式不正确: ${code2faResponse.message || '未返回有效的code字符串'}`);
       }
       
-      const verification2faCode = code2faResponse.data;
+      const verification2faCode = code2faResponse.data.code; // 提取 .code 字符串
       updateAccountLog(index, `获取到2FA验证码: ${verification2faCode}`);
       
       // 生成新的TOTP验证码
-      const newTotpResponse = await totpToolApi.generateTotpCode(accountData.id.toString());
-      if (!newTotpResponse.success || !newTotpResponse.data) {
-        throw new Error(`生成新TOTP验证码失败: ${newTotpResponse.message}`);
+      if (!currentSecretKey) { // 确保 currentSecretKey 是有效的字符串
+        throw new Error('无法为重新绑定2FA获取有效的SecretKey (currentSecretKey)');
       }
-      
-      const newGoogle2faToken = newTotpResponse.data;
+      const newTotpResponse = await totpToolApi.generateTotpCode(currentSecretKey); // 使用 currentSecretKey
+      if (!newTotpResponse.success || !newTotpResponse.data || typeof newTotpResponse.data.code !== 'string') {
+         throw new Error(`生成新TOTP验证码失败: ${newTotpResponse.message || '未返回有效的code字符串'}`);
+      }
+      const newGoogle2faToken = newTotpResponse.data.code; // 直接使用code字符串
+      updateAccountLog(index, `为重新绑定生成TOTP: ${newGoogle2faToken}`);
       
       // 绑定2FA
+      console.log(`[DEBUG] 即将调用 bindGoogle2fa，internalAccountId: ${internalAccountId}, 类型: ${typeof internalAccountId}`); // 添加调试日志
       const bindResponse = await infiniAccountApi.bindGoogle2fa(
-        accountData.id.toString(),
-        verification2faCode,
-        newGoogle2faToken
+        verification2faCode,          // 第一个参数: verification_code
+        newGoogle2faToken,            // 第二个参数: google_2fa_code
+        internalAccountId.toString()  // 第三个参数: accountId
       );
       
       if (!bindResponse.success) {
@@ -672,17 +703,42 @@ const BatchRecoverAccountModal: React.FC<BatchRecoverAccountModalProps> = ({
       title: '操作',
       key: 'action',
       render: (_: any, record: AccountInfo) => (
-        <Button 
-          danger 
-          size="small" 
-          disabled={record.status === 'processing' || isProcessing}
-          onClick={() => removeAccount(record.key)}
-        >
-          删除
-        </Button>
+        <Space>
+          <Tooltip title="查看此账户的详细日志">
+            <Button
+              icon={<InfoCircleOutlined />}
+              type="link"
+              size="small"
+              onClick={() => setLogDisplayAccountKey(record.key)}
+              disabled={record.logs.length === 0}
+            />
+          </Tooltip>
+          <Tooltip title="从此列表移除此账户">
+            <Button
+              icon={<CloseCircleOutlined />}
+              type="link"
+              danger
+              size="small"
+              onClick={() => removeAccount(record.key)}
+              // 当全局正在处理，或者此特定账户正在处理/已成功/已失败时，禁用删除
+              disabled={isProcessing || record.status === 'processing' || record.status === 'success' || record.status === 'failed'}
+            />
+          </Tooltip>
+        </Space>
       )
     }
   ];
+
+  // 找到当前要显示日志的账户
+  const accountForLogDisplay = accounts.find(acc => acc.key === logDisplayAccountKey);
+  const logsToShow = accountForLogDisplay ? accountForLogDisplay.logs : [];
+
+  // 自动滚动日志到底部 - 现在依赖 logsToShow
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollTop = logsEndRef.current.scrollHeight;
+    }
+  }, [logsToShow]);
   
   return (
     <Modal
@@ -833,18 +889,18 @@ another@email.com"
                 backgroundColor: '#f5f5f5'
               }}
             >
-              {logs.length > 0 ? (
+              {logsToShow.length > 0 ? (
                 <List
                   size="small"
-                  dataSource={logs}
-                  renderItem={log => (
+                  dataSource={logsToShow}
+                  renderItem={(log: string) => ( // 为 log 添加 string 类型注解
                     <List.Item style={{ padding: '4px 0' }}>
-                      <Text code style={{ fontSize: 12 }}>{log}</Text>
+                      <Text style={{ fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{log}</Text>
                     </List.Item>
                   )}
                 />
               ) : (
-                <Empty description="暂无日志" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                <Empty description={logDisplayAccountKey ? "此账户暂无日志" : "请先开始处理或在左侧选择账户以查看日志"} image={Empty.PRESENTED_IMAGE_SIMPLE} />
               )}
               <div ref={logsEndRef} />
             </div>

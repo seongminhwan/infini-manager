@@ -1720,19 +1720,34 @@ export const removeAccountsFromGroup = async (req: Request, res: Response): Prom
  */
 export const resetPassword = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, verificationCode } = req.body;
+    const { email, verificationCode: rawVerificationCode, newPassword } = req.body;
     
-    if (!email || !verificationCode) {
+    // 提取真实的验证码字符串
+    let actualVerificationCode: string;
+    if (typeof rawVerificationCode === 'object' && rawVerificationCode !== null && typeof rawVerificationCode.code === 'string') {
+      actualVerificationCode = rawVerificationCode.code;
+    } else if (typeof rawVerificationCode === 'string') {
+      actualVerificationCode = rawVerificationCode;
+    } else {
+      // 如果验证码格式不正确或缺失，则报错
       res.status(400).json({
         success: false,
-        message: '邮箱和验证码是必填项'
+        message: '验证码格式不正确或缺失'
+      });
+      return;
+    }
+
+    if (!email || !actualVerificationCode || !newPassword) {
+      res.status(400).json({
+        success: false,
+        message: '邮箱、验证码和新密码都是必填项'
       });
       return;
     }
     
-    console.log(`接收到重置密码请求，邮箱: ${email}`);
+    console.log(`接收到重置密码请求，邮箱: ${email}, 验证码: ${actualVerificationCode}, 新密码: [PROTECTED]`);
     
-    const response = await infiniAccountService.resetPassword(email, verificationCode);
+    const response = await infiniAccountService.resetPassword(email, actualVerificationCode, newPassword);
     
     if (response.success) {
       res.json(response);
@@ -1753,19 +1768,42 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
  */
 export const unbindGoogle2fa = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { accountId, google2faToken, password } = req.body;
+    const { accountId, google2faToken: rawGoogle2faToken, password } = req.body;
     
-    if (!accountId || !google2faToken) {
+    let actualGoogle2faToken: string;
+
+    if (typeof rawGoogle2faToken === 'object' && rawGoogle2faToken !== null && typeof rawGoogle2faToken.code === 'string') {
+      actualGoogle2faToken = rawGoogle2faToken.code;
+    } else if (typeof rawGoogle2faToken === 'string') {
+      // 验证是否是6位数字 (可选，但推荐)
+      if (/^\d{6}$/.test(rawGoogle2faToken)) {
+        actualGoogle2faToken = rawGoogle2faToken;
+      } else {
+        res.status(400).json({
+          success: false,
+          message: '2FA验证码格式不正确，应为6位数字'
+        });
+        return;
+      }
+    } else {
       res.status(400).json({
         success: false,
-        message: '账户ID和2FA验证码是必填项'
+        message: '2FA验证码是必填项或格式不正确'
+      });
+      return;
+    }
+
+    if (!accountId) { // google2faToken 已在上面验证
+      res.status(400).json({
+        success: false,
+        message: '账户ID是必填项'
       });
       return;
     }
     
-    console.log(`接收到解绑2FA请求，账户ID: ${accountId}`);
+    console.log(`接收到解绑2FA请求，账户ID: ${accountId}, 2FA令牌: ${actualGoogle2faToken}`);
     
-    const response = await infiniAccountService.unbindGoogle2fa(accountId, google2faToken, password);
+    const response = await infiniAccountService.unbindGoogle2fa(accountId, actualGoogle2faToken, password);
     
     if (response.success) {
       res.json(response);

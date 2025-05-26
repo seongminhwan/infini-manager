@@ -494,13 +494,17 @@ export const infiniAccountApi = {
   },
   
   // 重置密码
-  resetPassword: async (email: string, verificationCode: string) => {
+  resetPassword: async (email: string, verificationCode: string, newPassword?: string) => { // 添加 newPassword 参数
     try {
-      console.log(`重置密码，邮箱: ${email}`);
-      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/reset-password`, {
+      console.log(`重置密码，邮箱: ${email}, 新密码: ${newPassword ? '[PROTECTED]' : '[NOT PROVIDED]'}`);
+      const requestBody: any = {
         email,
         verificationCode
-      });
+      };
+      if (newPassword) {
+        requestBody.newPassword = newPassword; // 如果提供了新密码，则添加到请求体
+      }
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/reset-password`, requestBody);
       return response.data;
     } catch (error: any) {
       console.error('重置密码失败:', error);

@@ -3337,41 +3337,39 @@ export class InfiniAccountService {
    * @param verificationCode 验证码
    * @returns 重置结果，成功时返回账户ID
    */
-  async resetPassword(email: string, verificationCode: string): Promise<ApiResponse<{id: number}>> {
+  async resetPassword(email: string, verificationCode: string, newPasswordFromFrontend: string): Promise<ApiResponse<{id: number}>> {
     try {
-      if (!email || !verificationCode) {
+      if (!email || !verificationCode || !newPasswordFromFrontend) {
         return {
           success: false,
-          message: '邮箱和验证码是必填项'
+          message: '邮箱、验证码和新密码都是必填项'
         };
       }
 
-      console.log(`开始重置账户 ${email} 的密码，验证码: ${verificationCode}`);
+      console.log(`开始重置账户 ${email} 的密码，验证码: ${verificationCode}, 新密码: [PROTECTED]`);
 
       // 调用Infini API重置密码
-      const response = await httpClient.post(
-        `${INFINI_API_BASE_URL}/user/verify-email`,
+      const response = await httpClient.post<{code: number, message: string, data: any}>(
+        `${INFINI_API_BASE_URL}/user/reset_password`,
         {
           email: email,
-          type: 1,
-          email_verify_code: {
-            code: verificationCode
-          }
+          verification_code: verificationCode,
+          password: newPasswordFromFrontend // 使用从前端传入的新密码
         },
         {
-          headers: {
+          headers: { // 根据cURL调整请求头
             'Content-Type': 'application/json',
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'en',
             'Cache-Control': 'no-cache',
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
-            'Referer': 'https://app.infini.money/',
             'Origin': 'https://app.infini.money',
+            'Pragma': 'no-cache',
+            'Priority': 'u=1, i',
+            'Referer': 'https://app.infini.money/',
             'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
             'sec-ch-ua-mobile': '?0',
             'sec-ch-ua-platform': '"macOS"',
-            'Pragma': 'no-cache',
-            'Priority': 'u=1, i'
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
           }
         }
       );
@@ -3379,20 +3377,49 @@ export class InfiniAccountService {
       console.log('Infini 重置密码API响应:', response.data);
 
       if (response.data.code === 0) {
-        // 获取对应的账户信息
-        const accountsRes = await db('infini_accounts')
-          .where({ email })
-          .first();
+        // API调用成功，尝试查找或创建账户
+        let account = await db('infini_accounts').where({ email: email }).first();
+        let accountId: number;
 
-        if (!accountsRes) {
-          return { success: false, message: '账户不存在' };
+        if (account) {
+          // 账户已存在，更新密码
+          console.log(`账户 ${email} 已存在，正在更新密码...`);
+          await db('infini_accounts')
+            .where({ id: account.id })
+            .update({ password: newPasswordFromFrontend, updated_at: db.fn.now() });
+          accountId = account.id;
+          console.log(`账户 ${email} (ID: ${accountId}) 密码已更新。`);
+        } else {
+          // 账户不存在，创建新账户
+          console.log(`账户 ${email} 不存在，正在创建新账户...`);
+          // 生成一个简单的 user_id，实际应用中可能需要更复杂的逻辑或从其他地方获取
+          const newUserId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+          const [newAccountRecord] = await db('infini_accounts') // Renamed to avoid conflict with 'account' variable
+            .insert({
+              email: email,
+              password: newPasswordFromFrontend,
+              user_id: newUserId, // 需要一个 user_id
+              // mock_user_id: null, // 根据需要设置
+              // status: 'active', // 初始状态
+              google_2fa_is_bound: false,
+              // verification_level: 0, // 初始认证级别
+              created_at: db.fn.now(),
+              updated_at: db.fn.now()
+            })
+            .returning(['id', 'user_id']); // 返回新插入记录的id和user_id
+          
+          if (!newAccountRecord || !newAccountRecord.id) {
+            console.error(`创建新账户 ${email} 失败`);
+            return { success: false, message: '创建新账户失败' };
+          }
+          accountId = newAccountRecord.id;
+          console.log(`新账户 ${email} (ID: ${accountId}, UserID: ${newAccountRecord.user_id}) 创建成功。`);
         }
         
-        console.log(`账户 ${email} 密码重置成功，账户ID: ${accountsRes.id}`);
         return {
           success: true,
-          data: { id: accountsRes.id },
-          message: '密码重置成功'
+          data: { id: accountId },
+          message: `账户 ${email} 密码操作成功 (ID: ${accountId})`
         };
       } else {
         console.error(`Infini API返回错误: ${response.data.message || '未知错误'}`);
@@ -3561,7 +3588,12 @@ export class InfiniAccountService {
 
       // 第三步：重置密码
       console.log(`重置账户 ${email} 的密码...`);
-      const resetPasswordResponse = await this.resetPassword(email, verificationCode);
+      // 在 recoverAccount 内部临时生成密码以满足 resetPassword 的新签名
+      // 注意：如果此 recoverAccount 方法旨在由前端的细粒度流程调用，
+      // 那么密码生成和传递逻辑可能需要重新评估。
+      const tempNewPassword = Math.random().toString(36).slice(-10) + 'B2#'; // 临时密码
+      console.log(`在 recoverAccount 中为 ${email} 生成临时新密码: [PROTECTED]`);
+      const resetPasswordResponse = await this.resetPassword(email, verificationCode, tempNewPassword);
       if (!resetPasswordResponse.success) {
         console.error(`重置账户 ${email} 的密码失败:`, resetPasswordResponse.message);
         return {
@@ -3569,48 +3601,20 @@ export class InfiniAccountService {
           message: `重置密码失败: ${resetPasswordResponse.message}`
         };
       }
+      const accountId = resetPasswordResponse.data!.id; // 密码已在 resetPassword 中更新
 
-      // 第四步：查找账户或创建新账户
-      console.log(`查找或创建账户 ${email} 的记录...`);
-      let account = await db('infini_accounts')
-        .where('email', email)
+      // 第四步：获取账户信息
+      console.log(`获取账户 ${email} (ID: ${accountId}) 的详细信息...`);
+      const account = await db('infini_accounts')
+        .where('id', accountId)
         .first();
 
       if (!account) {
-        // 账户不存在，创建新账户
-        console.log(`数据库中不存在账户 ${email}，将创建新账户`);
-        // 尝试登录获取信息
-        const loginResponse = await this.loginInfiniAccount(email, 'K9@iuptLL@wJ55X'); // 使用默认密码
-        if (!loginResponse.success) {
-          console.error(`登录账户 ${email} 失败:`, loginResponse.message);
-          return {
-            success: false,
-            message: `登录账户失败: ${loginResponse.message}`
-          };
-        }
-
-        // 创建账户
-        const createAccountResponse = await this.createInfiniAccount(email, 'K9@iuptLL@wJ55X');
-        if (!createAccountResponse.success) {
-          console.error(`创建账户 ${email} 失败:`, createAccountResponse.message);
-          return {
-            success: false,
-            message: `创建账户失败: ${createAccountResponse.message}`
-          };
-        }
-
-        account = createAccountResponse.data;
-      } else {
-        // 账户存在，更新密码
-        console.log(`更新账户 ${email} 的密码...`);
-        await db('infini_accounts')
-          .where('id', account.id)
-          .update({
-            password: 'K9@iuptLL@wJ55X',
-            cookie: null,
-            cookie_expires_at: null,
-            updated_at: new Date()
-          });
+        console.error(`重置密码后未能找到账户 ${email} (ID: ${accountId})`);
+        return {
+          success: false,
+          message: `账户信息获取失败`
+        };
       }
 
       // 第五步：获取2FA二维码

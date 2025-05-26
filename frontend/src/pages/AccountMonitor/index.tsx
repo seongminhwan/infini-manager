@@ -2102,7 +2102,7 @@ const AccountMonitor: React.FC = () => {
   const [batchSyncing, setBatchSyncing] = useState(false);
   const [batchSyncResult, setBatchSyncResult] = useState<BatchSyncResult | null>(null);
   const [batchResultModalVisible, setBatchResultModalVisible] = useState(false);
-  
+  const [isBatchRecoverModalVisible, setIsBatchRecoverModalVisible] = useState(false); // 添加此行
   // 分组相关状态
   const [groups, setGroups] = useState<AccountGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
