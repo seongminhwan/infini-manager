@@ -1802,6 +1802,146 @@ const AccountCreateModal: React.FC<{
               </Form.Item>
               
               <Form.Item>
+                <Checkbox 
+                  checked={useCustomEmailConfig} 
+                  onChange={(e) => setUseCustomEmailConfig(e.target.checked)}
+                >
+                  使用自定义邮箱配置（用于接收验证码等）
+                </Checkbox>
+              </Form.Item>
+              
+              {useCustomEmailConfig && (
+                <Card size="small" title="自定义邮箱配置" style={{ marginBottom: 16, borderColor: '#bae7ff' }}>
+                  <Form
+                    form={customEmailForm}
+                    layout="vertical"
+                    requiredMark={false}
+                    initialValues={{
+                      imap_secure: true,
+                      smtp_secure: true,
+                      custom_email_status: 'active'
+                    }}
+                  >
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="custom_email_address"
+                          label="邮箱地址"
+                          rules={[
+                            { required: true, type: 'email', message: '请输入有效的邮箱地址' }
+                          ]}
+                        >
+                          <Input prefix={<MailOutlined />} placeholder="例如: user@example.com" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="custom_email_password"
+                          label="邮箱密码/授权码"
+                          rules={[{ required: true, message: '请输入邮箱密码' }]}
+                        >
+                          <Input.Password prefix={<LockOutlined />} placeholder="输入邮箱密码或应用授权码" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="custom_imap_host"
+                          label="IMAP 主机"
+                          rules={[{ required: true, message: 'IMAP 主机不能为空' }]}
+                        >
+                          <Input placeholder="例如: imap.example.com" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={12} sm={6}>
+                        <Form.Item
+                          name="custom_imap_port"
+                          label="IMAP 端口"
+                          rules={[{ required: true, message: '请输入端口号' }]}
+                        >
+                          <Input type="number" placeholder="例如: 993" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={12} sm={6}>
+                        <Form.Item
+                          name="imap_secure"
+                          label="IMAP SSL/TLS"
+                          valuePropName="checked"
+                        >
+                          <Checkbox>启用</Checkbox>
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="custom_smtp_host"
+                          label="SMTP 主机"
+                          rules={[{ required: true, message: 'SMTP 主机不能为空' }]}
+                        >
+                          <Input placeholder="例如: smtp.example.com" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={12} sm={6}>
+                        <Form.Item
+                          name="custom_smtp_port"
+                          label="SMTP 端口"
+                          rules={[{ required: true, message: '请输入端口号' }]}
+                        >
+                          <Input type="number" placeholder="例如: 465 或 587" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={12} sm={6}>
+                        <Form.Item
+                          name="smtp_secure"
+                          label="SMTP SSL/TLS"
+                          valuePropName="checked"
+                        >
+                          <Checkbox>启用</Checkbox>
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Form.Item
+                      name="custom_email_status"
+                      label="状态"
+                      rules={[{ required: true, message: '请选择状态' }]}
+                    >
+                      <Radio.Group>
+                        <Radio value="active">激活</Radio>
+                        <Radio value="disabled">禁用</Radio>
+                      </Radio.Group>
+                    </Form.Item>
+                    <Form.Item 
+                      name="custom_extra_config" 
+                      label="额外配置 (JSON格式)"
+                      getValueFromEvent={(e) => {
+                        const value = e.target.value;
+                        return value.trim() === '' ? null : value;
+                      }}
+                      rules={[
+                        ({ getFieldValue }) => ({
+                          validator(_, value) {
+                            if (!value || typeof value !== 'string') {
+                              return Promise.resolve();
+                            }
+                            try {
+                              JSON.parse(value);
+                              return Promise.resolve();
+                            } catch (e) {
+                              return Promise.reject(new Error('额外配置必须是有效的JSON格式'));
+                            }
+                          },
+                        }),
+                      ]}
+                    >
+                      <Input.TextArea rows={2} placeholder='例如: {"key": "value"}' />
+                    </Form.Item>
+                  </Form>
+                </Card>
+              )}
+              
+              <Form.Item>
                 <Text type="secondary">
                   <InfoCircleOutlined style={{ marginRight: 8 }} />
                   系统将使用这些凭据与Infini平台交互，监控账户余额和状态变化
