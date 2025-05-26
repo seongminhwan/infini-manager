@@ -5037,7 +5037,7 @@ const BatchAddAccountModal: React.FC<{
                   customSmtpHost: '',
                   customSmtpPort: 465,
                   customSmtpSecure: true,
-                  customEmailStatus: 'active',
+                  customEmailStatus: 'active' as 'active' | 'disabled',
                   customExtraConfig: ''
                 };
                 newData.splice(index, 1, updatedItem);
