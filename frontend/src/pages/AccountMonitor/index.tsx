@@ -4892,6 +4892,7 @@ const BatchAddAccountModal: React.FC<{
             // mock_user_id: account.mockUserId, // 如果批量添加也支持关联随机用户
           };
 
+          // 只保留一个自定义邮箱配置逻辑，避免重复代码
           if (account.useCustomEmail && account.customEmailAddress && account.customEmailPassword) {
             const customEmailConfig: any = {
               email: account.customEmailAddress,
@@ -4900,31 +4901,6 @@ const BatchAddAccountModal: React.FC<{
               imap_port: (account.customImapPort !== undefined && !isNaN(Number(account.customImapPort))) ? Number(account.customImapPort) : 993,
               imap_secure: account.customImapSecure !== undefined ? account.customImapSecure : true,
               smtp_host: account.customSmtpHost || '',
-              smtp_port: (account.customSmtpPort !== undefined && !isNaN(Number(account.customSmtpPort))) ? Number(account.customSmtpPort) : 465,
-              smtp_secure: account.customSmtpSecure !== undefined ? account.customSmtpSecure : true,
-              status: account.customEmailStatus || 'active',
-              extra_config: null,
-            };
-            if (account.customExtraConfig && typeof account.customExtraConfig === 'string') {
-              try {
-                customEmailConfig.extra_config = JSON.parse(account.customExtraConfig);
-              } catch (e) {
-                console.warn(`账户 ${account.email} 的自定义邮箱额外配置JSON解析失败: ${account.customExtraConfig}`);
-              }
-            } else if (account.customExtraConfig && typeof account.customExtraConfig === 'object') {
-              customEmailConfig.extra_config = account.customExtraConfig;
-            }
-            accountPayload.customEmailConfig = customEmailConfig;
-          }
-
-          if (account.useCustomEmail && account.customEmailAddress && account.customEmailPassword) {
-            const customEmailConfig: any = {
-              email: account.customEmailAddress,
-              password: account.customEmailPassword,
-              imap_host: account.customImapHost || 'your.default.imap.host', // 请使用实际的默认值
-              imap_port: (account.customImapPort !== undefined && !isNaN(Number(account.customImapPort))) ? Number(account.customImapPort) : 993,
-              imap_secure: account.customImapSecure !== undefined ? account.customImapSecure : true,
-              smtp_host: account.customSmtpHost || 'your.default.smtp.host', // 请使用实际的默认值
               smtp_port: (account.customSmtpPort !== undefined && !isNaN(Number(account.customSmtpPort))) ? Number(account.customSmtpPort) : 465,
               smtp_secure: account.customSmtpSecure !== undefined ? account.customSmtpSecure : true,
               status: account.customEmailStatus || 'active',
