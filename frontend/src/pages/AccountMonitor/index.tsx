@@ -5027,11 +5027,34 @@ const BatchAddAccountModal: React.FC<{
               setAccounts(newData);
               // 如果取消勾选，可能需要清空相关的自定义邮箱字段
               if (!e.target.checked) {
-                const updatedItem = { ...newData[index], customEmailAddress: '', customEmailPassword: '' /*, other custom fields */ };
+                const updatedItem = { 
+                  ...newData[index], 
+                  customEmailAddress: '', 
+                  customEmailPassword: '',
+                  customImapHost: '',
+                  customImapPort: 993,
+                  customImapSecure: true,
+                  customSmtpHost: '',
+                  customSmtpPort: 465,
+                  customSmtpSecure: true,
+                  customEmailStatus: 'active',
+                  customExtraConfig: ''
+                };
                 newData.splice(index, 1, updatedItem);
                 setAccounts(newData);
                 if (isEditing(record)) { // 如果在编辑模式下取消勾选，也更新form
-                  form.setFieldsValue({ customEmailAddress: '', customEmailPassword: '' });
+                  form.setFieldsValue({ 
+                    customEmailAddress: '', 
+                    customEmailPassword: '',
+                    customImapHost: '',
+                    customImapPort: 993,
+                    customImapSecure: true,
+                    customSmtpHost: '',
+                    customSmtpPort: 465,
+                    customSmtpSecure: true,
+                    customEmailStatus: 'active',
+                    customExtraConfig: ''
+                  });
                 }
               }
             }
@@ -5057,6 +5080,46 @@ const BatchAddAccountModal: React.FC<{
       width: '25%',
       render: (text: string, record: BatchAddAccountItem) => (
          record.useCustomEmail ? (text ? '********' : <Text type="secondary">未设置</Text>) : <Text type="secondary">-</Text>
+      )
+    },
+    {
+      title: 'IMAP主机',
+      dataIndex: 'customImapHost',
+      key: 'customImapHost',
+      editable: true,
+      width: '25%',
+      render: (text: string, record: BatchAddAccountItem) => (
+        record.useCustomEmail ? (text || <Text type="secondary">未设置</Text>) : <Text type="secondary">-</Text>
+      )
+    },
+    {
+      title: 'IMAP端口',
+      dataIndex: 'customImapPort',
+      key: 'customImapPort',
+      editable: true,
+      width: '15%',
+      render: (text: number, record: BatchAddAccountItem) => (
+        record.useCustomEmail ? (text || 993) : <Text type="secondary">-</Text>
+      )
+    },
+    {
+      title: 'SMTP主机',
+      dataIndex: 'customSmtpHost',
+      key: 'customSmtpHost',
+      editable: true,
+      width: '25%',
+      render: (text: string, record: BatchAddAccountItem) => (
+        record.useCustomEmail ? (text || <Text type="secondary">未设置</Text>) : <Text type="secondary">-</Text>
+      )
+    },
+    {
+      title: 'SMTP端口',
+      dataIndex: 'customSmtpPort',
+      key: 'customSmtpPort',
+      editable: true,
+      width: '15%',
+      render: (text: number, record: BatchAddAccountItem) => (
+        record.useCustomEmail ? (text || 465) : <Text type="secondary">-</Text>
       )
     },
     {
