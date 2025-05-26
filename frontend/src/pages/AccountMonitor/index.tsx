@@ -4488,17 +4488,20 @@ const AccountMonitor: React.FC = () => {
               )}
             <Dropdown
               overlay={
-                <Menu>
-                  <Menu.Item key="addAccount" onClick={() => setModalVisible(true)}>
-                    添加账户
-                  </Menu.Item>
-                  <Menu.Item key="batchAddAccount" onClick={() => setBatchAddModalVisible(true)}>
-                    批量添加账户
-                  </Menu.Item>
-                  <Menu.Item key="batchRecoverAccount" onClick={() => setBatchRecoverModalVisible(true)}>
-                    批量恢复账户
-                  </Menu.Item>
-                </Menu>
+              <Menu>
+                <Menu.Item key="addAccount" onClick={() => setModalVisible(true)}>
+                  添加账户
+                </Menu.Item>
+                <Menu.Item key="batchAddAccount" onClick={() => setBatchAddModalVisible(true)}>
+                  批量添加账户
+                </Menu.Item>
+                <Menu.Item key="batchRecoverAccount" onClick={() => setBatchRecoverModalVisible(true)}>
+                  批量恢复账户
+                </Menu.Item>
+                <Menu.Item key="emailRecoverAccount" onClick={() => setIsBatchRecoverModalVisible(true)}>
+                  根据邮箱恢复账号
+                </Menu.Item>
+              </Menu>
               }
               trigger={['click']}
             >
