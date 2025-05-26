@@ -272,6 +272,40 @@ const AccountDetailModal: React.FC<{
   // 卡片信息状态
   const [cardList, setCardList] = useState<any[]>([]);
   const [loadingCards, setLoadingCards] = useState(false);
+
+  // 自定义邮箱配置状态
+  const [customEmailConfig, setCustomEmailConfig] = useState<any | null>(null); // 使用 any 避免编译时类型问题，实际应为 InfiniAccountCustomEmailConfig
+  const [loadingCustomEmailConfig, setLoadingCustomEmailConfig] = useState(false);
+  const [customEmailForm] = Form.useForm(); // 为自定义邮箱配置创建新的表单实例
+  const [customEmailEditMode, setCustomEmailEditMode] = useState(false);
+  
+  // 获取自定义邮箱配置
+  const fetchCustomEmailConfig = async (accountId: number) => {
+    if (!accountId) return;
+    setLoadingCustomEmailConfig(true);
+    try {
+      const response = await infiniAccountApi.getCustomEmailConfig(accountId);
+      if (response.success) {
+        setCustomEmailConfig(response.data || null);
+        if (response.data) {
+          customEmailForm.setFieldsValue(response.data);
+        } else {
+          customEmailForm.resetFields();
+        }
+      } else {
+        setCustomEmailConfig(null);
+        customEmailForm.resetFields();
+        // 不主动提示错误，因为可能只是未配置
+        console.warn(`获取账户 ${accountId} 自定义邮箱配置失败: ${response.message}`);
+      }
+    } catch (error) {
+      console.error('获取自定义邮箱配置错误:', error);
+      setCustomEmailConfig(null);
+      customEmailForm.resetFields();
+    } finally {
+      setLoadingCustomEmailConfig(false);
+    }
+  };
   
   // 刷新卡片信息
   const syncCardInfo = async () => {
@@ -496,8 +530,19 @@ const AccountDetailModal: React.FC<{
       
       // 获取卡片信息
       getCardList();
+      // 获取自定义邮箱配置
+      fetchCustomEmailConfig(account.id);
+      // 重置自定义邮箱编辑模式和表单
+      setCustomEmailEditMode(false);
+      customEmailForm.resetFields();
+
+    } else if (!visible) {
+      // 模态框关闭时，也重置自定义邮箱相关状态
+      setCustomEmailConfig(null);
+      setCustomEmailEditMode(false);
+      customEmailForm.resetFields();
     }
-  }, [account, visible, form]);
+  }, [account, visible, form, customEmailForm]); // 添加 customEmailForm 到依赖项
 
   // 获取关联的随机用户信息
   const fetchMockUser = async () => {
@@ -563,6 +608,99 @@ const AccountDetailModal: React.FC<{
       console.error('更新账户失败:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteCustomEmailConfig = async () => {
+    if (!account || !customEmailConfig) {
+      message.error('无法删除配置：缺少账户或配置信息');
+      return;
+    }
+    setLoading(true); // 或者使用一个独立的 loadingCustomEmailConfig 操作状态
+    try {
+      // 后端API的deleteCustomEmailConfig需要的是accountId，而不是配置本身的id
+      const response = await infiniAccountApi.deleteCustomEmailConfig(account.id);
+      // DELETE 成功通常返回 204 No Content，或者一个包含 success:true 的JSON对象
+      // 需要根据实际API返回情况调整判断条件
+      if (response.success !== false) { // 假设非false即成功，或检查 response.status === 204 (如果axios配置了返回完整响应)
+        message.success('自定义邮箱配置删除成功');
+        setCustomEmailConfig(null);
+        customEmailForm.resetFields();
+        setCustomEmailEditMode(false);
+        // 如果需要，可以调用 onSuccess 来刷新外部列表或账户信息
+        // onSuccess();
+      } else {
+        message.error(response.message || '删除自定义邮箱配置失败');
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || error.message || '删除自定义邮箱配置时发生错误');
+      console.error('删除自定义邮箱配置错误:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveCustomEmailConfig = async (values: any) => {
+    if (!account) {
+      message.error('无法保存配置：缺少账户信息');
+      return;
+    }
+    setLoadingCustomEmailConfig(true); // 使用独立的loading状态
+    try {
+      let response;
+      const rawValues = { ...values };
+
+      // 在这里处理端口号的转换
+      const imap_port = rawValues.imap_port ? Number(rawValues.imap_port) : undefined;
+      const smtp_port = rawValues.smtp_port ? Number(rawValues.smtp_port) : undefined;
+
+      const payload = {
+        ...rawValues,
+        imap_port,
+        smtp_port,
+      };
+      
+      // 如果是编辑模式且密码字段为空或未更改，则不提交密码字段
+      if (customEmailConfig && (payload.password === undefined || payload.password === '')) {
+        delete payload.password;
+      }
+      
+      // 将 extra_config 字符串转换为 JSON 对象
+      if (payload.extra_config && typeof payload.extra_config === 'string') {
+        try {
+          payload.extra_config = JSON.parse(payload.extra_config);
+        } catch (e) {
+          message.error('额外配置不是有效的JSON格式');
+          setLoadingCustomEmailConfig(false);
+          return;
+        }
+      } else if (!payload.extra_config) {
+        payload.extra_config = null;
+      }
+
+
+      if (customEmailConfig && customEmailConfig.id) { // 更新
+        response = await infiniAccountApi.updateCustomEmailConfig(account.id, payload);
+      } else { // 创建
+        response = await infiniAccountApi.createCustomEmailConfig(account.id, payload);
+      }
+
+      if (response.success) {
+        message.success(customEmailConfig ? '自定义邮箱配置更新成功' : '自定义邮箱配置添加成功');
+        setCustomEmailConfig(response.data || null);
+        if (response.data) {
+            customEmailForm.setFieldsValue(response.data);
+        }
+        setCustomEmailEditMode(false);
+        // onSuccess(); // 可选：如果需要刷新外部列表
+      } else {
+        message.error(response.message || (customEmailConfig ? '更新失败' : '添加失败'));
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || error.message || (customEmailConfig ? '更新配置时发生错误' : '添加配置时发生错误'));
+      console.error('保存自定义邮箱配置错误:', error);
+    } finally {
+      setLoadingCustomEmailConfig(false);
     }
   };
 
@@ -879,6 +1017,200 @@ const AccountDetailModal: React.FC<{
             </BalanceTag>
           )}
         </div>
+
+        <Divider orientation="left" style={{ marginTop: 24 }}>自定义邮箱配置</Divider>
+        {loadingCustomEmailConfig && <div style={{ textAlign: 'center', padding: 20 }}><Spin tip="加载自定义邮箱配置中..." /></div>}
+        {!loadingCustomEmailConfig && customEmailConfig && !customEmailEditMode && (
+          <>
+            <Descriptions column={1} size="small" bordered style={{ marginBottom: 16 }}>
+              <Descriptions.Item label="邮箱地址">{customEmailConfig.email}</Descriptions.Item>
+              <Descriptions.Item label="IMAP 主机">{customEmailConfig.imap_host}</Descriptions.Item>
+              <Descriptions.Item label="IMAP 端口">{customEmailConfig.imap_port}</Descriptions.Item>
+              <Descriptions.Item label="IMAP 安全连接(SSL/TLS)">{customEmailConfig.imap_secure ? '是' : '否'}</Descriptions.Item>
+              <Descriptions.Item label="SMTP 主机">{customEmailConfig.smtp_host}</Descriptions.Item>
+              <Descriptions.Item label="SMTP 端口">{customEmailConfig.smtp_port}</Descriptions.Item>
+              <Descriptions.Item label="SMTP 安全连接(SSL/TLS)">{customEmailConfig.smtp_secure ? '是' : '否'}</Descriptions.Item>
+              <Descriptions.Item label="状态">
+                <Tag color={customEmailConfig.status === 'active' ? 'green' : 'red'}>
+                  {customEmailConfig.status === 'active' ? '已激活' : '已禁用'}
+                </Tag>
+              </Descriptions.Item>
+              {customEmailConfig.extra_config && Object.keys(customEmailConfig.extra_config).length > 0 && (
+                <Descriptions.Item label="额外配置">
+                  <pre style={{ maxHeight: 100, overflowY: 'auto', background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
+                    {JSON.stringify(customEmailConfig.extra_config, null, 2)}
+                  </pre>
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+            <Space>
+              <Button onClick={() => {
+                customEmailForm.setFieldsValue(customEmailConfig); // 编辑前回填表单
+                setCustomEmailEditMode(true);
+              }}>编辑配置</Button>
+              <Popconfirm
+                title="确定要删除此自定义邮箱配置吗？"
+                onConfirm={handleDeleteCustomEmailConfig}
+                okText="确定"
+                cancelText="取消"
+                placement="topRight"
+              >
+                <Button danger>删除配置</Button>
+              </Popconfirm>
+            </Space>
+          </>
+        )}
+        {!loadingCustomEmailConfig && !customEmailConfig && !customEmailEditMode && (
+          <Space direction="vertical" align="start">
+            <Text type="secondary">该账户尚无独立的邮箱配置。</Text>
+            <Button type="primary" onClick={() => {
+              customEmailForm.resetFields(); // 添加前清空表单
+              setCustomEmailEditMode(true);
+            }}>添加配置</Button>
+          </Space>
+        )}
+        {/* 自定义邮箱配置的编辑表单 */}
+        {customEmailEditMode && account && (
+          <Card title={customEmailConfig ? "编辑自定义邮箱配置" : "添加自定义邮箱配置"} style={{ marginTop: 20, borderColor: '#1890ff' }}>
+            <Form
+              form={customEmailForm}
+              layout="vertical"
+              onFinish={handleSaveCustomEmailConfig}
+              initialValues={customEmailConfig || { imap_secure: true, smtp_secure: true, status: 'active' }}
+            >
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    name="email"
+                    label="邮箱地址"
+                    rules={[{ required: true, type: 'email', message: '请输入有效的邮箱地址' }]}
+                  >
+                    <Input prefix={<MailOutlined />} placeholder="例如: user@example.com" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    name="password"
+                    label="邮箱密码/授权码"
+                    rules={[{ required: !customEmailConfig, message: '新增时密码不能为空' }]}
+                    extra={customEmailConfig ? "如需修改密码请输入新密码，否则留空" : ""}
+                  >
+                    <Input.Password prefix={<LockOutlined />} placeholder="输入邮箱密码或应用授权码" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    name="imap_host"
+                    label="IMAP 主机"
+                    rules={[{ required: true, message: 'IMAP 主机不能为空' }]}
+                  >
+                    <Input placeholder="例如: imap.example.com" />
+                  </Form.Item>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Form.Item
+                    name="imap_port"
+                    label="IMAP 端口"
+                    rules={[{ required: true, message: '请输入有效的IMAP端口号' }]}
+                    // transform 属性已移除，将在 onFinish 中处理
+                  >
+                    <Input type="number" placeholder="例如: 993" />
+                  </Form.Item>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Form.Item
+                    name="imap_secure"
+                    label="IMAP SSL/TLS"
+                    valuePropName="checked"
+                  >
+                    <Checkbox>启用</Checkbox>
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    name="smtp_host"
+                    label="SMTP 主机"
+                    rules={[{ required: true, message: 'SMTP 主机不能为空' }]}
+                  >
+                    <Input placeholder="例如: smtp.example.com" />
+                  </Form.Item>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Form.Item
+                    name="smtp_port"
+                    label="SMTP 端口"
+                    rules={[{ required: true, message: '请输入有效的SMTP端口号' }]}
+                    // transform 属性已移除，将在 onFinish 中处理
+                  >
+                    <Input type="number" placeholder="例如: 465 或 587" />
+                  </Form.Item>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Form.Item
+                    name="smtp_secure"
+                    label="SMTP SSL/TLS"
+                    valuePropName="checked"
+                  >
+                    <Checkbox>启用</Checkbox>
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Form.Item
+                name="status"
+                label="状态"
+                rules={[{ required: true, message: '请选择状态' }]}
+              >
+                <Radio.Group>
+                  <Radio value="active">激活</Radio>
+                  <Radio value="disabled">禁用</Radio>
+                </Radio.Group>
+              </Form.Item>
+              <Form.Item name="extra_config" label="额外配置 (JSON格式)"
+                getValueFromEvent={(e) => { // 处理输入，确保是字符串或null
+                    const value = e.target.value;
+                    return value.trim() === '' ? null : value;
+                }}
+                rules={[
+                    ({ getFieldValue }) => ({
+                        validator(_, value) {
+                            if (!value || typeof value !== 'string') {
+                                return Promise.resolve();
+                            }
+                            try {
+                                JSON.parse(value);
+                                return Promise.resolve();
+                            } catch (e) {
+                                return Promise.reject(new Error('额外配置必须是有效的JSON格式'));
+                            }
+                        },
+                    }),
+                ]}
+              >
+                <Input.TextArea rows={3} placeholder='例如: {"key": "value"}' />
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit" loading={loadingCustomEmailConfig}>
+                    {customEmailConfig ? "保存更改" : "添加配置"}
+                  </Button>
+                  <Button onClick={() => {
+                    setCustomEmailEditMode(false);
+                    // customEmailForm.resetFields(); // 取消时不重置，以便保留上次的有效值或初始值
+                    if (customEmailConfig) {
+                        customEmailForm.setFieldsValue(customEmailConfig); // 恢复到编辑前的数据
+                    } else {
+                        customEmailForm.resetFields(); // 如果是新增模式取消，则清空
+                    }
+                  }}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Card>
+        )}
         
       </div>
     );
@@ -1163,6 +1495,10 @@ const AccountCreateModal: React.FC<{
   const [accountInfo, setAccountInfo] = useState<InfiniAccount | null>(null);
   const [syncStage, setSyncStage] = useState<SyncStage>('idle');
   const [syncError, setSyncError] = useState<string>('');
+  // 自定义邮箱配置状态
+  const [useCustomEmailConfig, setUseCustomEmailConfig] = useState(false);
+  // 自定义邮箱配置表单
+  const [customEmailForm] = Form.useForm(); 
 
   // 重置状态
   const resetState = () => {
@@ -1170,6 +1506,8 @@ const AccountCreateModal: React.FC<{
     setSyncError('');
     setAccountInfo(null);
     form.resetFields();
+    setUseCustomEmailConfig(false);
+    customEmailForm.resetFields();
   };
 
   // 处理关闭
@@ -1225,10 +1563,51 @@ const AccountCreateModal: React.FC<{
       setLoading(true);
       const values = await form.validateFields();
       
-      const response = await api.post(`${API_BASE_URL}/api/infini-accounts`, {
+      const accountPayload: any = {
         email: values.email,
         password: values.password,
-      });
+      };
+
+      // 如果启用了自定义邮箱配置，则添加相关数据
+      if (useCustomEmailConfig) {
+        try {
+          // 验证自定义邮箱配置表单
+          const customEmailValues = await customEmailForm.validateFields();
+          
+          // 准备自定义邮箱配置数据
+          const customEmailConfig: any = {
+            email: customEmailValues.custom_email_address,
+            password: customEmailValues.custom_email_password,
+            imap_host: customEmailValues.custom_imap_host,
+            imap_port: Number(customEmailValues.custom_imap_port),
+            imap_secure: customEmailValues.imap_secure,
+            smtp_host: customEmailValues.custom_smtp_host,
+            smtp_port: Number(customEmailValues.custom_smtp_port),
+            smtp_secure: customEmailValues.smtp_secure,
+            status: customEmailValues.custom_email_status,
+            extra_config: null,
+          };
+
+          // 处理额外配置的JSON转换
+          if (customEmailValues.custom_extra_config && typeof customEmailValues.custom_extra_config === 'string') {
+            try {
+              customEmailConfig.extra_config = JSON.parse(customEmailValues.custom_extra_config);
+            } catch (e) {
+              message.error('额外配置JSON格式无效，请检查');
+              setLoading(false);
+              return;
+            }
+          }
+
+          accountPayload.customEmailConfig = customEmailConfig;
+        } catch (error: any) {
+          message.error('请完成自定义邮箱配置表单');
+          setLoading(false);
+          return;
+        }
+      }
+      
+      const response = await api.post(`${API_BASE_URL}/api/infini-accounts`, accountPayload);
 
       if (response.data.success) {
         message.success('成功添加Infini账户');
@@ -1545,6 +1924,7 @@ const AccountRegisterModal: React.FC<{
   const [sendingCode, setSendingCode] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [countdown, setCountdown] = useState(0);
+  const [useCustomEmailConfig, setUseCustomEmailConfig] = useState(false); // 新增状态
   
   // 发送验证码
   const sendVerificationCode = async () => {
@@ -1685,33 +2065,68 @@ const AccountRegisterModal: React.FC<{
   };
   
   // 提交表单
-  const handleSubmit = async (values: RegisterFormData) => {
+  const handleSubmit = async (values: RegisterFormData & any) => { // 允许 any 访问自定义字段
     try {
       setLoading(true);
       
       // 提取表单数据
-      const { email, password, needKyc, country, phone, idType, idNumber, kycImageId, enable2fa } = values;
+      const {
+        email, password, needKyc, country, phone, idType, idNumber, kycImageId, enable2fa,
+        useCustomEmailConfig: formUseCustomEmailConfig, // 从 values 中获取
+        custom_email_address, custom_email_password,
+        custom_imap_host, custom_imap_port, imap_secure,
+        custom_smtp_host, custom_smtp_port, smtp_secure,
+        custom_email_status, custom_extra_config
+      } = values;
       
-      // 这里只实现UI，不需要实际调用后端API
-      console.log('注册账户数据:', {
-        email,
-        password,
-        needKyc,
-        country,
-        phone,
-        idType,
-        idNumber,
-        kycImageId,
-        enable2fa
-      });
+      // 模拟账户创建API调用
+      // 在实际应用中，这里会调用 infiniAccountApi.createAccount
+      // 并从响应中获取 newAccountId
+      console.log('模拟调用 infiniAccountApi.createAccount with:', { email, password /*, other fields */ });
+      const mockCreateAccountResponse = { success: true, data: { id: Date.now() }, message: '账户创建成功(模拟)' }; // 模拟成功响应和新账户ID
       
-      // 模拟注册成功
-      message.success('账户注册成功');
-      resetState();
-      onSuccess();
-      onClose();
+      if (mockCreateAccountResponse.success && mockCreateAccountResponse.data?.id) {
+        const newAccountId = mockCreateAccountResponse.data.id;
+        message.success(mockCreateAccountResponse.message);
+
+        // 如果启用了自定义邮箱配置，则创建它
+        if (formUseCustomEmailConfig) {
+          const customEmailConfigData = {
+            email: custom_email_address,
+            password: custom_email_password,
+            imap_host: custom_imap_host,
+            imap_port: Number(custom_imap_port),
+            imap_secure: imap_secure,
+            smtp_host: custom_smtp_host,
+            smtp_port: Number(custom_smtp_port),
+            smtp_secure: smtp_secure,
+            status: custom_email_status,
+            extra_config: custom_extra_config ? JSON.parse(custom_extra_config) : null,
+          };
+
+          try {
+            console.log(`尝试为新账户 ID ${newAccountId} 创建自定义邮箱配置:`, customEmailConfigData);
+            const customEmailResponse = await infiniAccountApi.createCustomEmailConfig(newAccountId, customEmailConfigData);
+            if (customEmailResponse.success) {
+              message.success('自定义邮箱配置已成功关联到新账户。');
+            } else {
+              message.error(`自定义邮箱配置失败: ${customEmailResponse.message || '未知错误'}`);
+            }
+          } catch (customEmailError: any) {
+            message.error(`创建自定义邮箱配置时出错: ${customEmailError.message || '未知网络错误'}`);
+            console.error("创建自定义邮箱配置错误:", customEmailError);
+          }
+        }
+        
+        resetState();
+        onSuccess(); // 调用外部传入的成功回调，例如刷新账户列表
+        onClose();   // 关闭模态框
+      } else {
+        message.error(mockCreateAccountResponse.message || '账户创建失败(模拟)');
+      }
     } catch (error: any) {
-      message.error('注册失败: ' + error.message);
+      message.error('注册过程中发生错误: ' + error.message);
+      console.error("注册表单提交错误:", error);
     } finally {
       setLoading(false);
     }
@@ -1742,8 +2157,12 @@ const AccountRegisterModal: React.FC<{
         layout="vertical"
         onFinish={handleSubmit}
         initialValues={{
-          needKyc: false,
+          needKyc: false, // 保留一个即可
           enable2fa: false,
+          useCustomEmailConfig: false, // 初始化
+          imap_secure: true, // 默认IMAP安全连接
+          smtp_secure: true, // 默认SMTP安全连接
+          custom_email_status: 'active', // 默认自定义邮箱状态
         }}
       >
         <Form.Item
@@ -1756,7 +2175,168 @@ const AccountRegisterModal: React.FC<{
         >
           <Input prefix={<MailOutlined />} placeholder="请输入邮箱" />
         </Form.Item>
-        
+
+        <Form.Item
+          name="password"
+          label="密码"
+          rules={[{ required: true, message: '请输入密码' }]}
+          extra={ <Button type="link" onClick={generatePassword} style={{ padding: 0 }}>生成随机强密码</Button> }
+        >
+          <Input.Password
+            prefix={<LockOutlined />}
+            placeholder="请输入密码"
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="verificationCode"
+          label="邮箱验证码"
+          rules={[{ required: true, message: '请输入邮箱验证码' }]}
+        >
+          <div style={{ display: 'flex' }}>
+            <Input
+              prefix={<SafetyOutlined />}
+              placeholder="请输入邮箱验证码"
+              value={verificationCode} // 如果需要手动输入或显示获取到的验证码
+              onChange={e => setVerificationCode(e.target.value)} // 如果需要手动输入
+            />
+            <Button
+              onClick={sendVerificationCode}
+              loading={sendingCode}
+              disabled={countdown > 0}
+              style={{ marginLeft: 8 }}
+            >
+              {countdown > 0 ? `${countdown}s后重发` : '发送验证码'}
+            </Button>
+            {/* <Button onClick={fetchCode} style={{ marginLeft: 8 }}>获取(测试)</Button> */}
+          </div>
+        </Form.Item>
+
+        <Form.Item name="useCustomEmailConfig" valuePropName="checked">
+          <Checkbox onChange={(e) => setUseCustomEmailConfig(e.target.checked)}>
+            使用自定义邮箱配置 (用于接收验证码等)
+          </Checkbox>
+        </Form.Item>
+
+        {useCustomEmailConfig && (
+          <Card size="small" title="自定义邮箱配置" style={{ marginBottom: 16, borderColor: '#bae7ff' }}>
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_email_address"
+                  label="邮箱地址"
+                  rules={[{ required: useCustomEmailConfig, type: 'email', message: '请输入有效的邮箱地址' }]}
+                >
+                  <Input prefix={<MailOutlined />} placeholder="例如: custom_user@example.com" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_email_password"
+                  label="邮箱密码/授权码"
+                  rules={[{ required: useCustomEmailConfig, message: '密码不能为空' }]}
+                >
+                  <Input.Password prefix={<LockOutlined />} placeholder="输入邮箱密码或应用授权码" />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_imap_host"
+                  label="IMAP 主机"
+                  rules={[{ required: useCustomEmailConfig, message: 'IMAP 主机不能为空' }]}
+                >
+                  <Input placeholder="例如: imap.example.com" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="custom_imap_port"
+                  label="IMAP 端口"
+                  rules={[{ required: useCustomEmailConfig, message: '请输入有效的IMAP端口号' }]}
+                >
+                  <Input type="number" placeholder="例如: 993" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="imap_secure"
+                  label="IMAP SSL/TLS"
+                  valuePropName="checked"
+                >
+                  <Checkbox>启用</Checkbox>
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_smtp_host"
+                  label="SMTP 主机"
+                  rules={[{ required: useCustomEmailConfig, message: 'SMTP 主机不能为空' }]}
+                >
+                  <Input placeholder="例如: smtp.example.com" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="custom_smtp_port"
+                  label="SMTP 端口"
+                  rules={[{ required: useCustomEmailConfig, message: '请输入有效的SMTP端口号' }]}
+                >
+                  <Input type="number" placeholder="例如: 465 或 587" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="smtp_secure"
+                  label="SMTP SSL/TLS"
+                  valuePropName="checked"
+                >
+                  <Checkbox>启用</Checkbox>
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item
+              name="custom_email_status"
+              label="自定义邮箱状态"
+              rules={[{ required: useCustomEmailConfig, message: '请选择状态' }]}
+            >
+              <Radio.Group>
+                <Radio value="active">激活</Radio>
+                <Radio value="disabled">禁用</Radio>
+              </Radio.Group>
+            </Form.Item>
+             <Form.Item name="custom_extra_config" label="额外配置 (JSON格式)"
+                getValueFromEvent={(e) => {
+                    const value = e.target.value;
+                    return value.trim() === '' ? null : value;
+                }}
+                rules={[
+                    ({ getFieldValue }) => ({
+                        validator(_, value) {
+                            if (!value || typeof value !== 'string' || !useCustomEmailConfig) { // 仅当启用自定义配置时校验
+                                return Promise.resolve();
+                            }
+                            try {
+                                JSON.parse(value);
+                                return Promise.resolve();
+                            } catch (e) {
+                                return Promise.reject(new Error('额外配置必须是有效的JSON格式'));
+                            }
+                        },
+                    }),
+                ]}
+              >
+                <Input.TextArea rows={2} placeholder='例如: {"key": "value"}' />
+              </Form.Item>
+          </Card>
+        )}
+
+        <Form.Item name="needKyc" valuePropName="checked">
+          <Checkbox onChange={handleKycChange}>需要KYC认证</Checkbox>
+        </Form.Item>
         <Form.Item
           name="verificationCode"
           label="验证码"
@@ -3969,6 +4549,26 @@ const AccountMonitor: React.FC = () => {
   );
 };
 
+// 为批量添加的账户定义一个更明确的类型接口
+interface BatchAddAccountItem {
+  key: string;
+  email: string;
+  password: string;
+  status?: 'success' | 'fail' | 'warning';
+  errorMsg?: string;
+  useCustomEmail?: boolean;
+  customEmailAddress?: string;
+  customEmailPassword?: string;
+  customImapHost?: string;
+  customImapPort?: number;
+  customImapSecure?: boolean;
+  customSmtpHost?: string;
+  customSmtpPort?: number;
+  customSmtpSecure?: boolean;
+  customEmailStatus?: 'active' | 'disabled';
+  customExtraConfig?: string;
+}
+
 // 批量添加账户模态框组件
 const BatchAddAccountModal: React.FC<{
   visible: boolean;
@@ -3977,13 +4577,7 @@ const BatchAddAccountModal: React.FC<{
 }> = ({ visible, onClose, onSuccess }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [accounts, setAccounts] = useState<Array<{
-    email: string; 
-    password: string; 
-    key?: string;
-    status?: 'success' | 'fail' | 'warning';
-    errorMsg?: string;
-  }>>([]);
+  const [accounts, setAccounts] = useState<BatchAddAccountItem[]>([]);
   const [batchText, setBatchText] = useState('');
   // 添加成功和失败统计
   const [successCount, setSuccessCount] = useState<number>(0);
@@ -4045,29 +4639,20 @@ const BatchAddAccountModal: React.FC<{
     // 处理去重和覆盖逻辑
     if (accounts.length > 0) {
       // 创建邮箱到账户的映射，用于快速查找
-      const emailMap = new Map<string, {
-        email: string; 
-        password: string; 
-        key: string;
-        status?: 'success' | 'fail' | 'warning';
-        errorMsg?: string;
-      }>();
+      const emailMap = new Map<string, BatchAddAccountItem>();
       
       // 先将现有账户放入映射
       accounts.forEach(account => {
-        emailMap.set(account.email.toLowerCase(), {
-          ...account, 
-          key: account.key || `key_${Date.now()}_${Math.random()}`
-        });
+        emailMap.set(account.email.toLowerCase(), account);
       });
       
       // 处理新解析的账户
       parsedAccounts.forEach(newAccount => {
         const lowerEmail = newAccount.email.toLowerCase();
-        // 如果邮箱已存在，更新密码
-        if (emailMap.has(lowerEmail)) {
-          const existingAccount = emailMap.get(lowerEmail)!;
-          existingAccount.password = newAccount.password;
+        const existingAccount = emailMap.get(lowerEmail);
+        if (existingAccount) {
+          // 如果邮箱已存在，更新所有信息
+          Object.assign(existingAccount, newAccount);
           // 清除之前的状态
           delete existingAccount.status;
           delete existingAccount.errorMsg;
@@ -4139,44 +4724,64 @@ const BatchAddAccountModal: React.FC<{
         if (accountIndex === -1) continue; // 安全检查
         
         try {
-          const response = await api.post(`${API_BASE_URL}/api/infini-accounts`, {
+          const accountPayload: any = {
             email: account.email,
-            password: account.password
-          });
+            password: account.password,
+            // mock_user_id: account.mockUserId, // 如果批量添加也支持关联随机用户
+          };
+
+          if (account.useCustomEmail && account.customEmailAddress && account.customEmailPassword) {
+            const customEmailConfig: any = {
+              email: account.customEmailAddress,
+              password: account.customEmailPassword,
+              imap_host: account.customImapHost || 'your.default.imap.host', // 请使用实际的默认值
+              imap_port: (account.customImapPort !== undefined && !isNaN(Number(account.customImapPort))) ? Number(account.customImapPort) : 993,
+              imap_secure: account.customImapSecure !== undefined ? account.customImapSecure : true,
+              smtp_host: account.customSmtpHost || 'your.default.smtp.host', // 请使用实际的默认值
+              smtp_port: (account.customSmtpPort !== undefined && !isNaN(Number(account.customSmtpPort))) ? Number(account.customSmtpPort) : 465,
+              smtp_secure: account.customSmtpSecure !== undefined ? account.customSmtpSecure : true,
+              status: account.customEmailStatus || 'active',
+              extra_config: null,
+            };
+            if (account.customExtraConfig && typeof account.customExtraConfig === 'string') {
+              try {
+                customEmailConfig.extra_config = JSON.parse(account.customExtraConfig);
+              } catch (e) {
+                console.warn(`账户 ${account.email} 的自定义邮箱额外配置JSON解析失败: ${account.customExtraConfig}`);
+              }
+            } else if (account.customExtraConfig && typeof account.customExtraConfig === 'object') {
+              customEmailConfig.extra_config = account.customExtraConfig;
+            }
+            accountPayload.customEmailConfig = customEmailConfig;
+          }
+
+          const response = await api.post(`${API_BASE_URL}/api/infini-accounts`, accountPayload);
           
-          if (response.data.success) {
+          if (response.data.success) { // 后端现在应该在 data 中返回创建的账户信息，包括其ID
             results.success++;
-            // 标记该账户为成功
             newAccountsList[accountIndex].status = 'success';
+            // 如果后端返回了包含自定义邮箱配置的结果，可以在这里更新 newAccountsList[accountIndex]
           } else {
-            // 检查是否是"邮箱已添加过"的特殊情况
-            if (response.data.message && response.data.message.includes('该邮箱已经添加过')) {
+            const messageContent = response.data.message || '未知错误';
+            if (messageContent.includes('该邮箱已经添加过')) {
               results.warnings++;
-              // 标记为警告状态（已存在）
               newAccountsList[accountIndex].status = 'warning';
-              newAccountsList[accountIndex].errorMsg = response.data.message;
-              // 不将这种情况添加到错误消息列表
+              newAccountsList[accountIndex].errorMsg = messageContent;
             } else {
               results.failed++;
-              // 其他失败情况，标记为失败
               newAccountsList[accountIndex].status = 'fail';
-              newAccountsList[accountIndex].errorMsg = response.data.message;
-              results.messages.push(`账户 ${account.email} 添加失败: ${response.data.message}`);
+              newAccountsList[accountIndex].errorMsg = messageContent;
+              results.messages.push(`账户 ${account.email} 添加失败: ${messageContent}`);
             }
           }
         } catch (err: any) {
-          const errorMsg = err.response?.data?.message || err.message;
-          
-          // 检查异常中是否包含"邮箱已添加过"
-          if (errorMsg && errorMsg.includes('该邮箱已经添加过')) {
+          const errorMsg = err.response?.data?.message || err.message || '网络错误或未知错误';
+          if (errorMsg.includes('该邮箱已经添加过')) {
             results.warnings++;
-            // 标记为警告状态（已存在）
             newAccountsList[accountIndex].status = 'warning';
             newAccountsList[accountIndex].errorMsg = errorMsg;
-            // 不将这种情况添加到错误消息列表
           } else {
             results.failed++;
-            // 其他失败情况，标记为失败
             newAccountsList[accountIndex].status = 'fail';
             newAccountsList[accountIndex].errorMsg = errorMsg;
             results.messages.push(`账户 ${account.email} 添加失败: ${errorMsg}`);
@@ -4258,6 +4863,60 @@ const BatchAddAccountModal: React.FC<{
           <LockOutlined style={{ marginRight: 8 }} />
           {text}
         </div>
+      )
+    },
+    {
+      title: '使用自定义邮箱',
+      dataIndex: 'useCustomEmail',
+      key: 'useCustomEmail',
+      width: '15%',
+      editable: true,
+      render: (useCustom: boolean, record: BatchAddAccountItem) => (
+        <Checkbox
+          checked={useCustom}
+          onChange={(e) => {
+            // 更新 dataSource 中的数据，以便在保存时能够获取到最新值
+            const newData = [...accounts];
+            const index = newData.findIndex(item => record.key === item.key);
+            if (index > -1) {
+              const item = newData[index];
+              newData.splice(index, 1, {
+                ...item,
+                useCustomEmail: e.target.checked,
+              });
+              setAccounts(newData);
+              // 如果取消勾选，可能需要清空相关的自定义邮箱字段
+              if (!e.target.checked) {
+                const updatedItem = { ...newData[index], customEmailAddress: '', customEmailPassword: '' /*, other custom fields */ };
+                newData.splice(index, 1, updatedItem);
+                setAccounts(newData);
+                if (isEditing(record)) { // 如果在编辑模式下取消勾选，也更新form
+                  form.setFieldsValue({ customEmailAddress: '', customEmailPassword: '' });
+                }
+              }
+            }
+          }}
+        />
+      ),
+    },
+    {
+      title: '自定义邮箱',
+      dataIndex: 'customEmailAddress',
+      key: 'customEmailAddress',
+      editable: true,
+      width: '25%',
+      render: (text: string, record: BatchAddAccountItem) => (
+        record.useCustomEmail ? text : <Text type="secondary">-</Text>
+      )
+    },
+    {
+      title: '自定义邮箱密码',
+      dataIndex: 'customEmailPassword',
+      key: 'customEmailPassword',
+      editable: true,
+      width: '25%',
+      render: (text: string, record: BatchAddAccountItem) => (
+         record.useCustomEmail ? (text ? '********' : <Text type="secondary">未设置</Text>) : <Text type="secondary">-</Text>
       )
     },
     {
@@ -4347,12 +5006,8 @@ const BatchAddAccountModal: React.FC<{
   const isEditing = (record: {key: string}) => record.key === editingKey;
   
   // 开始编辑行
-  const edit = (record: {key: string}) => {
-    form.setFieldsValue({
-      email: '',
-      password: '',
-      ...record,
-    });
+  const edit = (record: BatchAddAccountItem) => {
+    form.setFieldsValue({ ...record }); // 直接使用 record 的值填充表单
     setEditingKey(record.key);
   };
   
