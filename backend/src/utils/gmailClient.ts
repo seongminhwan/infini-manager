@@ -78,10 +78,14 @@ class GmailClient {
       return null;
     }
 
-    // 如果已经有现成的代理配置，直接使用
+    // 如果已经有现成的代理配置，转换并使用
     if (this.config.proxyConfig) {
-      this.proxyConfig = this.config.proxyConfig;
-      return this.proxyConfig;
+      // 使用convertToSimpleProxyConfig函数转换可选配置为完整配置
+      const simpleConfig = convertToSimpleProxyConfig(this.config.proxyConfig);
+      if (simpleConfig) {
+        this.proxyConfig = simpleConfig;
+        return this.proxyConfig;
+      }
     }
 
     try {
