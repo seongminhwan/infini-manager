@@ -156,6 +156,21 @@ export interface GmailConfig {
   smtpHost: string;
   smtpPort: number;
   smtpSecure: boolean;
+
+  // 代理配置
+  useProxy?: boolean;
+  proxyMode?: 'direct' | 'specific' | 'tag_random'; // 代理模式：直连/指定代理/标签随机
+  proxyServerId?: number; // 指定代理服务器ID
+  proxyTag?: string; // 代理标签
+  proxyConfig?: {
+    host?: string;
+    port?: number;
+    type?: 'http' | 'https' | 'socks4' | 'socks5';
+    auth?: {
+      username?: string;
+      password?: string;
+    };
+  };
 }
 
 export interface GmailHeader {
