@@ -162,15 +162,7 @@ export interface GmailConfig {
   proxyMode?: 'direct' | 'specific' | 'tag_random'; // 代理模式：直连/指定代理/标签随机
   proxyServerId?: number; // 指定代理服务器ID
   proxyTag?: string; // 代理标签
-  proxyConfig?: {
-    host?: string;
-    port?: number;
-    type?: 'http' | 'https' | 'socks4' | 'socks5';
-    auth?: {
-      username?: string;
-      password?: string;
-    };
-  };
+  proxyConfig?: import('../utils/ProxyUtils').OptionalProxyConfig; // 使用OptionalProxyConfig接口
 }
 
 export interface GmailHeader {
