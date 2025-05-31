@@ -1695,7 +1695,7 @@ export class ProxyPoolService {
           const newTagNames = allTagNames.filter(name => !existingTagNames.includes(name));
           
           // 创建新标签
-          const newTagIds = [];
+          const newTagIds: number[] = [];
           if (newTagNames.length > 0) {
             const newTags = newTagNames.map(name => ({
               name,
@@ -1713,7 +1713,7 @@ export class ProxyPoolService {
           newTagNames.forEach((name, index) => tagMap.set(name, newTagIds[index]));
           
           // 构建服务器标签关系
-          const relations = [];
+          const relations: {proxy_server_id: number, tag_id: number, created_at: string}[] = [];
           
           // 为每个服务器添加标签
           serverIds.forEach((serverId, index) => {
