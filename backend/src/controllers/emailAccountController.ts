@@ -164,6 +164,40 @@ export async function createEmailAccount(req: Request, res: Response): Promise<v
     extraConfig: accountData.extraConfig || accountData.extra_config,
     domainName: accountData.domainName || accountData.domain_name
   };
+
+  // 处理代理配置字段
+  const proxyConfig: any = {};
+  
+  // 是否使用代理
+  if (accountData.useProxy !== undefined) {
+    proxyConfig.useProxy = accountData.useProxy;
+  }
+  
+  // 代理模式
+  if (accountData.proxyMode !== undefined) {
+    proxyConfig.proxyMode = accountData.proxyMode;
+  }
+  
+  // 指定代理服务器ID
+  if (accountData.proxyServerId !== undefined) {
+    proxyConfig.proxyServerId = accountData.proxyServerId;
+  }
+  
+  // 代理标签
+  if (accountData.proxyTag !== undefined) {
+    proxyConfig.proxyTag = accountData.proxyTag;
+  }
+  
+  // 直接代理配置
+  if (accountData.proxyConfig !== undefined) {
+    proxyConfig.proxyConfig = accountData.proxyConfig;
+  }
+  
+  // 如果有代理配置，添加到extraConfig中
+  if (Object.keys(proxyConfig).length > 0) {
+    normalizedData.extraConfig = normalizedData.extraConfig || {};
+    normalizedData.extraConfig.proxy = proxyConfig;
+  }
   
   // 基本验证
   if (!normalizedData.name || !normalizedData.email || !normalizedData.password || 
