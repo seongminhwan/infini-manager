@@ -2078,6 +2078,185 @@ export const proxyPoolApi = {
       throw error;
     }
   },
+
+  // ==================== 标签管理 ====================
+
+  // 获取所有标签
+  getAllTags: async () => {
+    try {
+      console.log('获取所有代理标签');
+      const response = await api.get(`${apiBaseUrl}/api/proxy-pools/tags`);
+      return response.data;
+    } catch (error) {
+      console.error('获取所有代理标签失败:', error);
+      throw error;
+    }
+  },
+
+  // 创建标签
+  createTag: async (tagData: {
+    name: string;
+    description?: string;
+    color?: string;
+  }) => {
+    try {
+      console.log('创建代理标签:', tagData);
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools/tags`, tagData);
+      return response.data;
+    } catch (error) {
+      console.error('创建代理标签失败:', error);
+      throw error;
+    }
+  },
+
+  // 更新标签
+  updateTag: async (tagId: number, tagData: {
+    name?: string;
+    description?: string;
+    color?: string;
+  }) => {
+    try {
+      console.log(`更新代理标签 ${tagId}:`, tagData);
+      const response = await api.put(`${apiBaseUrl}/api/proxy-pools/tags/${tagId}`, tagData);
+      return response.data;
+    } catch (error) {
+      console.error('更新代理标签失败:', error);
+      throw error;
+    }
+  },
+
+  // 删除标签
+  deleteTag: async (tagId: number) => {
+    try {
+      console.log(`删除代理标签 ${tagId}`);
+      const response = await api.delete(`${apiBaseUrl}/api/proxy-pools/tags/${tagId}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除代理标签失败:', error);
+      throw error;
+    }
+  },
+
+  // 获取代理服务器的标签
+  getServerTags: async (serverId: number) => {
+    try {
+      console.log(`获取代理服务器 ${serverId} 的标签`);
+      const response = await api.get(`${apiBaseUrl}/api/proxy-pools/servers/${serverId}/tags`);
+      return response.data;
+    } catch (error) {
+      console.error('获取代理服务器标签失败:', error);
+      throw error;
+    }
+  },
+
+  // 为代理服务器添加标签
+  addTagToServer: async (serverId: number, tagId: number) => {
+    try {
+      console.log(`为代理服务器 ${serverId} 添加标签 ${tagId}`);
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools/servers/${serverId}/tags`, {
+        tagId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('为代理服务器添加标签失败:', error);
+      throw error;
+    }
+  },
+
+  // 为代理服务器批量添加标签
+  addTagsToServer: async (serverId: number, tagIds: number[]) => {
+    try {
+      console.log(`为代理服务器 ${serverId} 批量添加标签, 数量: ${tagIds.length}`);
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools/servers/${serverId}/tags`, {
+        tagIds
+      });
+      return response.data;
+    } catch (error) {
+      console.error('为代理服务器批量添加标签失败:', error);
+      throw error;
+    }
+  },
+
+  // 从代理服务器移除标签
+  removeTagFromServer: async (serverId: number, tagId: number) => {
+    try {
+      console.log(`从代理服务器 ${serverId} 移除标签 ${tagId}`);
+      const response = await api.delete(`${apiBaseUrl}/api/proxy-pools/servers/${serverId}/tags/${tagId}`);
+      return response.data;
+    } catch (error) {
+      console.error('从代理服务器移除标签失败:', error);
+      throw error;
+    }
+  },
+
+  // 通过标签获取代理服务器
+  getServersByTag: async (tagId: number) => {
+    try {
+      console.log(`通过标签 ${tagId} 获取代理服务器`);
+      const response = await api.get(`${apiBaseUrl}/api/proxy-pools/tags/${tagId}/servers`);
+      return response.data;
+    } catch (error) {
+      console.error('通过标签获取代理服务器失败:', error);
+      throw error;
+    }
+  },
+
+  // 通过标签名称获取代理服务器
+  getServersByTagName: async (tagName: string) => {
+    try {
+      console.log(`通过标签名称 "${tagName}" 获取代理服务器`);
+      const response = await api.get(`${apiBaseUrl}/api/proxy-pools/tags/name/${encodeURIComponent(tagName)}/servers`);
+      return response.data;
+    } catch (error) {
+      console.error('通过标签名称获取代理服务器失败:', error);
+      throw error;
+    }
+  },
+
+  // 随机获取带有指定标签的代理服务器
+  getRandomServerWithTags: async (tagNames: string[]) => {
+    try {
+      console.log(`随机获取带有指定标签的代理服务器, 标签: ${tagNames.join(', ')}`);
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools/random-server-with-tags`, {
+        tagNames
+      });
+      return response.data;
+    } catch (error) {
+      console.error('随机获取带有指定标签的代理服务器失败:', error);
+      throw error;
+    }
+  },
+
+  // ==================== 批量导入预览 ====================
+
+  // 预览批量导入的代理服务器
+  previewBatchServers: async (poolId: number, proxyStrings: string[]) => {
+    try {
+      console.log(`预览批量导入的代理服务器, 代理池: ${poolId}, 数量: ${proxyStrings.length}`);
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools/${poolId}/servers/preview`, {
+        proxyStrings
+      });
+      return response.data;
+    } catch (error) {
+      console.error('预览批量导入的代理服务器失败:', error);
+      throw error;
+    }
+  },
+
+  // 批量添加代理服务器（支持标签）
+  batchAddServersWithTags: async (poolId: number, proxyStrings: string[], defaultTags: string[] = []) => {
+    try {
+      console.log(`批量添加代理服务器（支持标签）, 代理池: ${poolId}, 数量: ${proxyStrings.length}, 默认标签: ${defaultTags.join(', ')}`);
+      const response = await api.post(`${apiBaseUrl}/api/proxy-pools/${poolId}/servers/batch-with-tags`, {
+        proxyStrings,
+        defaultTags
+      });
+      return response.data;
+    } catch (error) {
+      console.error('批量添加代理服务器（支持标签）失败:', error);
+      throw error;
+    }
+  },
 };
 
 /**
