@@ -1284,3 +1284,7 @@ const ProxyManage: React.FC = () => {
         </Form>
       </Modal>
     </div>
+  );
+};
+
+export default ProxyManage;
