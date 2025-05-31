@@ -1274,4 +1274,13 @@ const ProxyManage: React.FC = () => {
                   >
                     确认导入
                   </Button>
-                  <Button onClick={handleCancelPreview}></Button>
+                  <Button onClick={handleCancelPreview}>
+                    取消预览
+                  </Button>
+                </>
+              )}
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
