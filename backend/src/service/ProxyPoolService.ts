@@ -1140,4 +1140,638 @@ export class ProxyPoolService {
       };
     }
   }
-} 
+
+  // ==================== 标签管理 ====================
+
+  /**
+   * 获取所有标签
+   */
+  async getAllTags(): Promise<ApiResponse> {
+    try {
+      const tags = await db('proxy_tags').orderBy('name');
+      
+      return {
+        success: true,
+        data: tags
+      };
+    } catch (error) {
+      console.error('获取标签列表失败:', error);
+      return {
+        success: false,
+        message: `获取标签列表失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 创建标签
+   */
+  async createTag(tagData: Omit<ProxyTag, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse> {
+    try {
+      const [id] = await db('proxy_tags').insert({
+        ...tagData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+      
+      const tag = await db('proxy_tags').where({ id }).first();
+      
+      return {
+        success: true,
+        message: '标签创建成功',
+        data: tag
+      };
+    } catch (error) {
+      console.error('创建标签失败:', error);
+      return {
+        success: false,
+        message: `创建标签失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 更新标签
+   */
+  async updateTag(id: number, tagData: Partial<Omit<ProxyTag, 'id' | 'created_at' | 'updated_at'>>): Promise<ApiResponse> {
+    try {
+      const tag = await db('proxy_tags').where({ id }).first();
+      if (!tag) {
+        return {
+          success: false,
+          message: '标签不存在'
+        };
+      }
+      
+      await db('proxy_tags')
+        .where({ id })
+        .update({
+          ...tagData,
+          updated_at: new Date().toISOString()
+        });
+      
+      const updatedTag = await db('proxy_tags').where({ id }).first();
+      
+      return {
+        success: true,
+        message: '标签更新成功',
+        data: updatedTag
+      };
+    } catch (error) {
+      console.error('更新标签失败:', error);
+      return {
+        success: false,
+        message: `更新标签失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 删除标签
+   */
+  async deleteTag(id: number): Promise<ApiResponse> {
+    try {
+      const tag = await db('proxy_tags').where({ id }).first();
+      if (!tag) {
+        return {
+          success: false,
+          message: '标签不存在'
+        };
+      }
+      
+      // 删除标签（关联的代理服务器标签关系会通过外键级联删除）
+      const deleted = await db('proxy_tags').where({ id }).del();
+      
+      if (deleted === 0) {
+        return {
+          success: false,
+          message: '标签删除失败'
+        };
+      }
+      
+      return {
+        success: true,
+        message: '标签删除成功'
+      };
+    } catch (error) {
+      console.error('删除标签失败:', error);
+      return {
+        success: false,
+        message: `删除标签失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 为代理服务器添加标签
+   */
+  async addTagToServer(serverId: number, tagId: number): Promise<ApiResponse> {
+    try {
+      // 检查代理服务器是否存在
+      const server = await db('proxy_servers').where({ id: serverId }).first();
+      if (!server) {
+        return {
+          success: false,
+          message: '代理服务器不存在'
+        };
+      }
+      
+      // 检查标签是否存在
+      const tag = await db('proxy_tags').where({ id: tagId }).first();
+      if (!tag) {
+        return {
+          success: false,
+          message: '标签不存在'
+        };
+      }
+      
+      // 检查关系是否已存在
+      const existingRelation = await db('proxy_server_tags')
+        .where({ proxy_server_id: serverId, tag_id: tagId })
+        .first();
+      
+      if (existingRelation) {
+        return {
+          success: false,
+          message: '代理服务器已添加该标签'
+        };
+      }
+      
+      // 添加关系
+      await db('proxy_server_tags').insert({
+        proxy_server_id: serverId,
+        tag_id: tagId,
+        created_at: new Date().toISOString()
+      });
+      
+      return {
+        success: true,
+        message: '标签添加成功',
+        data: {
+          serverId,
+          tagId,
+          tagName: tag.name
+        }
+      };
+    } catch (error) {
+      console.error('为代理服务器添加标签失败:', error);
+      return {
+        success: false,
+        message: `为代理服务器添加标签失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 为代理服务器批量添加标签
+   */
+  async addTagsToServer(serverId: number, tagIds: number[]): Promise<ApiResponse> {
+    try {
+      // 检查代理服务器是否存在
+      const server = await db('proxy_servers').where({ id: serverId }).first();
+      if (!server) {
+        return {
+          success: false,
+          message: '代理服务器不存在'
+        };
+      }
+      
+      // 检查标签是否存在
+      const tags = await db('proxy_tags').whereIn('id', tagIds);
+      if (tags.length !== tagIds.length) {
+        return {
+          success: false,
+          message: '部分标签不存在'
+        };
+      }
+      
+      // 获取现有的标签关系
+      const existingRelations = await db('proxy_server_tags')
+        .where({ proxy_server_id: serverId })
+        .whereIn('tag_id', tagIds);
+      
+      const existingTagIds = existingRelations.map(relation => relation.tag_id);
+      const newTagIds = tagIds.filter(id => !existingTagIds.includes(id));
+      
+      if (newTagIds.length === 0) {
+        return {
+          success: true,
+          message: '代理服务器已添加所有指定标签',
+          data: {
+            serverId,
+            addedTags: 0,
+            totalTags: tagIds.length
+          }
+        };
+      }
+      
+      // 添加关系
+      const relations = newTagIds.map(tagId => ({
+        proxy_server_id: serverId,
+        tag_id: tagId,
+        created_at: new Date().toISOString()
+      }));
+      
+      await db('proxy_server_tags').insert(relations);
+      
+      return {
+        success: true,
+        message: '标签批量添加成功',
+        data: {
+          serverId,
+          addedTags: newTagIds.length,
+          totalTags: tagIds.length
+        }
+      };
+    } catch (error) {
+      console.error('为代理服务器批量添加标签失败:', error);
+      return {
+        success: false,
+        message: `为代理服务器批量添加标签失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 从代理服务器移除标签
+   */
+  async removeTagFromServer(serverId: number, tagId: number): Promise<ApiResponse> {
+    try {
+      const deleted = await db('proxy_server_tags')
+        .where({
+          proxy_server_id: serverId,
+          tag_id: tagId
+        })
+        .del();
+      
+      if (deleted === 0) {
+        return {
+          success: false,
+          message: '代理服务器未添加该标签或关系不存在'
+        };
+      }
+      
+      return {
+        success: true,
+        message: '标签移除成功',
+        data: {
+          serverId,
+          tagId
+        }
+      };
+    } catch (error) {
+      console.error('从代理服务器移除标签失败:', error);
+      return {
+        success: false,
+        message: `从代理服务器移除标签失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 获取代理服务器的所有标签
+   */
+  async getServerTags(serverId: number): Promise<ApiResponse> {
+    try {
+      // 检查代理服务器是否存在
+      const server = await db('proxy_servers').where({ id: serverId }).first();
+      if (!server) {
+        return {
+          success: false,
+          message: '代理服务器不存在'
+        };
+      }
+      
+      // 获取标签
+      const tags = await db('proxy_tags')
+        .join('proxy_server_tags', 'proxy_tags.id', 'proxy_server_tags.tag_id')
+        .where('proxy_server_tags.proxy_server_id', serverId)
+        .select('proxy_tags.*');
+      
+      return {
+        success: true,
+        data: tags
+      };
+    } catch (error) {
+      console.error('获取代理服务器标签失败:', error);
+      return {
+        success: false,
+        message: `获取代理服务器标签失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 通过标签获取代理服务器
+   */
+  async getServersByTag(tagId: number): Promise<ApiResponse> {
+    try {
+      // 检查标签是否存在
+      const tag = await db('proxy_tags').where({ id: tagId }).first();
+      if (!tag) {
+        return {
+          success: false,
+          message: '标签不存在'
+        };
+      }
+      
+      // 获取代理服务器
+      const servers = await db('proxy_servers')
+        .join('proxy_server_tags', 'proxy_servers.id', 'proxy_server_tags.proxy_server_id')
+        .where('proxy_server_tags.tag_id', tagId)
+        .select('proxy_servers.*');
+      
+      return {
+        success: true,
+        data: servers
+      };
+    } catch (error) {
+      console.error('通过标签获取代理服务器失败:', error);
+      return {
+        success: false,
+        message: `通过标签获取代理服务器失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 通过标签名称获取代理服务器
+   */
+  async getServersByTagName(tagName: string): Promise<ApiResponse> {
+    try {
+      // 检查标签是否存在
+      const tag = await db('proxy_tags').where({ name: tagName }).first();
+      if (!tag) {
+        return {
+          success: false,
+          message: '标签不存在'
+        };
+      }
+      
+      // 获取代理服务器
+      const servers = await db('proxy_servers')
+        .join('proxy_server_tags', 'proxy_servers.id', 'proxy_server_tags.proxy_server_id')
+        .join('proxy_tags', 'proxy_server_tags.tag_id', 'proxy_tags.id')
+        .where('proxy_tags.name', tagName)
+        .select('proxy_servers.*');
+      
+      return {
+        success: true,
+        data: servers
+      };
+    } catch (error) {
+      console.error('通过标签名称获取代理服务器失败:', error);
+      return {
+        success: false,
+        message: `通过标签名称获取代理服务器失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 随机获取带有指定标签的代理服务器
+   */
+  async getRandomServerWithTags(tagNames: string[]): Promise<ApiResponse> {
+    try {
+      // 查询符合条件的代理服务器
+      let query = db('proxy_servers')
+        .join('proxy_server_tags', 'proxy_servers.id', 'proxy_server_tags.proxy_server_id')
+        .join('proxy_tags', 'proxy_server_tags.tag_id', 'proxy_tags.id')
+        .where('proxy_servers.enabled', true)
+        .where('proxy_servers.is_healthy', true)
+        .whereIn('proxy_tags.name', tagNames)
+        .select('proxy_servers.*')
+        .groupBy('proxy_servers.id')
+        .havingRaw('COUNT(DISTINCT proxy_tags.name) = ?', [tagNames.length]);
+      
+      const servers = await query;
+      
+      if (servers.length === 0) {
+        return {
+          success: false,
+          message: '没有符合条件的代理服务器'
+        };
+      }
+      
+      // 随机选择一个
+      const randomIndex = Math.floor(Math.random() * servers.length);
+      const server = servers[randomIndex];
+      
+      // 获取该服务器的所有标签
+      const tags = await db('proxy_tags')
+        .join('proxy_server_tags', 'proxy_tags.id', 'proxy_server_tags.tag_id')
+        .where('proxy_server_tags.proxy_server_id', server.id)
+        .select('proxy_tags.*');
+      
+      server.tags = tags;
+      
+      return {
+        success: true,
+        data: server
+      };
+    } catch (error) {
+      console.error('随机获取带有指定标签的代理服务器失败:', error);
+      return {
+        success: false,
+        message: `随机获取带有指定标签的代理服务器失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  // ==================== 批量导入预览 ====================
+
+  /**
+   * 批量解析代理字符串并返回预览结果
+   * 与addProxyServersBatch不同，此方法不会将代理添加到数据库
+   */
+  previewProxyBatch(proxyStrings: string[]): ApiResponse {
+    try {
+      const parsedProxies = this.parseProxyBatch(proxyStrings);
+      
+      if (parsedProxies.length === 0) {
+        return {
+          success: false,
+          message: '没有有效的代理地址'
+        };
+      }
+      
+      // 构建预览数据
+      const previewData = parsedProxies.map((proxy, index) => ({
+        name: `代理${Date.now()}-${index + 1}`,
+        proxy_type: proxy.proxy_type,
+        host: proxy.host,
+        port: proxy.port,
+        username: proxy.username,
+        password: proxy.password,
+        remark: proxy.remark,
+        refreshUrl: proxy.refreshUrl,
+        tags: proxy.tags
+      }));
+      
+      // 汇总信息
+      const summary = {
+        total: proxyStrings.length,
+        valid: parsedProxies.length,
+        invalid: proxyStrings.length - parsedProxies.length,
+        types: {} as Record<string, number>
+      };
+      
+      // 统计不同类型的代理数量
+      parsedProxies.forEach(proxy => {
+        if (!summary.types[proxy.proxy_type]) {
+          summary.types[proxy.proxy_type] = 0;
+        }
+        summary.types[proxy.proxy_type]++;
+      });
+      
+      return {
+        success: true,
+        data: {
+          proxies: previewData,
+          summary
+        }
+      };
+    } catch (error) {
+      console.error('预览批量代理失败:', error);
+      return {
+        success: false,
+        message: `预览批量代理失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * 批量添加代理服务器（包含标签支持）
+   */
+  async addProxyServersBatchWithTags(poolId: number, proxyStrings: string[], defaultTags: string[] = []): Promise<ApiResponse> {
+    try {
+      const parsedProxies = this.parseProxyBatch(proxyStrings);
+      
+      if (parsedProxies.length === 0) {
+        return {
+          success: false,
+          message: '没有有效的代理地址'
+        };
+      }
+      
+      // 准备服务器数据
+      const servers = parsedProxies.map((proxy, index) => ({
+        pool_id: poolId,
+        name: `代理${Date.now()}-${index + 1}`,
+        proxy_type: proxy.proxy_type,
+        host: proxy.host,
+        port: proxy.port,
+        username: proxy.username,
+        password: proxy.password,
+        enabled: true,
+        is_healthy: true,
+        success_count: 0,
+        failure_count: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+      
+      // 事务开始
+      const trx = await db.transaction();
+      
+      try {
+        // 插入服务器
+        const serverIds = await trx('proxy_servers').insert(servers).returning('id');
+        
+        // 如果有默认标签或代理中包含标签，处理标签
+        if (defaultTags.length > 0 || parsedProxies.some(p => p.tags && p.tags.length > 0)) {
+          // 获取或创建标签
+          const allTagNames = Array.from(new Set([
+            ...defaultTags,
+            ...parsedProxies.flatMap(p => p.tags || [])
+          ]));
+          
+          // 查询已存在的标签
+          const existingTags = await trx('proxy_tags')
+            .whereIn('name', allTagNames)
+            .select('id', 'name');
+          
+          const existingTagNames = existingTags.map(t => t.name);
+          const newTagNames = allTagNames.filter(name => !existingTagNames.includes(name));
+          
+          // 创建新标签
+          const newTagIds = [];
+          if (newTagNames.length > 0) {
+            const newTags = newTagNames.map(name => ({
+              name,
+              color: '#1890ff', // 默认颜色
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }));
+            
+            newTagIds.push(...await trx('proxy_tags').insert(newTags).returning('id'));
+          }
+          
+          // 合并所有标签ID和名称的映射
+          const tagMap = new Map<string, number>();
+          existingTags.forEach(tag => tagMap.set(tag.name, tag.id));
+          newTagNames.forEach((name, index) => tagMap.set(name, newTagIds[index]));
+          
+          // 构建服务器标签关系
+          const relations = [];
+          
+          // 为每个服务器添加标签
+          serverIds.forEach((serverId, index) => {
+            // 默认标签
+            defaultTags.forEach(tagName => {
+              const tagId = tagMap.get(tagName);
+              if (tagId) {
+                relations.push({
+                  proxy_server_id: serverId,
+                  tag_id: tagId,
+                  created_at: new Date().toISOString()
+                });
+              }
+            });
+            
+            // 代理自身标签
+            const proxyTags = parsedProxies[index].tags || [];
+            proxyTags.forEach(tagName => {
+              const tagId = tagMap.get(tagName);
+              if (tagId) {
+                relations.push({
+                  proxy_server_id: serverId,
+                  tag_id: tagId,
+                  created_at: new Date().toISOString()
+                });
+              }
+            });
+          });
+          
+          // 插入服务器标签关系
+          if (relations.length > 0) {
+            await trx('proxy_server_tags').insert(relations);
+          }
+        }
+        
+        // 提交事务
+        await trx.commit();
+        
+        return {
+          success: true,
+          message: `成功添加 ${servers.length} 个代理服务器`,
+          data: { 
+            added: servers.length, 
+            total: proxyStrings.length,
+            serverIds
+          }
+        };
+      } catch (error) {
+        // 回滚事务
+        await trx.rollback();
+        throw error;
+      }
+    } catch (error) {
+      console.error('批量添加代理服务器失败:', error);
+      return {
+        success: false,
+        message: `批量添加代理服务器失败: ${(error as Error).message}`
+      };
+    }
+  }
+}
