@@ -1230,6 +1230,32 @@ export async function getEmailMessages(req: Request, res: Response): Promise<voi
       }
     }
     
+    // 提取代理配置（如果存在）
+    if (account.extra_config) {
+      try {
+        const extraConfig = JSON.parse(account.extra_config);
+        if (extraConfig.proxy) {
+          const proxyConfig = extraConfig.proxy;
+          
+          // 添加代理配置到GmailConfig对象
+          config.useProxy = proxyConfig.useProxy;
+          config.proxyMode = proxyConfig.proxyMode;
+          config.proxyServerId = proxyConfig.proxyServerId;
+          config.proxyTag = proxyConfig.proxyTag;
+          config.proxyConfig = proxyConfig.proxyConfig;
+          
+          console.log(`[邮件列表] 使用代理配置:`, {
+            useProxy: config.useProxy,
+            proxyMode: config.proxyMode,
+            proxyServerId: config.proxyServerId,
+            proxyTag: config.proxyTag
+          });
+        }
+      } catch (e) {
+        console.warn('解析邮箱账户代理配置失败:', e);
+      }
+    }
+    
     try {
       // 构建查询选项
       const queryOptions: GmailQueryOptions = {
