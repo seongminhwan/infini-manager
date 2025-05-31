@@ -709,6 +709,9 @@ export async function testEmailAccount(req: Request, res: Response): Promise<voi
       imapSecure: account.imap_secure
     };
     
+    // 创建测试ID
+    const testId = `test-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
     // 提取代理配置（如果存在）
     if (account.extra_config) {
       try {
@@ -734,9 +737,6 @@ export async function testEmailAccount(req: Request, res: Response): Promise<voi
         console.warn('解析邮箱账户代理配置失败:', e);
       }
     }
-    
-    // 创建测试ID
-    const testId = `test-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     
     // 初始化测试结果
     const testResult: EmailAccountTestResult = {
