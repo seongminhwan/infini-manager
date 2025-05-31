@@ -5,7 +5,7 @@
 import { ProxyServer } from "../service/ProxyPoolService";
 import db from '../db/db';
 
-// 代理服务器接口
+// 代理服务器接口 - 所有字段都是必需的
 export interface SimpleProxyConfig {
   host: string;
   port: number;
@@ -16,6 +16,34 @@ export interface SimpleProxyConfig {
   };
 }
 
+// 可选代理配置接口 - 所有字段都是可选的
+export interface OptionalProxyConfig {
+  host?: string;
+  port?: number;
+  type?: 'http' | 'https' | 'socks4' | 'socks5';
+  auth?: {
+    username?: string;
+    password?: string;
+  };
+}
+
+/**
+ * 将可选代理配置转换为完整的代理配置
+ * @param optionalConfig 可选代理配置
+ * @returns 完整的代理配置或null
+ */
+export function convertToSimpleProxyConfig(optionalConfig: OptionalProxyConfig): SimpleProxyConfig | null {
+  if (!optionalConfig.host || !optionalConfig.port || !optionalConfig.type) {
+    return null;
+  }
+  
+  return {
+    host: optionalConfig.host,
+    port: optionalConfig.port,
+    type: optionalConfig.type,
+    auth: optionalConfig.auth
+  };
+}
 /**
  * 获取指定ID的代理服务器
  * @param proxyServerId 代理服务器ID
