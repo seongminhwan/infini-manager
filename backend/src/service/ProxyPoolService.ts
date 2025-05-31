@@ -35,6 +35,7 @@ export interface ProxyServer {
   failure_count: number;
   created_at?: string;
   updated_at?: string;
+  tags?: ProxyTag[]; // 关联的标签
 }
 
 export interface ProxyUsageStats {
@@ -57,6 +58,23 @@ export interface ParsedProxy {
   password?: string;
   remark?: string;       // 代理备注信息
   refreshUrl?: string;   // 代理刷新URL
+  tags?: string[];       // 标签列表
+}
+
+export interface ProxyTag {
+  id?: number;
+  name: string;
+  description?: string;
+  color?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProxyServerTag {
+  id?: number;
+  proxy_server_id: number;
+  tag_id: number;
+  created_at?: string;
 }
 
 export class ProxyPoolService {
