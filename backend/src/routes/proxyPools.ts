@@ -743,4 +743,567 @@ router.post('/health-check', async (req: Request, res: Response) => {
   }
 });
 
-export default router; 
+// ==================== 标签管理 ====================
+
+/**
+ * @swagger
+ * /api/proxy-pools/tags:
+ *   get:
+ *     summary: 获取所有标签
+ *     tags: [代理标签管理]
+ *     responses:
+ *       200:
+ *         description: 成功获取标签列表
+ */
+router.get('/tags', async (req: Request, res: Response) => {
+  try {
+    console.log('接收到获取所有标签请求');
+    const result = await proxyPoolService.getAllTags();
+    console.log(`获取到 ${result.data?.length || 0} 个标签`);
+    res.json(result);
+  } catch (error) {
+    console.error('获取标签列表失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取标签列表失败'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/proxy-pools/tags:
+ *   post:
+ *     summary: 创建标签
+ *     tags: [代理标签管理]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               color:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: 标签创建成功
+ */
+router.post('/tags', async (req: Request, res: Response) => {
+  try {
+    console.log('接收到创建标签请求:', req.body);
+    const result = await proxyPoolService.createTag(req.body);
+    
+    if (result.success) {
+      console.log('标签创建成功:', result.data);
+      res.status(201).json(result);
+    } else {
+      console.log('标签创建失败:', result.message);
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error('创建标签失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '创建标签失败'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/proxy-pools/tags/{tagId}:
+ *   put:
+ *     summary: 更新标签
+ *     tags: [代理标签管理]
+ *     parameters:
+ *       - in: path
+ *         name: tagId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               color:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 标签更新成功
+ */
+router.put('/tags/:tagId', async (req: Request, res: Response) => {
+  try {
+    const tagId = parseInt(req.params.tagId);
+    console.log(`接收到更新标签请求，标签ID: ${tagId}`, req.body);
+    
+    const result = await proxyPoolService.updateTag(tagId, req.body);
+    
+    if (result.success) {
+      console.log('标签更新成功:', result.data);
+      res.json(result);
+    } else {
+      console.log('标签更新失败:', result.message);
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error('更新标签失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '更新标签失败'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/proxy-pools/tags/{tagId}:
+ *   delete:
+ *     summary: 删除标签
+ *     tags: [代理标签管理]
+ *     parameters:
+ *       - in: path
+ *         name: tagId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: 标签删除成功
+ */
+router.delete('/tags/:tagId', async (req: Request, res: Response) => {
+  try {
+    const tagId = parseInt(req.params.tagId);
+    console.log(`接收到删除标签请求，标签ID: ${tagId}`);
+    
+    const result = await proxyPoolService.deleteTag(tagId);
+    
+    if (result.success) {
+      console.log('标签删除成功');
+      res.json(result);
+    } else {
+      console.log('标签删除失败:', result.message);
+      res.status(404).json(result);
+    }
+  } catch (error) {
+    console.error('删除标签失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '删除标签失败'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/proxy-pools/servers/{serverId}/tags:
+ *   get:
+ *     summary: 获取代理服务器的所有标签
+ *     tags: [代理标签管理]
+ *     parameters:
+ *       - in: path
+ *         name: serverId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: 成功获取代理服务器标签
+ */
+router.get('/servers/:serverId/tags', async (req: Request, res: Response) => {
+  try {
+    const serverId = parseInt(req.params.serverId);
+    console.log(`接收到获取代理服务器标签请求，服务器ID: ${serverId}`);
+    
+    const result = await proxyPoolService.getServerTags(serverId);
+    
+    if (result.success) {
+      console.log(`获取到 ${result.data?.length || 0} 个标签`);
+      res.json(result);
+    } else {
+      console.log('获取代理服务器标签失败:', result.message);
+      res.status(404).json(result);
+    }
+  } catch (error) {
+    console.error('获取代理服务器标签失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取代理服务器标签失败'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/proxy-pools/servers/{serverId}/tags:
+ *   post:
+ *     summary: 为代理服务器添加标签
+ *     tags: [代理标签管理]
+ *     parameters:
+ *       - in: path
+ *         name: serverId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               tagId:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: 标签添加成功
+ */
+router.post('/servers/:serverId/tags', async (req: Request, res: Response) => {
+  try {
+    const serverId = parseInt(req.params.serverId);
+    const { tagId, tagIds } = req.body;
+    console.log(`接收到为代理服务器添加标签请求，服务器ID: ${serverId}`);
+    
+    let result;
+    if (tagIds && Array.isArray(tagIds)) {
+      console.log(`批量添加标签，标签ID列表: ${tagIds.join(', ')}`);
+      result = await proxyPoolService.addTagsToServer(serverId, tagIds);
+    } else if (tagId) {
+      console.log(`添加单个标签，标签ID: ${tagId}`);
+      result = await proxyPoolService.addTagToServer(serverId, tagId);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: '必须提供tagId或tagIds参数'
+      });
+    }
+    
+    if (result.success) {
+      console.log('标签添加成功:', result.data);
+      res.status(201).json(result);
+    } else {
+      console.log('标签添加失败:', result.message);
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error('为代理服务器添加标签失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '为代理服务器添加标签失败'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/proxy-pools/servers/{serverId}/tags/{tagId}:
+ *   delete:
+ *     summary: 从代理服务器移除标签
+ *     tags: [代理标签管理]
+ *     parameters:
+ *       - in: path
+ *         name: serverId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: tagId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: 标签移除成功
+ */
+router.delete('/servers/:serverId/tags/:tagId', async (req: Request, res: Response) => {
+  try {
+    const serverId = parseInt(req.params.serverId);
+    const tagId = parseInt(req.params.tagId);
+    console.log(`接收到从代理服务器移除标签请求，服务器ID: ${serverId}，标签ID: ${tagId}`);
+    
+    const result = await proxyPoolService.removeTagFromServer(serverId, tagId);
+    
+    if (result.success) {
+      console.log('标签移除成功');
+      res.json(result);
+    } else {
+      console.log('标签移除失败:', result.message);
+      res.status(404).json(result);
+    }
+  } catch (error) {
+    console.error('从代理服务器移除标签失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '从代理服务器移除标签失败'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/proxy-pools/tags/{tagId}/servers:
+ *   get:
+ *     summary: 通过标签获取代理服务器
+ *     tags: [代理标签管理]
+ *     parameters:
+ *       - in: path
+ *         name: tagId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: 成功获取代理服务器列表
+ */
+router.get('/tags/:tagId/servers', async (req: Request, res: Response) => {
+  try {
+    const tagId = parseInt(req.params.tagId);
+    console.log(`接收到通过标签获取代理服务器请求，标签ID: ${tagId}`);
+    
+    const result = await proxyPoolService.getServersByTag(tagId);
+    
+    if (result.success) {
+      console.log(`获取到 ${result.data?.length || 0} 个代理服务器`);
+      res.json(result);
+    } else {
+      console.log('通过标签获取代理服务器失败:', result.message);
+      res.status(404).json(result);
+    }
+  } catch (error) {
+    console.error('通过标签获取代理服务器失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '通过标签获取代理服务器失败'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/proxy-pools/tags/name/{tagName}/servers:
+ *   get:
+ *     summary: 通过标签名称获取代理服务器
+ *     tags: [代理标签管理]
+ *     parameters:
+ *       - in: path
+ *         name: tagName
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 成功获取代理服务器列表
+ */
+router.get('/tags/name/:tagName/servers', async (req: Request, res: Response) => {
+  try {
+    const tagName = req.params.tagName;
+    console.log(`接收到通过标签名称获取代理服务器请求，标签名称: ${tagName}`);
+    
+    const result = await proxyPoolService.getServersByTagName(tagName);
+    
+    if (result.success) {
+      console.log(`获取到 ${result.data?.length || 0} 个代理服务器`);
+      res.json(result);
+    } else {
+      console.log('通过标签名称获取代理服务器失败:', result.message);
+      res.status(404).json(result);
+    }
+  } catch (error) {
+    console.error('通过标签名称获取代理服务器失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '通过标签名称获取代理服务器失败'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/proxy-pools/random-server-with-tags:
+ *   post:
+ *     summary: 随机获取带有指定标签的代理服务器
+ *     tags: [代理标签管理]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               tagNames:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: 成功获取代理服务器
+ */
+router.post('/random-server-with-tags', async (req: Request, res: Response) => {
+  try {
+    const { tagNames } = req.body;
+    console.log(`接收到随机获取带有指定标签的代理服务器请求，标签: ${tagNames?.join(', ')}`);
+    
+    if (!Array.isArray(tagNames) || tagNames.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'tagNames必须是非空数组'
+      });
+    }
+    
+    const result = await proxyPoolService.getRandomServerWithTags(tagNames);
+    
+    if (result.success) {
+      console.log('随机获取代理服务器成功:', result.data?.id);
+      res.json(result);
+    } else {
+      console.log('随机获取代理服务器失败:', result.message);
+      res.status(404).json(result);
+    }
+  } catch (error) {
+    console.error('随机获取带有指定标签的代理服务器失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '随机获取带有指定标签的代理服务器失败'
+    });
+  }
+});
+
+// ==================== 批量导入预览 ====================
+
+/**
+ * @swagger
+ * /api/proxy-pools/{poolId}/servers/preview:
+ *   post:
+ *     summary: 批量预览代理服务器（不添加到数据库）
+ *     tags: [代理池管理]
+ *     parameters:
+ *       - in: path
+ *         name: poolId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               proxyStrings:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 代理字符串列表，支持多种格式
+ *     responses:
+ *       200:
+ *         description: 成功预览代理服务器
+ */
+router.post('/:poolId/servers/preview', async (req: Request, res: Response) => {
+  try {
+    const poolId = parseInt(req.params.poolId);
+    const { proxyStrings } = req.body;
+    
+    console.log(`接收到批量预览代理服务器请求，代理池ID: ${poolId}，数量: ${proxyStrings?.length || 0}`);
+    
+    if (!Array.isArray(proxyStrings)) {
+      return res.status(400).json({
+        success: false,
+        message: 'proxyStrings 必须是字符串数组'
+      });
+    }
+    
+    const result = proxyPoolService.previewProxyBatch(proxyStrings);
+    
+    if (result.success) {
+      console.log('批量预览代理服务器成功:', result.data?.summary);
+      res.json(result);
+    } else {
+      console.log('批量预览代理服务器失败:', result.message);
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error('批量预览代理服务器失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '批量预览代理服务器失败'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/proxy-pools/{poolId}/servers/batch-with-tags:
+ *   post:
+ *     summary: 批量添加代理服务器（支持标签）
+ *     tags: [代理池管理]
+ *     parameters:
+ *       - in: path
+ *         name: poolId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               proxyStrings:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 代理字符串列表，支持多种格式
+ *               defaultTags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 默认添加的标签名称列表
+ *     responses:
+ *       201:
+ *         description: 批量添加成功
+ */
+router.post('/:poolId/servers/batch-with-tags', async (req: Request, res: Response) => {
+  try {
+    const poolId = parseInt(req.params.poolId);
+    const { proxyStrings, defaultTags = [] } = req.body;
+    
+    console.log(`接收到批量添加代理服务器请求（带标签），代理池ID: ${poolId}，数量: ${proxyStrings?.length || 0}，默认标签: ${defaultTags?.join(', ')}`);
+    
+    if (!Array.isArray(proxyStrings)) {
+      return res.status(400).json({
+        success: false,
+        message: 'proxyStrings 必须是字符串数组'
+      });
+    }
+    
+    const result = await proxyPoolService.addProxyServersBatchWithTags(poolId, proxyStrings, defaultTags);
+    
+    if (result.success) {
+      console.log('批量添加代理服务器成功:', result.data);
+      res.status(201).json(result);
+    } else {
+      console.log('批量添加代理服务器失败:', result.message);
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error('批量添加代理服务器失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '批量添加代理服务器失败'
+    });
+  }
+});
+
+export default router;
