@@ -1548,6 +1548,108 @@ const EmailManage: React.FC = () => {
                   </Col>
                 </Row>
 
+                <Divider orientation="left">代理配置 (网络连接)</Divider>
+                
+                <Row gutter={16}>
+                  <Col span={6}>
+                    <Form.Item
+                      name="useProxy"
+                      label="使用代理"
+                      valuePropName="checked"
+                    >
+                      <Switch checkedChildren="是" unCheckedChildren="否" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={18}>
+                    <Form.Item
+                      name="proxyMode"
+                      label="代理模式"
+                      dependencies={['useProxy']}
+                    >
+                      <Select placeholder="选择代理模式" disabled={!form.getFieldValue('useProxy')}>
+                        <Option value="direct">直接连接</Option>
+                        <Option value="specified">指定代理</Option>
+                        <Option value="random">标签随机</Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                </Row>
+                
+                <Form.Item
+                  noStyle
+                  shouldUpdate={(prevValues, currentValues) => 
+                    prevValues.useProxy !== currentValues.useProxy || 
+                    prevValues.proxyMode !== currentValues.proxyMode
+                  }
+                >
+                  {({ getFieldValue }) => {
+                    const useProxy = getFieldValue('useProxy');
+                    const proxyMode = getFieldValue('proxyMode');
+                    
+                    if (!useProxy) return null;
+                    
+                    if (proxyMode === 'specified') {
+                      return (
+                        <Row gutter={16}>
+                          <Col span={24}>
+                            <Form.Item
+                              name="proxyServerId"
+                              label="选择代理服务器"
+                            >
+                              <Select 
+                                placeholder="选择代理服务器"
+                                loading={loading}
+                                showSearch
+                                filterOption={(input, option) =>
+                                  option?.children?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                                }
+                              >
+                                {/* 这里需要获取代理服务器列表，暂时留空 */}
+                                <Option value={0}>加载中...</Option>
+                              </Select>
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      );
+                    } else if (proxyMode === 'random') {
+                      return (
+                        <Row gutter={16}>
+                          <Col span={24}>
+                            <Form.Item
+                              name="proxyTag"
+                              label="选择代理标签"
+                            >
+                              <Select 
+                                placeholder="选择代理标签"
+                                loading={loading}
+                                showSearch
+                                filterOption={(input, option) =>
+                                  option?.children?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                                }
+                              >
+                                {/* 这里需要获取代理标签列表，暂时留空 */}
+                                <Option value={0}>加载中...</Option>
+                              </Select>
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      );
+                    } else if (proxyMode === 'direct') {
+                      return (
+                        <Alert
+                          message="直接连接模式"
+                          description="邮箱将直接连接到邮件服务器，不使用代理。"
+                          type="info"
+                          showIcon
+                          style={{ marginBottom: 16 }}
+                        />
+                      );
+                    }
+                    
+                    return null;
+                  }}
+                </Form.Item>
+                
                 <Divider orientation="left">IMAP配置 (接收邮件)</Divider>
                 
                 <Row gutter={16}>
