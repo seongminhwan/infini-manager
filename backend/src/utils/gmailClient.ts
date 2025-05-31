@@ -17,10 +17,12 @@ import {
 } from '../types';
 import { 
   SimpleProxyConfig, 
+  OptionalProxyConfig,
   getProxyById, 
   getRandomProxyByTag, 
   createImapProxyAgent,
-  createSmtpProxyConfig
+  createSmtpProxyConfig,
+  convertToSimpleProxyConfig
 } from './ProxyUtils';
 
 /**
