@@ -697,8 +697,8 @@ export async function testEmailAccount(req: Request, res: Response): Promise<voi
       return;
     }
     
-    // 转换为GmailConfig对象（包含SMTP和IMAP配置）
-    const config = {
+    // 转换为GmailConfig对象（包含SMTP和IMAP配置以及代理配置）
+    const config: GmailConfig = {
       user: account.email,
       password: account.password,
       smtpHost: account.smtp_host,
@@ -708,6 +708,32 @@ export async function testEmailAccount(req: Request, res: Response): Promise<voi
       imapPort: account.imap_port,
       imapSecure: account.imap_secure
     };
+    
+    // 提取代理配置（如果存在）
+    if (account.extra_config) {
+      try {
+        const extraConfig = JSON.parse(account.extra_config);
+        if (extraConfig.proxy) {
+          const proxyConfig = extraConfig.proxy;
+          
+          // 添加代理配置到GmailConfig对象
+          config.useProxy = proxyConfig.useProxy;
+          config.proxyMode = proxyConfig.proxyMode;
+          config.proxyServerId = proxyConfig.proxyServerId;
+          config.proxyTag = proxyConfig.proxyTag;
+          config.proxyConfig = proxyConfig.proxyConfig;
+          
+          console.log(`[${testId}] 使用代理配置:`, {
+            useProxy: config.useProxy,
+            proxyMode: config.proxyMode,
+            proxyServerId: config.proxyServerId,
+            proxyTag: config.proxyTag
+          });
+        }
+      } catch (e) {
+        console.warn('解析邮箱账户代理配置失败:', e);
+      }
+    }
     
     // 创建测试ID
     const testId = `test-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
