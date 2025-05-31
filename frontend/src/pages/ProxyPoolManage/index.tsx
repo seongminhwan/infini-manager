@@ -26,6 +26,7 @@ import {
   InputNumber,
   Statistic,
   Descriptions,
+  Empty,
 } from 'antd';
 import {
   PlusOutlined,
@@ -43,6 +44,8 @@ import {
   BugOutlined,
   RocketOutlined,
   ClockCircleOutlined,
+  TagOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
 import { proxyPoolApi } from '../../services/api';
 
@@ -51,6 +54,15 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 // 接口定义
+interface ProxyTag {
+  id: number;
+  name: string;
+  description?: string;
+  color?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface ProxyServer {
   id: number;
   pool_id: number;
@@ -68,6 +80,7 @@ interface ProxyServer {
   last_check_at?: string;
   created_at: string;
   updated_at: string;
+  tags?: ProxyTag[]; // 标签列表
 }
 
 interface GlobalProxyConfig {
@@ -96,10 +109,26 @@ const ProxyManage: React.FC = () => {
   const [batchModalVisible, setBatchModalVisible] = useState(false);
   const [editingServer, setEditingServer] = useState<ProxyServer | null>(null);
   
+  // 标签管理相关状态
+  const [tags, setTags] = useState<ProxyTag[]>([]);
+  const [tagModalVisible, setTagModalVisible] = useState(false);
+  const [editingTag, setEditingTag] = useState<ProxyTag | null>(null);
+  const [serverTagModalVisible, setServerTagModalVisible] = useState(false);
+  const [selectedServerId, setSelectedServerId] = useState<number | null>(null);
+  const [serverTags, setServerTags] = useState<ProxyTag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
+  
+  // 批量导入预览相关状态
+  const [previewMode, setPreviewMode] = useState(false);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [importLoading, setImportLoading] = useState(false);
+  const [defaultTags, setDefaultTags] = useState<string[]>([]);
+  
   // 表单
   const [configForm] = Form.useForm();
   const [serverForm] = Form.useForm();
   const [batchForm] = Form.useForm();
+  const [tagForm] = Form.useForm();
 
   // 代理策略选项
   const proxyModeOptions = [
@@ -120,6 +149,7 @@ const ProxyManage: React.FC = () => {
   // 页面加载时获取数据
   useEffect(() => {
     fetchGlobalConfig();
+    fetchTags();
   }, []);
 
   // 全局配置发生变化时获取服务器列表
@@ -163,6 +193,21 @@ const ProxyManage: React.FC = () => {
       message.error('获取代理服务器列表失败');
     } finally {
       setServersLoading(false);
+    }
+  };
+
+  // 获取所有标签
+  const fetchTags = async () => {
+    try {
+      const response = await proxyPoolApi.getAllTags();
+      if (response.success) {
+        setTags(response.data || []);
+      } else {
+        message.error(response.message || '获取标签列表失败');
+      }
+    } catch (error) {
+      console.error('获取标签列表失败:', error);
+      message.error('获取标签列表失败');
     }
   };
 
@@ -210,11 +255,87 @@ const ProxyManage: React.FC = () => {
     }
   };
 
-  // 批量导入代理
-  const handleBatchImport = async (values: any) => {
+  // 创建/编辑标签
+  const handleTagSubmit = async (values: any) => {
+    try {
+      const response = editingTag
+        ? await proxyPoolApi.updateTag(editingTag.id, values)
+        : await proxyPoolApi.createTag(values);
+      
+      if (response.success) {
+        message.success(editingTag ? '标签更新成功' : '标签创建成功');
+        setTagModalVisible(false);
+        setEditingTag(null);
+        tagForm.resetFields();
+        fetchTags();
+      } else {
+        message.error(response.message || '操作失败');
+      }
+    } catch (error) {
+      console.error('标签操作失败:', error);
+      message.error('操作失败');
+    }
+  };
+
+  // 删除标签
+  const handleDeleteTag = async (tagId: number) => {
+    try {
+      const response = await proxyPoolApi.deleteTag(tagId);
+      if (response.success) {
+        message.success('标签删除成功');
+        fetchTags();
+      } else {
+        message.error(response.message || '删除失败');
+      }
+    } catch (error) {
+      console.error('删除标签失败:', error);
+      message.error('删除失败');
+    }
+  };
+
+  // 获取代理服务器的标签
+  const fetchServerTags = async (serverId: number) => {
+    try {
+      const response = await proxyPoolApi.getServerTags(serverId);
+      if (response.success) {
+        setServerTags(response.data || []);
+        setSelectedTags(response.data?.map((tag: ProxyTag) => tag.id) || []);
+      } else {
+        message.error(response.message || '获取代理服务器标签失败');
+      }
+    } catch (error) {
+      console.error('获取代理服务器标签失败:', error);
+      message.error('获取代理服务器标签失败');
+    }
+  };
+
+  // 更新代理服务器标签
+  const handleUpdateServerTags = async () => {
+    if (!selectedServerId) return;
+    
+    try {
+      const response = await proxyPoolApi.addTagsToServer(selectedServerId, selectedTags);
+      if (response.success) {
+        message.success('代理服务器标签更新成功');
+        setServerTagModalVisible(false);
+        if (globalConfig) {
+          fetchServers(globalConfig.id);
+        }
+      } else {
+        message.error(response.message || '更新标签失败');
+      }
+    } catch (error) {
+      console.error('更新代理服务器标签失败:', error);
+      message.error('更新标签失败');
+    }
+  };
+
+  // 解析并预览代理列表
+  const handlePreviewProxies = async () => {
     if (!globalConfig) return;
     
     try {
+      const values = await batchForm.validateFields();
       const proxyStrings = values.proxyList
         .split('\n')
         .map((line: string) => line.trim())
@@ -225,12 +346,46 @@ const ProxyManage: React.FC = () => {
         return;
       }
       
-      const response = await proxyPoolApi.batchAddServers(globalConfig.id, proxyStrings);
+      setImportLoading(true);
+      
+      const response = await proxyPoolApi.previewBatchServers(globalConfig.id, proxyStrings);
+      
+      if (response.success) {
+        setPreviewData(response.data || []);
+        setPreviewMode(true);
+      } else {
+        message.error(response.message || '解析代理失败');
+      }
+    } catch (error) {
+      console.error('解析代理失败:', error);
+      message.error('解析代理失败');
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  // 批量导入预览后的代理
+  const handleImportPreviewedProxies = async () => {
+    if (!globalConfig) return;
+    
+    try {
+      const values = await batchForm.validateFields();
+      const proxyStrings = values.proxyList
+        .split('\n')
+        .map((line: string) => line.trim())
+        .filter((line: string) => line);
+      
+      setImportLoading(true);
+      
+      const response = await proxyPoolApi.batchAddServersWithTags(globalConfig.id, proxyStrings, defaultTags);
       
       if (response.success) {
         message.success(`成功导入 ${response.data.added} 个代理服务器`);
         setBatchModalVisible(false);
         batchForm.resetFields();
+        setPreviewMode(false);
+        setPreviewData([]);
+        setDefaultTags([]);
         fetchServers(globalConfig.id);
       } else {
         message.error(response.message || '批量导入失败');
@@ -238,7 +393,15 @@ const ProxyManage: React.FC = () => {
     } catch (error) {
       console.error('批量导入失败:', error);
       message.error('批量导入失败');
+    } finally {
+      setImportLoading(false);
     }
+  };
+
+  // 取消预览模式
+  const handleCancelPreview = () => {
+    setPreviewMode(false);
+    setPreviewData([]);
   };
 
   // 删除代理服务器
@@ -397,6 +560,29 @@ const ProxyManage: React.FC = () => {
         record.username ? <Tag color="blue">已配置</Tag> : <Tag>无</Tag>,
     },
     {
+      title: '标签',
+      key: 'tags',
+      render: (record: ProxyServer) => (
+        <>
+          {record.tags && record.tags.length > 0 ? (
+            <Space size={[0, 4]} wrap>
+              {record.tags.map(tag => (
+                <Tag
+                  key={tag.id}
+                  color={tag.color || '#108ee9'}
+                  style={{ margin: '2px' }}
+                >
+                  {tag.name}
+                </Tag>
+              ))}
+            </Space>
+          ) : (
+            <Text type="secondary">无标签</Text>
+          )}
+        </>
+      ),
+    },
+    {
       title: '响应时间',
       dataIndex: 'response_time',
       key: 'response_time',
@@ -443,7 +629,7 @@ const ProxyManage: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      width: 180,
+      width: 220,
       render: (record: ProxyServer) => (
         <Space size="small">
           <Tooltip title="验证代理">
@@ -451,6 +637,17 @@ const ProxyManage: React.FC = () => {
               size="small"
               icon={<BugOutlined />}
               onClick={() => handleValidateProxy(record.id)}
+            />
+          </Tooltip>
+          <Tooltip title="管理标签">
+            <Button
+              size="small"
+              icon={<TagOutlined />}
+              onClick={() => {
+                setSelectedServerId(record.id);
+                fetchServerTags(record.id);
+                setServerTagModalVisible(true);
+              }}
             />
           </Tooltip>
           <Tooltip title="编辑">
@@ -535,6 +732,59 @@ const ProxyManage: React.FC = () => {
           </Descriptions>
         </Card>
       )}
+
+      {/* 标签管理 */}
+      <Card
+        title={
+          <Space>
+            <TagOutlined />
+            代理标签管理
+          </Space>
+        }
+        extra={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              setEditingTag(null);
+              setTagModalVisible(true);
+              tagForm.resetFields();
+            }}
+          >
+            添加标签
+          </Button>
+        }
+        style={{ marginBottom: 24 }}
+      >
+        {tags.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {tags.map(tag => (
+              <Tag
+                key={tag.id}
+                color={tag.color || '#108ee9'}
+                style={{ padding: '4px 8px', margin: '4px' }}
+                closable
+                onClose={() => handleDeleteTag(tag.id)}
+              >
+                <Space>
+                  {tag.name}
+                  <EditOutlined
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingTag(tag);
+                      tagForm.setFieldsValue(tag);
+                      setTagModalVisible(true);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </Space>
+              </Tag>
+            ))}
+          </div>
+        ) : (
+          <Empty description="暂无标签" />
+        )}
+      </Card>
 
       {/* 代理服务器管理 */}
       {globalConfig && (
@@ -784,6 +1034,104 @@ const ProxyManage: React.FC = () => {
         </Form>
       </Modal>
 
+      {/* 创建/编辑标签弹窗 */}
+      <Modal
+        title={editingTag ? '编辑标签' : '添加标签'}
+        open={tagModalVisible}
+        onCancel={() => {
+          setTagModalVisible(false);
+          setEditingTag(null);
+          tagForm.resetFields();
+        }}
+        footer={null}
+      >
+        <Form
+          form={tagForm}
+          layout="vertical"
+          onFinish={handleTagSubmit}
+        >
+          <Form.Item
+            name="name"
+            label="标签名称"
+            rules={[{ required: true, message: '请输入标签名称' }]}
+          >
+            <Input placeholder="例如：高速代理" />
+          </Form.Item>
+          
+          <Form.Item
+            name="description"
+            label="描述"
+          >
+            <Input placeholder="标签描述" />
+          </Form.Item>
+          
+          <Form.Item
+            name="color"
+            label="颜色"
+            initialValue="#108ee9"
+          >
+            <Input
+              type="color"
+              style={{ width: '50px', padding: '0', height: '32px' }}
+            />
+          </Form.Item>
+          
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Space>
+              <Button type="primary" htmlType="submit">
+                {editingTag ? '更新' : '创建'}
+              </Button>
+              <Button
+                onClick={() => {
+                  setTagModalVisible(false);
+                  setEditingTag(null);
+                  tagForm.resetFields();
+                }}
+              >
+                取消
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 管理代理服务器标签弹窗 */}
+      <Modal
+        title="管理代理服务器标签"
+        open={serverTagModalVisible}
+        onCancel={() => {
+          setServerTagModalVisible(false);
+          setSelectedServerId(null);
+          setServerTags([]);
+          setSelectedTags([]);
+        }}
+        onOk={handleUpdateServerTags}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Text>选择要应用的标签：</Text>
+        </div>
+        
+        <Select
+          mode="multiple"
+          style={{ width: '100%' }}
+          placeholder="选择标签"
+          value={selectedTags}
+          onChange={setSelectedTags}
+          optionLabelProp="label"
+        >
+          {tags.map(tag => (
+            <Option key={tag.id} value={tag.id} label={tag.name}>
+              <Tag color={tag.color || '#108ee9'}>{tag.name}</Tag>
+              {tag.description && (
+                <Text type="secondary" style={{ marginLeft: 8 }}>
+                  {tag.description}
+                </Text>
+              )}
+            </Option>
+          ))}
+        </Select>
+      </Modal>
+
       {/* 批量导入弹窗 */}
       <Modal
         title="批量导入代理"
@@ -791,6 +1139,9 @@ const ProxyManage: React.FC = () => {
         onCancel={() => {
           setBatchModalVisible(false);
           batchForm.resetFields();
+          setPreviewMode(false);
+          setPreviewData([]);
+          setDefaultTags([]);
         }}
         footer={null}
         width={700}
@@ -820,7 +1171,6 @@ const ProxyManage: React.FC = () => {
         <Form
           form={batchForm}
           layout="vertical"
-          onFinish={handleBatchImport}
         >
           <Form.Item
             name="proxyList"
@@ -831,28 +1181,97 @@ const ProxyManage: React.FC = () => {
               placeholder={`192.168.0.1:8080{示例备注}\n192.168.0.1:8000:账号:密码\nsocks5://192.168.0.1:8000[刷新URL]{示例备注}\nhttp://[IPv6]:8080\n代理账号:代理密码@192.168.0.1:8000`}
               rows={10}
               style={{ fontFamily: 'monospace' }}
+              disabled={previewMode}
             />
           </Form.Item>
 
+          {previewMode && (
+            <>
+              <div style={{ marginBottom: 16 }}>
+                <Space>
+                  <Text strong>预览结果</Text>
+                  <Text type="secondary">共 {previewData.length} 条记录</Text>
+                </Space>
+              </div>
+              
+              <Table
+                dataSource={previewData}
+                rowKey={(record, index) => index?.toString() || '0'}
+                size="small"
+                pagination={false}
+                scroll={{ y: 300 }}
+                columns={[
+                  {
+                    title: '代理类型',
+                    dataIndex: 'proxy_type',
+                    key: 'proxy_type',
+                    render: (type: string) => {
+                      const option = proxyTypeOptions.find(opt => opt.value === type);
+                      return <Tag color={option?.color}>{option?.label}</Tag>;
+                    },
+                  },
+                  {
+                    title: '地址',
+                    key: 'address',
+                    render: (record: any) => (
+                      <Text code>{record.host}:{record.port}</Text>
+                    ),
+                  },
+                  {
+                    title: '认证',
+                    key: 'auth',
+                    render: (record: any) => 
+                      record.username ? <Tag color="blue">已配置</Tag> : <Tag>无</Tag>,
+                  },
+                  {
+                    title: '备注',
+                    dataIndex: 'name',
+                    key: 'name',
+                  },
+                ]}
+              />
+              
+              <div style={{ marginTop: 16, marginBottom: 16 }}>
+                <Form.Item
+                  label="默认标签"
+                  name="defaultTags"
+                >
+                  <Select
+                    mode="multiple"
+                    style={{ width: '100%' }}
+                    placeholder="选择要添加的默认标签"
+                    value={defaultTags}
+                    onChange={setDefaultTags}
+                    optionLabelProp="label"
+                  >
+                    {tags.map(tag => (
+                      <Option key={tag.name} value={tag.name} label={tag.name}>
+                        <Tag color={tag.color || '#108ee9'}>{tag.name}</Tag>
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </div>
+            </>
+          )}
+
           <Form.Item style={{ marginBottom: 0 }}>
             <Space>
-              <Button type="primary" htmlType="submit">
-                导入代理
-              </Button>
-              <Button
-                onClick={() => {
-                  setBatchModalVisible(false);
-                  batchForm.resetFields();
-                }}
-              >
-                取消
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
-  );
-};
-
-export default ProxyManage;
+              {!previewMode ? (
+                <Button
+                  type="primary"
+                  onClick={handlePreviewProxies}
+                  loading={importLoading}
+                >
+                  解析预览
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="primary"
+                    onClick={handleImportPreviewedProxies}
+                    loading={importLoading}
+                  >
+                    确认导入
+                  </Button>
+                  <Button onClick={handleCancelPreview}></Button>
