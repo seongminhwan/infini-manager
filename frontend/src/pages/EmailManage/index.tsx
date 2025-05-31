@@ -4,6 +4,7 @@
  * 以及邮件列表的查看功能
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type { DefaultOptionType } from 'antd/es/select';
 import {
   Card,
   Table,
@@ -94,6 +95,26 @@ const HelpSection = styled.div`
   margin-bottom: 24px;
 `;
 
+// 代理服务器接口
+interface ProxyServer {
+  id: number;
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
+  protocol?: string;
+  description?: string;
+  pool_id?: number;
+  tags?: ProxyTag[];
+}
+
+// 代理标签接口
+interface ProxyTag {
+  id: number;
+  name: string;
+  description?: string;
+}
+
 // 邮箱账户接口
 interface EmailAccount {
   id: number;
@@ -146,6 +167,10 @@ interface EmailMessageDetail extends EmailMessage {
 
 // 主邮箱管理组件
 const EmailManage: React.FC = () => {
+  // 代理相关状态
+  const [proxyServers, setProxyServers] = useState<ProxyServer[]>([]);
+  const [proxyTags, setProxyTags] = useState<ProxyTag[]>([]);
+  const [proxyLoading, setProxyLoading] = useState<boolean>(false);
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
@@ -155,6 +180,60 @@ const EmailManage: React.FC = () => {
   const [testProgress, setTestProgress] = useState<number>(0);
   const testTimerRef = useRef<NodeJS.Timeout | null>(null);
   
+  /**
+   * 获取代理服务器列表
+   */
+  const fetchProxyServers = useCallback(async () => {
+    setProxyLoading(true);
+    try {
+      const response = await api.get(`${apiBaseUrl}/api/proxy-pools/servers`);
+      if (response.data.success) {
+        setProxyServers(response.data.data || []);
+      } else {
+        console.error('获取代理服务器列表失败:', response.data.message);
+        message.error('获取代理服务器列表失败');
+      }
+    } catch (error) {
+      console.error('获取代理服务器列表失败:', error);
+      // 创建测试数据
+      const mockProxyServers: ProxyServer[] = [
+        { id: 1, host: '192.168.1.1', port: 8080, description: '测试代理1' },
+        { id: 2, host: '192.168.1.2', port: 8080, description: '测试代理2' },
+      ];
+      setProxyServers(mockProxyServers);
+      message.warning('获取代理服务器列表失败，显示模拟数据');
+    } finally {
+      setProxyLoading(false);
+    }
+  }, []);
+
+  /**
+   * 获取代理标签列表
+   */
+  const fetchProxyTags = useCallback(async () => {
+    setProxyLoading(true);
+    try {
+      const response = await api.get(`${apiBaseUrl}/api/proxy-pools/tags`);
+      if (response.data.success) {
+        setProxyTags(response.data.data || []);
+      } else {
+        console.error('获取代理标签列表失败:', response.data.message);
+        message.error('获取代理标签列表失败');
+      }
+    } catch (error) {
+      console.error('获取代理标签列表失败:', error);
+      // 创建测试数据
+      const mockProxyTags: ProxyTag[] = [
+        { id: 1, name: '高速', description: '高速代理' },
+        { id: 2, name: '稳定', description: '稳定代理' },
+      ];
+      setProxyTags(mockProxyTags);
+      message.warning('获取代理标签列表失败，显示模拟数据');
+    } finally {
+      setProxyLoading(false);
+    }
+  }, []);
+
   // 邮件列表相关状态
   const [activeTab, setActiveTab] = useState<string>('accounts');
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
@@ -431,8 +510,9 @@ const EmailManage: React.FC = () => {
     }
   };
 
-  // 首次加载数据
+  // 首次加载数据和代理服务器
   useEffect(() => {
+    // 加载邮箱数据
     fetchEmailAccounts();
     return () => {
       // 清理测试计时器
@@ -441,7 +521,13 @@ const EmailManage: React.FC = () => {
       }
     };
   }, []);
-
+  // 打开模态窗时获取代理服务器和标签
+  useEffect(() => {
+    if (modalVisible) {
+      fetchProxyServers();
+      fetchProxyTags();
+    }
+  }, [modalVisible, fetchProxyServers, fetchProxyTags]);
   // 表单提交处理
   const handleSubmit = async (values: any) => {
     if (testStatus === 'testing') {
@@ -466,7 +552,8 @@ const EmailManage: React.FC = () => {
         'failed': 'disabled'
       };
       
-      const camelCaseData: any = {
+      // 构建基本邮箱数据
+      const camelCaseData: Record<string, any> = {
         name: values.name,
         email: values.email,
         username: values.username,
@@ -489,7 +576,27 @@ const EmailManage: React.FC = () => {
       }
     
       console.log("提交的数据 (camelCase格式):", camelCaseData);
-
+      // 添加代理配置
+      if (values.useProxy) {
+        // 创建代理配置对象
+        const proxyConfig: Record<string, any> = {
+          useProxy: values.useProxy ? 1 : 0,
+          proxyMode: values.proxyMode || 'direct'
+        };
+        
+        // 根据代理模式添加不同的配置
+        if (values.proxyMode === 'specified' && values.proxyServerId) {
+          proxyConfig.proxyServerId = values.proxyServerId;
+        } else if (values.proxyMode === 'random' && values.proxyTag) {
+          proxyConfig.proxyTag = values.proxyTag;
+        }
+        
+        // 将代理配置添加到extra_config字段
+        camelCaseData.extraConfig = {
+          ...(camelCaseData.extraConfig || {}),
+          proxyConfig
+        };
+      }
       if (currentAccount && currentAccount.id) {
         // 更新现有邮箱
         await api.put(`${apiBaseUrl}/api/email-accounts/${currentAccount.id}`, camelCaseData);
@@ -948,7 +1055,7 @@ const EmailManage: React.FC = () => {
     }
   };
 
-  // 打开编辑模态窗
+  // 打开编辑模态窗并初始化表单
   const openEditModal = (record?: EmailAccount) => {
     setTestStatus('idle');
     setTestProgress(0);
@@ -956,7 +1063,24 @@ const EmailManage: React.FC = () => {
     if (record) {
       // 编辑现有邮箱
       setCurrentAccount(record);
-      form.setFieldsValue(record);
+      
+      // 基本字段设置
+      const formData: Record<string, any> = {...record};
+      
+      // 处理代理配置
+      if (record.extra_config?.proxyConfig) {
+        const proxyConfig = record.extra_config.proxyConfig;
+        formData.useProxy = !!proxyConfig.useProxy;
+        formData.proxyMode = proxyConfig.proxyMode || 'direct';
+        
+        if (proxyConfig.proxyMode === 'specified') {
+          formData.proxyServerId = proxyConfig.proxyServerId;
+        } else if (proxyConfig.proxyMode === 'random') {
+          formData.proxyTag = proxyConfig.proxyTag;
+        }
+      }
+      
+      form.setFieldsValue(formData);
     } else {
       // 新建邮箱
       setCurrentAccount(null);
@@ -976,7 +1100,6 @@ const EmailManage: React.FC = () => {
     
     setModalVisible(true);
   };
-
   // 前端和后端状态值的映射
   const getStatusDisplay = (status: string) => {
     switch(status) {
@@ -1598,18 +1721,19 @@ const EmailManage: React.FC = () => {
                             >
                               <Select 
                                 placeholder="选择代理服务器"
-                                loading={loading}
+                                loading={proxyLoading}
                                 showSearch
-                                filterOption={(input, option) => {
-                                  const childText = option?.children ? String(option.children) : '';
-                                  return childText.toLowerCase().indexOf(input.toLowerCase()) >= 0;
+                                filterOption={(input: string, option?: { label: string, value: number, children: React.ReactNode }) => {
+                                  if (!option || !option.children) return false;
+                                  const childText = String(option.children);
+                                  return childText.toLowerCase().includes(input.toLowerCase());
                                 }}
                               >
                                 {/* 这里需要获取代理服务器列表 */}
                                 {proxyServers.length === 0 ? (
                                   <Option value={0} disabled>暂无可用代理服务器</Option>
                                 ) : (
-                                  proxyServers.map(server => (
+                                  proxyServers.map((server: ProxyServer) => (
                                     <Option key={server.id} value={server.id}>
                                       {server.host}:{server.port} - {server.description || '无描述'}
                                     </Option>
@@ -1630,14 +1754,24 @@ const EmailManage: React.FC = () => {
                             >
                               <Select 
                                 placeholder="选择代理标签"
-                                loading={loading}
+                                loading={proxyLoading}
                                 showSearch
-                                filterOption={(input, option) =>
-                                  option?.children?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                                }
+                                filterOption={(input: string, option?: { label: string, value: number, children: React.ReactNode }) => {
+                                  if (!option || !option.children) return false;
+                                  const childText = String(option.children);
+                                  return childText.toLowerCase().includes(input.toLowerCase());
+                                }}
                               >
                                 {/* 这里需要获取代理标签列表，暂时留空 */}
-                                <Option value={0}>加载中...</Option>
+                                {proxyTags.length === 0 ? (
+                                  <Option value={0} disabled>暂无可用代理标签</Option>
+                                ) : (
+                                  proxyTags.map((tag: ProxyTag) => (
+                                    <Option key={tag.id} value={tag.id}>
+                                      {tag.name} {tag.description ? `- ${tag.description}` : ''}
+                                    </Option>
+                                  ))
+                                )}
                               </Select>
                             </Form.Item>
                           </Col>
