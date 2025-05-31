@@ -681,6 +681,54 @@ export const infiniAccountApi = {
     }
   },
   
+  // 获取自定义邮箱配置
+  getCustomEmailConfig: async (accountId: number | string) => {
+    try {
+      console.log(`获取自定义邮箱配置，账户ID: ${accountId}`);
+      const response = await api.get(`${apiBaseUrl}/api/infini-accounts/${accountId}/custom-email-config`);
+      return response.data;
+    } catch (error) {
+      console.error('获取自定义邮箱配置失败:', error);
+      throw error;
+    }
+  },
+  
+  // 创建自定义邮箱配置
+  createCustomEmailConfig: async (accountId: number | string, data: any) => {
+    try {
+      console.log(`创建自定义邮箱配置，账户ID: ${accountId}`);
+      const response = await api.post(`${apiBaseUrl}/api/infini-accounts/${accountId}/custom-email-config`, data);
+      return response.data;
+    } catch (error) {
+      console.error('创建自定义邮箱配置失败:', error);
+      throw error;
+    }
+  },
+  
+  // 更新自定义邮箱配置
+  updateCustomEmailConfig: async (accountId: number | string, data: any) => {
+    try {
+      console.log(`更新自定义邮箱配置，账户ID: ${accountId}`);
+      const response = await api.put(`${apiBaseUrl}/api/infini-accounts/${accountId}/custom-email-config`, data);
+      return response.data;
+    } catch (error) {
+      console.error('更新自定义邮箱配置失败:', error);
+      throw error;
+    }
+  },
+  
+  // 删除自定义邮箱配置
+  deleteCustomEmailConfig: async (accountId: number | string) => {
+    try {
+      console.log(`删除自定义邮箱配置，账户ID: ${accountId}`);
+      const response = await api.delete(`${apiBaseUrl}/api/infini-accounts/${accountId}/custom-email-config`);
+      return response.data;
+    } catch (error) {
+      console.error('删除自定义邮箱配置失败:', error);
+      throw error;
+    }
+  },
+  
   // 一键式账户设置
   oneClickAccountSetup: async (setupOptions: {
     enable2fa: boolean;
