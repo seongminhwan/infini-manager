@@ -1600,12 +1600,21 @@ const EmailManage: React.FC = () => {
                                 placeholder="选择代理服务器"
                                 loading={loading}
                                 showSearch
-                                filterOption={(input, option) =>
-                                  option?.children?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                                }
+                                filterOption={(input, option) => {
+                                  const childText = option?.children ? String(option.children) : '';
+                                  return childText.toLowerCase().indexOf(input.toLowerCase()) >= 0;
+                                }}
                               >
-                                {/* 这里需要获取代理服务器列表，暂时留空 */}
-                                <Option value={0}>加载中...</Option>
+                                {/* 这里需要获取代理服务器列表 */}
+                                {proxyServers.length === 0 ? (
+                                  <Option value={0} disabled>暂无可用代理服务器</Option>
+                                ) : (
+                                  proxyServers.map(server => (
+                                    <Option key={server.id} value={server.id}>
+                                      {server.host}:{server.port} - {server.description || '无描述'}
+                                    </Option>
+                                  ))
+                                )}
                               </Select>
                             </Form.Item>
                           </Col>
