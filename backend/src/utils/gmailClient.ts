@@ -1,6 +1,7 @@
 /**
  * Gmail工具组件
  * 基于IMAP/SMTP协议读取和发送Gmail邮件
+ * 支持HTTP/SOCKS5代理配置
  */
 import IMAP = require('node-imap');
 import * as nodemailer from 'nodemailer';
@@ -14,6 +15,13 @@ import {
   GmailQueryOptions,
   GmailAttachment 
 } from '../types';
+import { 
+  SimpleProxyConfig, 
+  getProxyById, 
+  getRandomProxyByTag, 
+  createImapProxyAgent,
+  createSmtpProxyConfig
+} from './ProxyUtils';
 
 /**
  * Gmail客户端类
@@ -23,6 +31,7 @@ class GmailClient {
   private imapClient: IMAP;
   private smtpTransporter: nodemailer.Transporter;
   private config: GmailConfig;
+  private proxyConfig: SimpleProxyConfig | null = null;
 
   /**
    * 构造函数，初始化Gmail客户端
@@ -31,7 +40,7 @@ class GmailClient {
   constructor(config: GmailConfig) {
     this.config = config;
 
-    // 初始化IMAP客户端
+    // 先初始化空的客户端，实际连接时会重新创建
     this.imapClient = new IMAP({
       user: config.user,
       password: config.password,
@@ -41,19 +50,67 @@ class GmailClient {
       tlsOptions: { rejectUnauthorized: false }
     });
 
-    // 初始化SMTP邮件发送器 - 使用标准nodemailer配置
+    // 初始化空的SMTP发送器，实际发送时会重新创建
     this.smtpTransporter = nodemailer.createTransport({
-      service: 'gmail', // 使用预定义的Gmail服务
+      service: 'gmail',
       auth: {
         user: config.user,
         pass: config.password
       },
-      // 安全选项
-      tls: {
-        rejectUnauthorized: false // 允许自签名证书
-      },
-      debug: true // 启用调试模式
+      tls: { rejectUnauthorized: false }
     });
+  }
+
+  /**
+   * 设置代理配置
+   * 根据GmailConfig中的代理设置获取实际的代理配置
+   * @returns 返回Promise<SimpleProxyConfig | null>
+   */
+  private async setupProxy(): Promise<SimpleProxyConfig | null> {
+    // 如果代理配置已缓存且不使用随机标签模式，直接返回
+    if (this.proxyConfig && this.config.proxyMode !== 'tag_random') {
+      return this.proxyConfig;
+    }
+
+    // 检查是否需要使用代理
+    if (!this.config.useProxy) {
+      this.proxyConfig = null;
+      return null;
+    }
+
+    // 如果已经有现成的代理配置，直接使用
+    if (this.config.proxyConfig) {
+      this.proxyConfig = this.config.proxyConfig;
+      return this.proxyConfig;
+    }
+
+    try {
+      // 根据代理模式获取代理配置
+      switch (this.config.proxyMode) {
+        case 'specific':
+          // 使用指定的代理服务器
+          if (this.config.proxyServerId) {
+            this.proxyConfig = await getProxyById(this.config.proxyServerId);
+          }
+          break;
+        
+        case 'tag_random':
+          // 根据标签随机选择代理服务器
+          if (this.config.proxyTag) {
+            this.proxyConfig = await getRandomProxyByTag(this.config.proxyTag);
+          }
+          break;
+        
+        default:
+          // 直连模式，不使用代理
+          this.proxyConfig = null;
+      }
+
+      return this.proxyConfig;
+    } catch (error) {
+      console.error('设置代理配置失败:', error);
+      return null;
+    }
   }
 
   /**
@@ -61,16 +118,63 @@ class GmailClient {
    * @returns 返回Promise<void>
    */
   private connectImap(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.imapClient.once('ready', () => {
-        resolve();
-      });
+    return new Promise(async (resolve, reject) => {
+      try {
+        // 获取代理配置
+        const proxyConfig = await this.setupProxy();
+        
+        // 创建IMAP配置选项
+        const imapOptions: any = {
+          user: this.config.user,
+          password: this.config.password,
+          host: this.config.imapHost,
+          port: this.config.imapPort,
+          tls: this.config.imapSecure,
+          tlsOptions: { rejectUnauthorized: false }
+        };
 
-      this.imapClient.once('error', (err) => {
-        reject(err);
-      });
+        // 如果有代理配置，添加代理代理
+        if (proxyConfig) {
+          console.log(`IMAP连接使用代理: ${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`);
+          
+          // 创建代理代理
+          const agent = createImapProxyAgent(proxyConfig);
+          if (agent) {
+            imapOptions.tlsOptions = {
+              ...imapOptions.tlsOptions,
+              rejectUnauthorized: false
+            };
+            
+            // 根据IMAP连接是否使用SSL/TLS设置不同的代理
+            if (this.config.imapSecure) {
+              imapOptions.tlsOptions.agent = agent;
+            } else {
+              imapOptions.socketTimeout = 60000; // 增加超时时间
+              imapOptions.connTimeout = 60000;
+              imapOptions.agent = agent;
+            }
+          } else {
+            console.warn('创建IMAP代理代理失败，将使用直连模式');
+          }
+        }
 
-      this.imapClient.connect();
+        // 创建新的IMAP客户端
+        this.imapClient = new IMAP(imapOptions);
+
+        // 设置事件处理
+        this.imapClient.once('ready', () => {
+          resolve();
+        });
+
+        this.imapClient.once('error', (err) => {
+          reject(err);
+        });
+
+        // 连接到IMAP服务器
+        this.imapClient.connect();
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
@@ -473,6 +577,44 @@ class GmailClient {
    */
   async sendMessage(options: GmailMessageSendOptions): Promise<string> {
     try {
+      // 获取代理配置
+      const proxyConfig = await this.setupProxy();
+      
+      // 创建SMTP传输器配置
+      const transportConfig: any = {
+        host: this.config.smtpHost,
+        port: this.config.smtpPort,
+        secure: this.config.smtpSecure,
+        auth: {
+          user: this.config.user,
+          pass: this.config.password
+        },
+        tls: {
+          rejectUnauthorized: false // 允许自签名证书
+        },
+        debug: true // 启用调试模式
+      };
+      
+      // 如果有代理配置，添加代理
+      if (proxyConfig) {
+        console.log(`SMTP连接使用代理: ${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`);
+        
+        try {
+          // 添加代理配置
+          const proxySettings = createSmtpProxyConfig(proxyConfig);
+          if (proxySettings) {
+            transportConfig.proxy = proxySettings.url;
+          } else {
+            console.warn('创建SMTP代理配置失败，将使用直连模式');
+          }
+        } catch (proxyError) {
+          console.error('设置SMTP代理失败:', proxyError);
+        }
+      }
+      
+      // 重新创建SMTP传输器
+      this.smtpTransporter = nodemailer.createTransport(transportConfig);
+      
       // 构造邮件选项
       const mailOptions: nodemailer.SendMailOptions = {
         from: options.from || this.config.user,
