@@ -1716,7 +1716,17 @@ const EmailManage: React.FC = () => {
                       label="使用代理"
                       valuePropName="checked"
                     >
-                      <Switch checkedChildren="是" unCheckedChildren="否" />
+                      <Switch 
+                        checkedChildren="是" 
+                        unCheckedChildren="否"
+                        onChange={(checked) => {
+                          console.log('使用代理开关已切换为:', checked);
+                          if (checked) {
+                            // 默认选择直连模式
+                            form.setFieldsValue({ proxyMode: 'direct' });
+                          }
+                        }}
+                      />
                     </Form.Item>
                   </Col>
                   <Col span={18}>
@@ -1739,6 +1749,7 @@ const EmailManage: React.FC = () => {
                             fetchProxyTags();
                           }
                         }}
+                        allowClear={false}
                       >
                         <Option value="direct">直接连接</Option>
                         <Option value="specified">指定代理</Option>
@@ -1759,15 +1770,24 @@ const EmailManage: React.FC = () => {
                     const useProxy = getFieldValue('useProxy');
                     const proxyMode = getFieldValue('proxyMode');
                     
+                    console.log('代理表单状态更新 - useProxy:', useProxy, 'proxyMode:', proxyMode);
+                    
                     if (!useProxy) return null;
                     
                     if (proxyMode === 'specified') {
+                      // 确保代理服务器列表已加载
+                      if (proxyServers.length === 0 && !proxyLoading) {
+                        console.log('代理服务器列表为空，自动加载');
+                        fetchProxyServers();
+                      }
+                      
                       return (
                         <Row gutter={16}>
                           <Col span={24}>
                             <Form.Item
                               name="proxyServerId"
                               label="选择代理服务器"
+                              rules={[{ required: true, message: '请选择代理服务器' }]}
                             >
                               <Select 
                                 placeholder="选择代理服务器"
@@ -1778,14 +1798,14 @@ const EmailManage: React.FC = () => {
                                   const childText = String(option.children);
                                   return childText.toLowerCase().includes(input.toLowerCase());
                                 }}
+                                notFoundContent={proxyLoading ? <Spin size="small" /> : '没有找到代理服务器'}
                               >
-                                {/* 这里需要获取代理服务器列表 */}
                                 {proxyServers.length === 0 ? (
                                   <Option value={0} disabled>暂无可用代理服务器</Option>
                                 ) : (
                                   proxyServers.map((server: ProxyServer) => (
                                     <Option key={server.id} value={server.id}>
-                                      {server.host}:{server.port} - {server.description || '无描述'}
+                                      {server.host}:{server.port} {server.description ? `- ${server.description}` : ''}
                                     </Option>
                                   ))
                                 )}
@@ -1795,12 +1815,19 @@ const EmailManage: React.FC = () => {
                         </Row>
                       );
                     } else if (proxyMode === 'random') {
+                      // 确保代理标签列表已加载
+                      if (proxyTags.length === 0 && !proxyLoading) {
+                        console.log('代理标签列表为空，自动加载');
+                        fetchProxyTags();
+                      }
+                      
                       return (
                         <Row gutter={16}>
                           <Col span={24}>
                             <Form.Item
                               name="proxyTag"
                               label="选择代理标签"
+                              rules={[{ required: true, message: '请选择代理标签' }]}
                             >
                               <Select 
                                 placeholder="选择代理标签"
@@ -1811,8 +1838,8 @@ const EmailManage: React.FC = () => {
                                   const childText = String(option.children);
                                   return childText.toLowerCase().includes(input.toLowerCase());
                                 }}
+                                notFoundContent={proxyLoading ? <Spin size="small" /> : '没有找到代理标签'}
                               >
-                                {/* 这里需要获取代理标签列表，暂时留空 */}
                                 {proxyTags.length === 0 ? (
                                   <Option value={0} disabled>暂无可用代理标签</Option>
                                 ) : (
@@ -1833,6 +1860,16 @@ const EmailManage: React.FC = () => {
                           message="直接连接模式"
                           description="邮箱将直接连接到邮件服务器，不使用代理。"
                           type="info"
+                          showIcon
+                          style={{ marginBottom: 16 }}
+                        />
+                      );
+                    } else {
+                      return (
+                        <Alert
+                          message="请选择代理模式"
+                          description="请在上方选择一种代理连接模式。"
+                          type="warning"
                           showIcon
                           style={{ marginBottom: 16 }}
                         />
