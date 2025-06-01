@@ -221,14 +221,23 @@ const EmailManage: React.FC = () => {
    * 获取代理标签列表
    */
   const fetchProxyTags = useCallback(async () => {
+    console.log('开始获取代理标签列表...');
     setProxyLoading(true);
     try {
       const response = await api.get(`${apiBaseUrl}/api/proxy-pools/tags`);
+      console.log('代理标签列表API响应:', response.data);
+      
       if (response.data.success) {
-        setProxyTags(response.data.data || []);
+        const tags = response.data.data || [];
+        console.log(`成功获取${tags.length}个代理标签:`, tags);
+        setProxyTags(tags);
+        
+        if (tags.length === 0) {
+          message.warning('没有可用的代理标签');
+        }
       } else {
         console.error('获取代理标签列表失败:', response.data.message);
-        message.error('获取代理标签列表失败');
+        message.error('获取代理标签列表失败: ' + response.data.message);
       }
     } catch (error) {
       console.error('获取代理标签列表失败:', error);
@@ -237,6 +246,7 @@ const EmailManage: React.FC = () => {
         { id: 1, name: '高速', description: '高速代理' },
         { id: 2, name: '稳定', description: '稳定代理' },
       ];
+      console.log('使用模拟代理标签数据:', mockProxyTags);
       setProxyTags(mockProxyTags);
       message.warning('获取代理标签列表失败，显示模拟数据');
     } finally {
