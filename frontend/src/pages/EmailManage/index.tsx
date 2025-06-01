@@ -1130,31 +1130,42 @@ const EmailManage: React.FC = () => {
       // 基本字段设置
       const formData: Record<string, any> = {...record};
       
-      // 处理代理配置
-      if (record.extra_config?.proxyConfig) {
-        const proxyConfig = record.extra_config.proxyConfig;
+      // 处理代理配置 - 兼容两种存储路径
+      const proxyConfig = record.extra_config?.proxy || record.extra_config?.proxyConfig;
+      
+      if (proxyConfig) {
         console.log('加载现有代理配置:', proxyConfig);
         
         // 设置代理使用状态
         formData.useProxy = !!proxyConfig.useProxy;
-        formData.proxyMode = proxyConfig.proxyMode || 'direct';
         
-        if (proxyConfig.proxyMode === 'specified') {
+        // 映射后端代理模式到前端UI值
+        if (proxyConfig.proxyMode === 'specific') {
+          // 后端specific对应前端的specified
+          formData.proxyMode = 'specified';
           formData.proxyServerId = proxyConfig.proxyServerId;
           // 预加载代理服务器列表
           console.log('预加载代理服务器列表，当前选中:', proxyConfig.proxyServerId);
           fetchProxyServers();
-        } else if (proxyConfig.proxyMode === 'random') {
+        } else if (proxyConfig.proxyMode === 'tag_random') {
+          // 后端tag_random对应前端的random
+          formData.proxyMode = 'random';
           formData.proxyTag = proxyConfig.proxyTag;
           // 预加载代理标签列表
           console.log('预加载代理标签列表，当前选中:', proxyConfig.proxyTag);
           fetchProxyTags();
+        } else {
+          // 默认为直连模式
+          formData.proxyMode = 'direct';
         }
       } else {
         console.log('账户无代理配置，设置默认为不使用代理');
         formData.useProxy = false;
         formData.proxyMode = 'direct';
       }
+      
+      // 添加一个用于强制更新的字段
+      formData._forceUpdate = Date.now();
       
       console.log('设置表单值:', formData);
       form.setFieldsValue(formData);
