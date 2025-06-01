@@ -875,7 +875,7 @@ async function sendTestEmail(config: any, testId: string): Promise<string> {
   // 用于存储所有尝试的结果
   const attemptResults: {success: boolean, method: string, error?: any}[] = [];
   
-  // 如果启用了代理，尝试所有可能的代理配置
+  // 如果启用了代理，只使用代理进行尝试，不回退到直连模式
   if (config.useProxy && (config.proxyMode === 'specific' || config.proxyMode === 'tag_random')) {
     try {
       // 动态导入ProxyUtils
@@ -959,66 +959,83 @@ async function sendTestEmail(config: any, testId: string): Promise<string> {
           }
         }
         
-        console.log(`[${testId}] 所有代理配置尝试失败，将尝试直连模式`);
+        // 所有代理尝试失败，报告错误而不尝试直连
+        console.error(`[${testId}] 所有代理配置尝试失败，共${attemptResults.length}次尝试`);
+        attemptResults.forEach((result, index) => {
+          console.error(`[${testId}] 尝试#${index+1} - ${result.method}: ${result.success ? '成功' : '失败 - ' + result.error}`);
+        });
+        
+        // 所有代理尝试都失败，抛出错误
+        throw new Error(`使用代理连接失败，请检查代理配置。不会回退到直连模式以保护账号安全。`);
       } else {
-        console.warn(`[${testId}] 未能获取有效的代理配置，将使用直连模式`);
+        // 未能获取有效的代理配置，抛出错误
+        console.error(`[${testId}] 未能获取有效的代理配置`);
+        throw new Error(`未能获取有效的代理配置，无法进行代理连接。不会回退到直连模式以保护账号安全。`);
       }
     } catch (proxyError) {
+      // 代理设置过程出错，抛出错误
       console.error(`[${testId}] 代理设置过程出错:`, proxyError);
       attemptResults.push({ 
         success: false, 
         method: '代理设置',
         error: proxyError.message
       });
-      console.log(`[${testId}] 由于代理设置错误，将尝试直连模式`);
+      
+      // 不尝试直连，直接抛出错误
+      throw new Error(`代理设置过程出错: ${proxyError.message}。不会回退到直连模式以保护账号安全。`);
     }
-  }
-  
-  // 所有代理尝试都失败或未使用代理，尝试直连
-  console.log(`[${testId}] 使用直连模式发送测试邮件`);
-  try {
-    // 创建不使用代理的传输器
-    const transporter = nodemailer.createTransport(baseTransportConfig);
-    
-    // 生成测试邮件内容
-    const testSubject = `测试邮件 [${testId}] - 直连模式`;
-    const testHtml = `
-      <div>
-        <h2>这是一封测试邮件</h2>
-        <p>测试ID: ${testId}</p>
-        <p>连接模式: 直连 (无代理)</p>
-        <p>时间: ${new Date().toLocaleString()}</p>
-        <p>这封邮件用于验证您的邮箱配置是否正确。</p>
-      </div>
-    `;
-    
-    // 发送邮件
-    const info = await transporter.sendMail({
-      from: config.user,
-      to: config.user, // 发给自己
-      subject: testSubject,
-      html: testHtml
-    });
-    
-    console.log(`[${testId}] 直连模式发送成功! messageId: ${info.messageId}`);
-    attemptResults.push({ success: true, method: '直连模式' });
-    return info.messageId || '';
-  } catch (error) {
-    console.error(`[${testId}] 直连模式发送失败:`, error.message);
-    attemptResults.push({ 
-      success: false, 
-      method: '直连模式',
-      error: error.message
-    });
-    
-    // 汇总所有尝试结果
-    console.error(`[${testId}] 所有发送尝试均失败，共${attemptResults.length}次尝试:`);
-    attemptResults.forEach((result, index) => {
-      console.error(`[${testId}] 尝试#${index+1} - ${result.method}: ${result.success ? '成功' : '失败 - ' + result.error}`);
-    });
-    
-    // 所有尝试都失败，抛出错误
-    throw new Error(`所有发送尝试均失败，请检查邮箱配置和网络连接`);
+  } else if (!config.useProxy) {
+    // 只有在明确配置为不使用代理时，才尝试直连
+    console.log(`[${testId}] 配置为不使用代理，使用直连模式发送测试邮件`);
+    try {
+      // 创建不使用代理的传输器
+      const transporter = nodemailer.createTransport(baseTransportConfig);
+      
+      // 生成测试邮件内容
+      const testSubject = `测试邮件 [${testId}] - 直连模式`;
+      const testHtml = `
+        <div>
+          <h2>这是一封测试邮件</h2>
+          <p>测试ID: ${testId}</p>
+          <p>连接模式: 直连 (无代理)</p>
+          <p>时间: ${new Date().toLocaleString()}</p>
+          <p>这封邮件用于验证您的邮箱配置是否正确。</p>
+          <p style="color: red; font-weight: bold;">警告：直连模式可能会导致账号被封禁，建议使用代理进行连接。</p>
+        </div>
+      `;
+      
+      // 发送邮件
+      const info = await transporter.sendMail({
+        from: config.user,
+        to: config.user, // 发给自己
+        subject: testSubject,
+        html: testHtml
+      });
+      
+      console.log(`[${testId}] 直连模式发送成功! messageId: ${info.messageId}`);
+      attemptResults.push({ success: true, method: '直连模式' });
+      return info.messageId || '';
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[${testId}] 直连模式发送失败:`, errorMessage);
+      attemptResults.push({ 
+        success: false, 
+        method: '直连模式',
+        error: errorMessage
+      });
+      
+      // 汇总所有尝试结果
+      console.error(`[${testId}] 所有发送尝试均失败，共${attemptResults.length}次尝试:`);
+      attemptResults.forEach((result, index) => {
+        console.error(`[${testId}] 尝试#${index+1} - ${result.method}: ${result.success ? '成功' : '失败 - ' + result.error}`);
+      });
+      
+      // 所有尝试都失败，抛出错误
+      throw new Error(`直连模式发送失败: ${errorMessage}`);
+    }
+  } else {
+    // 代理模式配置不正确，抛出错误
+    throw new Error(`代理模式配置不正确，请检查配置。不会回退到直连模式以保护账号安全。`);
   }
 }
 
