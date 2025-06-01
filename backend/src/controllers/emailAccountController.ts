@@ -938,7 +938,7 @@ async function sendTestEmail(config: any, testId: string): Promise<string> {
             console.log(`[${testId}] ${proxyMethod}发送成功! messageId: ${info.messageId}`);
             attemptResults.push({ success: true, method: proxyMethod });
             return info.messageId || '';
-          } catch (error: Error) {
+          } catch (error: unknown) {
             // 记录当前代理尝试失败
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error(`[${testId}] ${proxyMethod}发送失败:`, errorMessage);
