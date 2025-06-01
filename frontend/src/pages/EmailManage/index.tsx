@@ -564,6 +564,26 @@ const EmailManage: React.FC = () => {
       }
     }
   }, [modalVisible, fetchProxyServers, fetchProxyTags, form]);
+  
+  // 添加全局样式以确保下拉菜单在最上层
+  useEffect(() => {
+    // 添加自定义样式到head，确保下拉菜单正确显示
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = `
+      .email-proxy-dropdown {
+        z-index: 1100 !important;
+      }
+      .ant-select-dropdown {
+        z-index: 1100 !important;
+      }
+    `;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      // 清理添加的样式
+      document.head.removeChild(styleElement);
+    };
+  }, []);
   // 表单提交处理
   const handleSubmit = async (values: any) => {
     if (testStatus === 'testing') {
@@ -612,25 +632,32 @@ const EmailManage: React.FC = () => {
       }
     
       console.log("提交的数据 (camelCase格式):", camelCaseData);
-      // 添加代理配置
+      // 添加代理配置 - 修正代理配置的存储路径和命名映射
       if (values.useProxy) {
         // 创建代理配置对象
         const proxyConfig: Record<string, any> = {
-          useProxy: values.useProxy ? 1 : 0,
-          proxyMode: values.proxyMode || 'direct'
+          useProxy: values.useProxy ? 1 : 0
         };
         
-        // 根据代理模式添加不同的配置
-        if (values.proxyMode === 'specified' && values.proxyServerId) {
+        // 映射前端UI值到后端期望值
+        if (values.proxyMode === 'direct') {
+          proxyConfig.proxyMode = 'direct';
+        } else if (values.proxyMode === 'specified' && values.proxyServerId) {
+          // 指定代理模式 - 对应后端的specific
+          proxyConfig.proxyMode = 'specific';
           proxyConfig.proxyServerId = values.proxyServerId;
         } else if (values.proxyMode === 'random' && values.proxyTag) {
+          // 随机代理模式 - 对应后端的tag_random
+          proxyConfig.proxyMode = 'tag_random';
           proxyConfig.proxyTag = values.proxyTag;
         }
         
-        // 将代理配置添加到extra_config字段
+        console.log('保存代理配置:', proxyConfig);
+        
+        // 将代理配置添加到extra_config字段的proxy属性 (与后端一致)
         camelCaseData.extraConfig = {
           ...(camelCaseData.extraConfig || {}),
-          proxyConfig
+          proxy: proxyConfig
         };
       }
       if (currentAccount && currentAccount.id) {
@@ -1775,16 +1802,25 @@ const EmailManage: React.FC = () => {
                             });
                           }
 
-                          // 强制刷新表单，确保依赖更新
+                          // 强制刷新表单，确保依赖更新 - 加入错误处理
                           setTimeout(() => {
-                            form.validateFields(['proxyServerId', 'proxyTag']);
+                            form.validateFields(['proxyServerId', 'proxyTag'])
+                              .catch(() => {
+                                // 忽略验证错误，仅确保触发验证
+                                console.log('触发代理字段验证');
+                              });
                           }, 100);
+                          
+                          // 添加一个隐藏字段，强制更新表单
+                          form.setFieldValue('_forceUpdate', Date.now());
                         }}
                         allowClear={false}
                         optionFilterProp="children"
                         style={{ width: '100%' }}
-                        getPopupContainer={(triggerNode) => triggerNode.parentNode}
+                        getPopupContainer={(triggerNode) => triggerNode.parentNode || document.body}
                         dropdownStyle={{ zIndex: 1100 }}
+                        listHeight={200}
+                        popupClassName="email-proxy-dropdown"
                       >
                         <Option value="direct">直接连接</Option>
                         <Option value="specified">指定代理</Option>
@@ -1798,7 +1834,8 @@ const EmailManage: React.FC = () => {
                   noStyle
                   shouldUpdate={(prevValues, currentValues) => 
                     prevValues.useProxy !== currentValues.useProxy || 
-                    prevValues.proxyMode !== currentValues.proxyMode
+                    prevValues.proxyMode !== currentValues.proxyMode ||
+                    prevValues._forceUpdate !== currentValues._forceUpdate
                   }
                 >
                   {({ getFieldValue }) => {
@@ -1829,8 +1866,10 @@ const EmailManage: React.FC = () => {
                                 loading={proxyLoading}
                                 showSearch
                                 style={{ width: '100%' }}
-                                getPopupContainer={(triggerNode) => triggerNode.parentNode}
+                                getPopupContainer={(triggerNode) => triggerNode.parentNode || document.body}
                                 dropdownStyle={{ zIndex: 1100 }}
+                                listHeight={200}
+                                popupClassName="email-proxy-dropdown"
                                 filterOption={(input: string, option?: { label: string, value: number, children: React.ReactNode }) => {
                                   if (!option || !option.children) return false;
                                   const childText = String(option.children);
@@ -1879,8 +1918,10 @@ const EmailManage: React.FC = () => {
                                 loading={proxyLoading}
                                 showSearch
                                 style={{ width: '100%' }}
-                                getPopupContainer={(triggerNode) => triggerNode.parentNode}
+                                getPopupContainer={(triggerNode) => triggerNode.parentNode || document.body}
                                 dropdownStyle={{ zIndex: 1100 }}
+                                listHeight={200}
+                                popupClassName="email-proxy-dropdown"
                                 filterOption={(input: string, option?: { label: string, value: number, children: React.ReactNode }) => {
                                   if (!option || !option.children) return false;
                                   const childText = String(option.children);
