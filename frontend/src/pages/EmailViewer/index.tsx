@@ -620,6 +620,15 @@ const EmailViewer: React.FC = () => {
       
       if (response.data.success) {
         message.success(`邮件状态已更新为 ${status}`);
+        
+        // 如果当前正在查看该邮件的详情，更新详情状态
+        if (emailDetail && emailDetail.id === emailId) {
+          setEmailDetail({
+            ...emailDetail,
+            status
+          });
+        }
+        
         // 刷新邮件列表和统计
         fetchEmails();
         fetchEmailStats();
@@ -630,7 +639,7 @@ const EmailViewer: React.FC = () => {
       console.error('更新邮件状态失败:', error);
       message.error('更新邮件状态失败');
     }
-  }, [fetchEmails, fetchEmailStats]);
+  }, [fetchEmails, fetchEmailStats, emailDetail]);
 
   // 批量更新邮件状态
   const batchUpdateEmailStatus = useCallback(async (emailIds: number[], status: 'read' | 'unread' | 'deleted') => {
@@ -1115,26 +1124,14 @@ const EmailViewer: React.FC = () => {
                 {emailDetail.status === 'unread' ? (
                   <Button
                     icon={<MailOutlined />}
-                    onClick={() => {
-                      updateEmailStatus(emailDetail.id, 'read');
-                      setEmailDetail({
-                        ...emailDetail,
-                        status: 'read'
-                      });
-                    }}
+                    onClick={() => updateEmailStatus(emailDetail.id, 'read')}
                   >
                     标记为已读
                   </Button>
                 ) : (
                   <Button
                     icon={<MailOutlined />}
-                    onClick={() => {
-                      updateEmailStatus(emailDetail.id, 'unread');
-                      setEmailDetail({
-                        ...emailDetail,
-                        status: 'unread'
-                      });
-                    }}
+                    onClick={() => updateEmailStatus(emailDetail.id, 'unread')}
                   >
                     标记为未读
                   </Button>
