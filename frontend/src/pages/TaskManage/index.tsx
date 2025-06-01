@@ -301,6 +301,9 @@ const TaskManage: React.FC = () => {
     const handler = safeParseHandler(task.handler);
     setHandlerType(handler.type);
     
+    // 同时设置cronExpression状态，修复无限循环渲染问题
+    setCronExpression(task.cron_expression);
+    
     // 设置表单初始值
     taskForm.setFieldsValue({
       taskName: task.task_name,
