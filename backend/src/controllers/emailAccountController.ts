@@ -1127,9 +1127,17 @@ async function verifyEmailReceived(config: any, testId: string): Promise<boolean
         } else {
           console.warn(`[${testId}] [IMAP测试] 未能获取有效的代理配置，将使用直连模式`);
         }
-      } catch (proxyError) {
-        console.error(`[${testId}] [IMAP测试] 设置代理失败:`, proxyError);
-        console.log(`[${testId}] [IMAP测试] 由于代理设置失败，将使用直连模式`);
+      } catch (proxyError: unknown) {
+        // 如果设置了代理但代理失败，不应回退到直连模式
+        if (config.useProxy && (config.proxyMode === 'specific' || config.proxyMode === 'tag_random')) {
+          const errorMessage = proxyError instanceof Error ? proxyError.message : String(proxyError);
+          console.error(`[${testId}] [IMAP测试] 设置代理失败:`, errorMessage);
+          console.log(`[${testId}] [IMAP测试] 代理设置失败，不会回退到直连模式以保护账号安全`);
+          throw new Error(`IMAP代理设置失败: ${errorMessage}。不会回退到直连模式以保护账号安全。`);
+        } else {
+          console.error(`[${testId}] [IMAP测试] 设置代理失败:`, proxyError);
+          console.log(`[${testId}] [IMAP测试] 由于代理设置失败，将使用直连模式`);
+        }
       }
     } else {
       console.log(`[${testId}] [IMAP测试] 不使用代理，直接连接到IMAP服务器`);
