@@ -957,39 +957,67 @@ async function verifyEmailReceived(config: any, testId: string): Promise<boolean
     }
   };
   
-  // 尝试添加代理配置
-  if (config.useProxy && (config.proxyMode === 'specific' || config.proxyMode === 'tag_random')) {
-    try {
-      // 动态导入ProxyUtils
-      const { createImapProxyAgent, getProxyById, getRandomProxyByTag } = await import('../utils/ProxyUtils');
-      
-      // 根据代理模式获取代理配置
-      let proxyConfig = null;
-      
-      if (config.proxyMode === 'specific' && config.proxyServerId) {
-        proxyConfig = await getProxyById(config.proxyServerId);
-      } else if (config.proxyMode === 'tag_random' && config.proxyTag) {
-        proxyConfig = await getRandomProxyByTag(config.proxyTag);
-      } else if (config.proxyConfig) {
-        proxyConfig = config.proxyConfig;
+    // 记录IMAP连接的基本信息
+    console.log(`[${testId}] [IMAP测试] 连接配置:`, {
+      host: config.imapHost,
+      port: config.imapPort,
+      secure: config.imapSecure
+    });
+    
+    // 详细记录代理配置信息
+    if (config.useProxy) {
+      console.log(`[${testId}] [IMAP测试] 已启用代理模式: ${config.proxyMode || '未指定'}`);
+      if (config.proxyServerId) {
+        console.log(`[${testId}] [IMAP测试] 使用指定代理服务器ID: ${config.proxyServerId}`);
+      }
+      if (config.proxyTag) {
+        console.log(`[${testId}] [IMAP测试] 使用代理标签: ${config.proxyTag}`);
       }
       
-      if (proxyConfig) {
-        console.log(`[${testId}] 测试邮件接收使用代理: ${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`);
+      try {
+        // 动态导入ProxyUtils
+        const { createImapProxyAgent, getProxyById, getRandomProxyByTag } = await import('../utils/ProxyUtils');
         
-        // 创建代理代理
-        const agent = createImapProxyAgent(proxyConfig);
-        if (agent) {
-          // ImapFlow的tls设置支持agent配置
-          imapConfig.tls.agent = agent;
-          console.log(`[${testId}] IMAP代理代理设置成功`);
+        // 根据代理模式获取代理配置
+        let proxyConfig = null;
+        
+        if (config.proxyMode === 'specific' && config.proxyServerId) {
+          proxyConfig = await getProxyById(config.proxyServerId);
+          console.log(`[${testId}] [IMAP测试] 成功获取指定代理服务器配置，ID: ${config.proxyServerId}`);
+        } else if (config.proxyMode === 'tag_random' && config.proxyTag) {
+          proxyConfig = await getRandomProxyByTag(config.proxyTag);
+          console.log(`[${testId}] [IMAP测试] 成功获取随机代理服务器配置，标签: ${config.proxyTag}`);
+        } else if (config.proxyConfig) {
+          proxyConfig = config.proxyConfig;
+          console.log(`[${testId}] [IMAP测试] 使用内置代理配置`);
         }
+        
+        if (proxyConfig) {
+          const proxyUrl = `${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`;
+          const authInfo = proxyConfig.auth ? 
+            `(用户: ${proxyConfig.auth.username || 'anonymous'})` : '(无认证)';
+          
+          console.log(`[${testId}] [IMAP测试] 使用代理: ${proxyUrl} ${authInfo}`);
+          
+          // 创建代理代理
+          const agent = createImapProxyAgent(proxyConfig);
+          if (agent) {
+            // ImapFlow的tls设置支持agent配置
+            imapConfig.tls.agent = agent;
+            console.log(`[${testId}] [IMAP测试] 成功设置IMAP代理`);
+          } else {
+            console.warn(`[${testId}] [IMAP测试] 代理代理创建失败，将使用直连模式`);
+          }
+        } else {
+          console.warn(`[${testId}] [IMAP测试] 未能获取有效的代理配置，将使用直连模式`);
+        }
+      } catch (proxyError) {
+        console.error(`[${testId}] [IMAP测试] 设置代理失败:`, proxyError);
+        console.log(`[${testId}] [IMAP测试] 由于代理设置失败，将使用直连模式`);
       }
-    } catch (proxyError) {
-      console.error(`[${testId}] 设置IMAP代理失败:`, proxyError);
-      // 出错时继续，但不使用代理
+    } else {
+      console.log(`[${testId}] [IMAP测试] 不使用代理，直接连接到IMAP服务器`);
     }
-  }
   
   // 创建ImapFlow客户端
   const client = new ImapFlow(imapConfig);
