@@ -357,16 +357,33 @@ const EmailViewer: React.FC = () => {
 
   // 获取邮箱文件夹列表
   const fetchMailboxes = useCallback(async (accountId?: number) => {
+    if (!accountId) {
+      // 如果没有提供有效的accountId，则使用默认文件夹列表
+      setMailboxes([
+        { name: 'INBOX', displayName: '收件箱' },
+        { name: 'Sent', displayName: '已发送' },
+        { name: 'Drafts', displayName: '草稿箱' },
+        { name: 'Trash', displayName: '已删除' }
+      ]);
+      return;
+    }
+    
     try {
-      // 如果提供了accountId，则在请求中传递
       const response = await api.get(`${apiBaseUrl}/api/emails/mailboxes`, {
-        params: accountId ? { accountId } : undefined
+        params: { accountId }
       });
       
       if (response.data.success) {
         setMailboxes(response.data.data);
       } else {
-        message.error('获取邮箱文件夹列表失败: ' + response.data.message);
+        console.warn('获取邮箱文件夹列表失败:', response.data.message);
+        // 出错时使用默认文件夹列表
+        setMailboxes([
+          { name: 'INBOX', displayName: '收件箱' },
+          { name: 'Sent', displayName: '已发送' },
+          { name: 'Drafts', displayName: '草稿箱' },
+          { name: 'Trash', displayName: '已删除' }
+        ]);
       }
     } catch (error) {
       console.error('获取邮箱文件夹列表失败:', error);
@@ -732,6 +749,8 @@ const EmailViewer: React.FC = () => {
 
   // 初始化加载
   useEffect(() => {
+    // 清空选中的账户ID，避免使用可能存在的无效ID
+    setSelectedAccountId(null);
     fetchEmailAccounts();
     // 不在这里调用fetchMailboxes，等待选择账户后再调用
   }, [fetchEmailAccounts]);
@@ -739,10 +758,34 @@ const EmailViewer: React.FC = () => {
   // 账户变更时加载数据
   useEffect(() => {
     if (selectedAccountId) {
-      fetchEmails();
-      fetchEmailStats();
-      // 当选择账户后，加载该账户的邮箱文件夹列表
-      fetchMailboxes(selectedAccountId);
+      // 首先尝试验证账户是否有效
+      api.get(`${apiBaseUrl}/api/email-accounts/${selectedAccountId}`)
+        .then(response => {
+          if (response.data.success) {
+            // 账户有效，加载相关数据
+            fetchEmails();
+            fetchEmailStats();
+            fetchMailboxes(selectedAccountId);
+          } else {
+            // 账户无效，清空选中账户
+            console.warn('所选邮箱账户无效:', response.data.message);
+            setSelectedAccountId(null);
+            message.warning('所选邮箱账户无效，请重新选择');
+          }
+        })
+        .catch(error => {
+          console.error('验证邮箱账户失败:', error);
+          setSelectedAccountId(null);
+          message.error('验证邮箱账户失败，请重新选择');
+        });
+    } else {
+      // 没有选中账户时，使用默认文件夹列表
+      setMailboxes([
+        { name: 'INBOX', displayName: '收件箱' },
+        { name: 'Sent', displayName: '已发送' },
+        { name: 'Drafts', displayName: '草稿箱' },
+        { name: 'Trash', displayName: '已删除' }
+      ]);
     }
   }, [selectedAccountId, fetchEmails, fetchEmailStats, fetchMailboxes]);
 
