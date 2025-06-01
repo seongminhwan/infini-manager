@@ -281,7 +281,6 @@ const TaskManage: React.FC = () => {
   // 打开任务模态框 - 创建模式
   const handleOpenCreateTaskModal = () => {
     setTaskModalMode('create');
-    setTaskModalVisible(true);
     
     // 重置表单和状态
     taskForm.resetFields();
@@ -289,20 +288,26 @@ const TaskManage: React.FC = () => {
     setTaskTemplate('custom');
     setCronExpression('');
     setAccountFilterConfig({});
+    
+    // 最后再显示模态框，避免状态更新冲突
+    setTaskModalVisible(true);
   };
   
   // 打开任务模态框 - 编辑模式
   const handleOpenEditTaskModal = (task: Task) => {
-    setTaskModalMode('edit');
-    setSelectedTask(task);
-    setTaskModalVisible(true);
+    // 判断是否为内置任务
+    const isBuiltinTask = task.task_key.startsWith('BUILTIN_');
+    
+    // 先重置表单
+    taskForm.resetFields();
     
     // 解析处理器JSON
     const handler = safeParseHandler(task.handler);
-    setHandlerType(handler.type);
     
-    // 同时设置cronExpression状态，修复无限循环渲染问题
-    setCronExpression(task.cron_expression);
+    // 设置基础状态
+    setTaskModalMode('edit');
+    setSelectedTask(task);
+    setHandlerType(handler.type);
     
     // 设置表单初始值
     taskForm.setFieldsValue({
@@ -316,6 +321,19 @@ const TaskManage: React.FC = () => {
       retryInterval: task.retry_interval,
       description: task.description
     });
+    
+    // 对于内置任务，使用setTimeout来分隔状态更新，避免渲染冲突
+    if (isBuiltinTask) {
+      setTimeout(() => {
+        // 设置cron表达式状态，这是最后一步，防止触发重渲染循环
+        setCronExpression(task.cron_expression);
+        setTaskModalVisible(true);
+      }, 0);
+    } else {
+      // 非内置任务，正常设置
+      setCronExpression(task.cron_expression);
+      setTaskModalVisible(true);
+    }
   };
   
   // 根据处理器类型获取表单值
@@ -884,8 +902,21 @@ const TaskManage: React.FC = () => {
           <CronExpressionBuilder
             value={cronExpression}
             onChange={(cron) => {
-              setCronExpression(cron);
-              taskForm.setFieldsValue({ cronExpression: cron });
+              // 检查任务键是否为内置任务
+              const taskKey = taskForm.getFieldValue('taskKey');
+              const isBuiltinTask = taskKey && typeof taskKey === 'string' && taskKey.startsWith('BUILTIN_');
+              
+              // 只有当cron值确实变化时才更新状态，避免循环更新
+              if (cron !== cronExpression) {
+                // 对于内置任务，仅更新cronExpression状态，不更新表单值
+                if (isBuiltinTask && taskModalMode === 'edit') {
+                  setCronExpression(cron);
+                } else {
+                  // 非内置任务，更新状态和表单值
+                  setCronExpression(cron);
+                  taskForm.setFieldsValue({ cronExpression: cron });
+                }
+              }
             }}
           />
         </StyledFormItem>
