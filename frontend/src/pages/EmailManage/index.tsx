@@ -1783,13 +1783,7 @@ const EmailManage: React.FC = () => {
                         allowClear={false}
                         optionFilterProp="children"
                         style={{ width: '100%' }}
-                        getPopupContainer={triggerNode => triggerNode.parentNode}
-                        dropdownStyle={{ zIndex: 1100 }}
-                      >
-                        allowClear={false}
-                        optionFilterProp="children"
-                        style={{ width: '100%' }}
-                        getPopupContainer={triggerNode => triggerNode.parentNode}
+                        getPopupContainer={(triggerNode) => triggerNode.parentNode}
                         dropdownStyle={{ zIndex: 1100 }}
                       >
                         <Option value="direct">直接连接</Option>
@@ -1835,14 +1829,7 @@ const EmailManage: React.FC = () => {
                                 loading={proxyLoading}
                                 showSearch
                                 style={{ width: '100%' }}
-                                getPopupContainer={triggerNode => triggerNode.parentNode}
-                                dropdownStyle={{ zIndex: 1100 }}
-                              <Select 
-                                placeholder="选择代理服务器"
-                                loading={proxyLoading}
-                                showSearch
-                                style={{ width: '100%' }}
-                                getPopupContainer={triggerNode => triggerNode.parentNode}
+                                getPopupContainer={(triggerNode) => triggerNode.parentNode}
                                 dropdownStyle={{ zIndex: 1100 }}
                                 filterOption={(input: string, option?: { label: string, value: number, children: React.ReactNode }) => {
                                   if (!option || !option.children) return false;
@@ -1855,9 +1842,6 @@ const EmailManage: React.FC = () => {
                                   if (proxyServers.length === 0 && !proxyLoading) {
                                     console.log('加载代理服务器列表');
                                     fetchProxyServers();
-                                  }
-                                }}
-                              >
                                   }
                                 }}
                               >
@@ -1895,14 +1879,7 @@ const EmailManage: React.FC = () => {
                                 loading={proxyLoading}
                                 showSearch
                                 style={{ width: '100%' }}
-                                getPopupContainer={triggerNode => triggerNode.parentNode}
-                                dropdownStyle={{ zIndex: 1100 }}
-                              <Select 
-                                placeholder="选择代理标签"
-                                loading={proxyLoading}
-                                showSearch
-                                style={{ width: '100%' }}
-                                getPopupContainer={triggerNode => triggerNode.parentNode}
+                                getPopupContainer={(triggerNode) => triggerNode.parentNode}
                                 dropdownStyle={{ zIndex: 1100 }}
                                 filterOption={(input: string, option?: { label: string, value: number, children: React.ReactNode }) => {
                                   if (!option || !option.children) return false;
@@ -1915,9 +1892,6 @@ const EmailManage: React.FC = () => {
                                   if (proxyTags.length === 0 && !proxyLoading) {
                                     console.log('加载代理标签列表');
                                     fetchProxyTags();
-                                  }
-                                }}
-                              >
                                   }
                                 }}
                               >
