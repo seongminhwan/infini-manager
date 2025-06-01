@@ -831,14 +831,26 @@ const testResults = new Map<string, EmailAccountTestResult>();
  * 发送测试邮件 - SMTP实现
  */
 async function sendTestEmail(config: any, testId: string): Promise<string> {
-  console.log(`[${testId}] 使用SMTP方法发送测试邮件，配置:`, {
-    user: config.user,
-    smtpHost: config.smtpHost,
-    smtpPort: config.smtpPort,
-    smtpSecure: config.smtpSecure,
-    useProxy: config.useProxy,
-    proxyMode: config.proxyMode
-  });
+    // 记录测试邮件发送的基本信息
+    console.log(`[${testId}] 使用SMTP方法发送测试邮件，配置:`, {
+      user: config.user,
+      smtpHost: config.smtpHost,
+      smtpPort: config.smtpPort,
+      smtpSecure: config.smtpSecure
+    });
+    
+    // 详细记录代理配置信息
+    if (config.useProxy) {
+      console.log(`[${testId}] [SMTP测试] 已启用代理模式: ${config.proxyMode || '未指定'}`);
+      if (config.proxyServerId) {
+        console.log(`[${testId}] [SMTP测试] 使用指定代理服务器ID: ${config.proxyServerId}`);
+      }
+      if (config.proxyTag) {
+        console.log(`[${testId}] [SMTP测试] 使用代理标签: ${config.proxyTag}`);
+      }
+    } else {
+      console.log(`[${testId}] [SMTP测试] 不使用代理，直接连接`);
+    }
   
   // 创建SMTP传输器配置
   const transportConfig: any = {
