@@ -835,11 +835,13 @@ async function sendTestEmail(config: any, testId: string): Promise<string> {
     user: config.user,
     smtpHost: config.smtpHost,
     smtpPort: config.smtpPort,
-    smtpSecure: config.smtpSecure
+    smtpSecure: config.smtpSecure,
+    useProxy: config.useProxy,
+    proxyMode: config.proxyMode
   });
   
-  // 创建SMTP传输器
-  const transporter = nodemailer.createTransport({
+  // 创建SMTP传输器配置
+  const transportConfig: any = {
     host: config.smtpHost,
     port: config.smtpPort,
     secure: config.smtpSecure,
@@ -850,7 +852,42 @@ async function sendTestEmail(config: any, testId: string): Promise<string> {
     tls: {
       rejectUnauthorized: false // 允许自签名证书
     }
-  });
+  };
+  
+  // 处理代理配置
+  if (config.useProxy && (config.proxyMode === 'specific' || config.proxyMode === 'tag_random')) {
+    try {
+      // 动态导入ProxyUtils
+      const { createSmtpProxyConfig, getProxyById, getRandomProxyByTag } = await import('../utils/ProxyUtils');
+      
+      // 根据代理模式获取代理配置
+      let proxyConfig = null;
+      
+      if (config.proxyMode === 'specific' && config.proxyServerId) {
+        proxyConfig = await getProxyById(config.proxyServerId);
+      } else if (config.proxyMode === 'tag_random' && config.proxyTag) {
+        proxyConfig = await getRandomProxyByTag(config.proxyTag);
+      } else if (config.proxyConfig) {
+        proxyConfig = config.proxyConfig;
+      }
+      
+      if (proxyConfig) {
+        console.log(`[${testId}] 测试邮件发送使用代理: ${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`);
+        
+        // 添加代理配置
+        const proxySettings = createSmtpProxyConfig(proxyConfig);
+        if (proxySettings) {
+          transportConfig.proxy = proxySettings.url;
+        }
+      }
+    } catch (proxyError) {
+      console.error(`[${testId}] 设置SMTP代理失败:`, proxyError);
+      // 出错时继续，但不使用代理
+    }
+  }
+  
+  // 创建SMTP传输器
+  const transporter = nodemailer.createTransport(transportConfig);
   
   // 生成测试邮件内容
   const testSubject = `测试邮件 [${testId}]`;
