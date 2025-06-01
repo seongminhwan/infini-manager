@@ -919,6 +919,18 @@ export const infiniAccountApi = {
       console.error('获取分页Infini账户列表失败:', error);
       throw error;
     }
+  },
+  
+  // 获取账户统计信息
+  getAccountStatistics: async () => {
+    try {
+      console.log('获取账户统计信息');
+      const response = await api.get(`${apiBaseUrl}/api/infini-accounts/statistics`);
+      return response.data;
+    } catch (error) {
+      console.error('获取账户统计信息失败:', error);
+      throw error;
+    }
   }
 };
 

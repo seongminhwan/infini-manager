@@ -13,6 +13,7 @@ import {
   InfiniLoginResponse,
   InfiniProfileResponse,
   GmailConfig,
+  IAccountStatistics,
 } from '../types';
 import { InfiniCardService } from './InfiniCardService';
 import { RandomUserService } from './RandomUserService';
@@ -750,6 +751,23 @@ export class InfiniAccountService {
           
           // 从filters中移除security属性，避免后续处理时尝试查询不存在的列
           delete filters.security;
+        }
+
+        // 特殊处理全局搜索参数
+        if (filters._search !== undefined && filters._search !== null && filters._search !== '') {
+          const searchValue = filters._search.toString().toLowerCase();
+          console.log(`应用全局搜索条件: _search=${searchValue}`);
+          
+          // 使用where或子查询组合多字段搜索
+          query = query.where(function() {
+            // 在多个字段中搜索
+            this.whereRaw('LOWER(infini_accounts.email) LIKE ?', [`%${searchValue}%`])
+                .orWhereRaw('LOWER(infini_accounts.user_id) LIKE ?', [`%${searchValue}%`])
+                .orWhereRaw('LOWER(infini_accounts.status) LIKE ?', [`%${searchValue}%`]);
+          });
+          
+          // 从filters中移除_search属性，避免后续处理
+          delete filters._search;
         }
 
         // 处理其他筛选条件
@@ -5374,6 +5392,63 @@ export class InfiniAccountService {
       return {
         success: false,
         message: `批量同步Infini账户KYC信息失败: ${(error as Error).message}`,
+      };
+    }
+  }
+
+  /**
+   * 获取账户统计信息
+   * 包括账户总数、有余额账户总数、有红包余额总数、总余额和现有卡片总数
+   */
+  async getAccountStatistics(): Promise<ApiResponse<IAccountStatistics>> {
+    try {
+      // 获取所有账户
+      const accounts = await db('infini_accounts').select([
+        'id',
+        'available_balance as availableBalance',
+        'red_packet_balance as redPacketBalance'
+      ]);
+      
+      // 计算统计数据
+      const totalAccounts = accounts.length;
+      
+      // 有余额的账户（availableBalance > 0）
+      const accountsWithBalance = accounts.filter(acc =>
+        parseFloat(acc.availableBalance || 0) > 0
+      ).length;
+      
+      // 有红包余额的账户（redPacketBalance > 0）
+      const accountsWithRedPacket = accounts.filter(acc =>
+        parseFloat(acc.redPacketBalance || 0) > 0
+      ).length;
+      
+      // 计算总余额（所有账户的availableBalance总和）
+      const totalBalance = accounts.reduce((sum, acc) => {
+        const balance = parseFloat(acc.availableBalance || 0);
+        return sum + (isNaN(balance) ? 0 : balance);
+      }, 0);
+      
+      // 获取现有卡片总数
+      const totalCards = await db('infini_cards').count('id as count').first();
+      
+      // 构建返回的统计信息
+      const statistics: IAccountStatistics = {
+        totalAccounts,
+        accountsWithBalance,
+        accountsWithRedPacket,
+        totalBalance,
+        totalCards: Number(totalCards?.count) || 0
+      };
+      
+      return {
+        success: true,
+        data: statistics
+      };
+    } catch (error) {
+      console.error('获取账户统计信息失败：', error);
+      return {
+        success: false,
+        message: `获取账户统计信息失败: ${(error as Error).message}`
       };
     }
   }

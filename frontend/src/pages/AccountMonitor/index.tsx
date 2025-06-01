@@ -3133,16 +3133,8 @@ const AccountMonitor: React.FC = () => {
     console.log(`账户数据更新完成，新accounts长度: ${updatedAccounts.length}`);
     setAccounts(updatedAccounts); // 更新账户状态
     
-    // 如果存在搜索文本，同时更新过滤后的账户列表
-    if (searchText) {
-      const lowerCaseValue = searchText.toLowerCase();
-      const filtered = updatedAccounts.filter(account => 
-        account.email.toLowerCase().includes(lowerCaseValue) || 
-        account.userId.toLowerCase().includes(lowerCaseValue) ||
-        (account.status && account.status.toLowerCase().includes(lowerCaseValue))
-      );
-      setFilteredAccounts(filtered);
-    }
+    // 注意：现在搜索是通过API实现的，不再需要在前端过滤数据
+    // 如果需要刷新带搜索条件的数据，应该通过fetchPaginatedAccounts函数实现
   };
 
   // 获取所有账户
@@ -4080,33 +4072,35 @@ const AccountMonitor: React.FC = () => {
       });
   };
 
-  // 添加账户筛选和搜索状态
+  // 添加账户搜索状态
   const [searchText, setSearchText] = useState<string>('');
-  const [filteredAccounts, setFilteredAccounts] = useState<InfiniAccount[]>([]);
 
-  // 全局搜索函数
+  // 全局搜索函数 - 通过后端API实现
   const handleGlobalSearch = (value: string) => {
     setSearchText(value);
     
-    if (!value.trim()) {
-      setFilteredAccounts([]);
-      return;
+    // 构建搜索过滤条件
+    const searchFilters = { ...filters };
+    
+    if (value.trim()) {
+      // 使用搜索文本构建复合搜索条件
+      searchFilters._search = value.trim();
+    } else if (searchFilters._search) {
+      // 清除之前的搜索条件
+      delete searchFilters._search;
     }
     
-    const lowerCaseValue = value.toLowerCase();
-    const filtered = accounts.filter(account => 
-      account.email.toLowerCase().includes(lowerCaseValue) || 
-      account.userId.toLowerCase().includes(lowerCaseValue) ||
-      (account.status && account.status.toLowerCase().includes(lowerCaseValue))
-    );
-    
-    setFilteredAccounts(filtered);
+    // 使用新的过滤条件刷新数据
+    fetchPaginatedAccounts({
+      ...pagination,
+      current: 1  // 重置为第一页
+    }, searchFilters, sortInfo);
   };
 
   // 服务器端分页数据获取
   const fetchPaginatedAccounts = async (
     paginationParams = pagination,
-    filtersParams = filters, 
+    filtersParams = filters,
     sorterParams = sortInfo
   ) => {
     try {
@@ -4118,11 +4112,17 @@ const AccountMonitor: React.FC = () => {
         sortField: sorterParams.field,
         sortOrder: sorterParams.order
       });
+      
+      // 将搜索文本添加到过滤参数中
+      const combinedFilters = { ...filtersParams };
+      if (searchText && !combinedFilters._search) {
+        combinedFilters._search = searchText;
+      }
 
       const response = await infiniAccountApi.getPaginatedInfiniAccounts(
         paginationParams.current,
         paginationParams.pageSize,
-        filtersParams,
+        combinedFilters,
         sorterParams.field,
         sorterParams.order
       );
@@ -4415,7 +4415,6 @@ const AccountMonitor: React.FC = () => {
               placeholder="搜索账户"
               allowClear
               onSearch={handleGlobalSearch}
-              onChange={(e) => handleGlobalSearch(e.target.value)}
               style={{ width: 200 }}
             />
             <Button
@@ -4526,7 +4525,7 @@ const AccountMonitor: React.FC = () => {
         <TableContainer>
           <Table
             columns={getVisibleColumns()}
-            dataSource={searchText ? filteredAccounts : accounts}
+            dataSource={accounts}
             rowKey="id"
             loading={loading || loadingGroups}
             pagination={{

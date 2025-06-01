@@ -1938,3 +1938,29 @@ export const getPaginatedInfiniAccounts = async (req: Request, res: Response): P
     });
   }
 };
+
+/**
+ * 获取账户统计信息
+ * 包括账户总数、有余额账户总数、有红包余额总数、总余额和现有卡片总数
+ */
+export const getAccountStatistics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('接收到获取账户统计信息请求');
+    
+    // 调用服务层方法
+    const service = new InfiniAccountService();
+    const response = await service.getAccountStatistics();
+    
+    if (response.success) {
+      res.json(response);
+    } else {
+      res.status(500).json(response);
+    }
+  } catch (error) {
+    console.error('获取账户统计信息失败:', error);
+    res.status(500).json({
+      success: false,
+      message: `获取账户统计信息失败: ${(error as Error).message}`
+    });
+  }
+};

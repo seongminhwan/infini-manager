@@ -47,12 +47,29 @@ import {
   addAccountToGroup,
   addAccountsToGroup,
   removeAccountFromGroup,
-  removeAccountsFromGroup
+  removeAccountsFromGroup,
+  // 账户统计信息
+  getAccountStatistics
 } from '../controllers/infiniAccountController';
 const router = express.Router();
 
 // 为所有账户相关路由设置业务上下文
 router.use(createBusinessContextMiddleware('account', 'general'));
+
+/**
+ * @swagger
+ * /api/infini-accounts/statistics:
+ *   get:
+ *     summary: 获取账户统计信息
+ *     description: 获取系统中所有账户的统计信息，包括账户总数、有余额账户总数、有红包余额账户总数、总余额和现有卡片总数
+ *     tags: [InfiniAccounts]
+ *     responses:
+ *       200:
+ *         description: 成功获取账户统计信息
+ *       500:
+ *         description: 服务器错误
+ */
+router.get('/statistics', getAccountStatistics);
 /**
  * @swagger
  * /api/infini-accounts/2fa/qrcode:
@@ -1839,5 +1856,46 @@ router.post('/groups/accounts/remove', removeAccountsFromGroup);
  *         description: 服务器错误
  */
 router.post('/one-click-setup', oneClickAccountSetup);
+
+/**
+ * @swagger
+ * /api/infini-accounts/statistics:
+ *   get:
+ *     summary: 获取账户统计信息
+ *     description: 获取系统中账户的统计信息，包括总数、有余额账户数、有红包余额账户数等
+ *     tags: [InfiniAccounts]
+ *     responses:
+ *       200:
+ *         description: 成功获取统计信息
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalAccounts:
+ *                       type: number
+ *                       example: 100
+ *                     accountsWithBalance:
+ *                       type: number
+ *                       example: 75
+ *                     accountsWithRedPacket:
+ *                       type: number
+ *                       example: 50
+ *                     totalBalance:
+ *                       type: number
+ *                       example: 15000.50
+ *                     totalCards:
+ *                       type: number
+ *                       example: 120
+ *       500:
+ *         description: 服务器错误
+ */
+router.get('/statistics', getAccountStatistics);
 
 export default router;

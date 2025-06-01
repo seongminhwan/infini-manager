@@ -735,6 +735,9 @@ export async function cancelSync(req: Request, res: Response): Promise<void> {
  */
 export async function getMailboxList(req: Request, res: Response): Promise<void> {
   try {
+    // 从查询参数中获取账户ID（如果提供）
+    const { accountId } = req.query;
+    
     // 常用的邮箱文件夹列表
     const mailboxes = [
       { name: 'INBOX', displayName: '收件箱' },

@@ -127,7 +127,7 @@ export class EmailSyncService {
       }
 
       // 创建邮件客户端
-      const config = {
+      const config: any = {
         user: account.email,
         password: account.password,
         imapHost: account.imap_host,
@@ -137,6 +137,21 @@ export class EmailSyncService {
         smtpPort: account.smtp_port,
         smtpSecure: account.smtp_secure
       };
+      
+      // 添加代理配置
+      if (account.use_proxy) {
+        console.log(`使用代理配置同步邮箱 ${account.email}, 代理模式: ${account.proxy_mode}`);
+        config.useProxy = true;
+        config.proxyMode = account.proxy_mode;
+        
+        if (account.proxy_mode === 'specific' && account.proxy_server_id) {
+          config.proxyServerId = account.proxy_server_id;
+        } else if (account.proxy_mode === 'tag_random' && account.proxy_tag) {
+          config.proxyTag = account.proxy_tag;
+        }
+      } else {
+        console.log(`直接连接同步邮箱 ${account.email} (不使用代理)`);
+      }
 
       const gmailClient = new GmailClient(config);
 
