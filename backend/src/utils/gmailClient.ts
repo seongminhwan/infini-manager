@@ -139,30 +139,39 @@ class GmailClient {
           tlsOptions: { rejectUnauthorized: false }
         };
 
-        // 如果有代理配置，添加代理代理
-        if (proxyConfig) {
-          console.log(`IMAP连接使用代理: ${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`);
-          
-          // 创建代理代理
-          const agent = createImapProxyAgent(proxyConfig);
-          if (agent) {
-            imapOptions.tlsOptions = {
-              ...imapOptions.tlsOptions,
-              rejectUnauthorized: false
-            };
+          // 如果有代理配置，添加代理代理
+          if (proxyConfig) {
+            const proxyUrl = `${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`;
+            const authInfo = proxyConfig.auth ? 
+              `(用户: ${proxyConfig.auth.username || 'anonymous'})` : '(无认证)';
             
-            // 根据IMAP连接是否使用SSL/TLS设置不同的代理
-            if (this.config.imapSecure) {
-              imapOptions.tlsOptions.agent = agent;
+            console.log(`[IMAP] 连接使用代理: ${proxyUrl} ${authInfo}`);
+            console.log(`[IMAP] 连接详情: 主机=${this.config.imapHost}, 端口=${this.config.imapPort}, 安全=${this.config.imapSecure}`);
+            
+            // 创建代理代理
+            const agent = createImapProxyAgent(proxyConfig);
+            if (agent) {
+              imapOptions.tlsOptions = {
+                ...imapOptions.tlsOptions,
+                rejectUnauthorized: false
+              };
+              
+              // 根据IMAP连接是否使用SSL/TLS设置不同的代理
+              if (this.config.imapSecure) {
+                imapOptions.tlsOptions.agent = agent;
+                console.log(`[IMAP] 已为TLS连接设置代理代理`);
+              } else {
+                imapOptions.socketTimeout = 60000; // 增加超时时间
+                imapOptions.connTimeout = 60000;
+                imapOptions.agent = agent;
+                console.log(`[IMAP] 已为非TLS连接设置代理代理`);
+              }
             } else {
-              imapOptions.socketTimeout = 60000; // 增加超时时间
-              imapOptions.connTimeout = 60000;
-              imapOptions.agent = agent;
+              console.warn('[IMAP] 创建代理代理失败，将使用直连模式');
             }
           } else {
-            console.warn('创建IMAP代理代理失败，将使用直连模式');
+            console.log(`[IMAP] 直接连接到服务器: ${this.config.imapHost}:${this.config.imapPort} (无代理)`);
           }
-        }
 
         // 创建新的IMAP客户端
         this.imapClient = new IMAP(imapOptions);
