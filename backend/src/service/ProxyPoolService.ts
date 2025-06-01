@@ -1641,6 +1641,38 @@ export class ProxyPoolService {
   }
 
   /**
+   * 获取所有代理服务器
+   */
+  async getAllServers(): Promise<ApiResponse> {
+    try {
+      // 获取所有代理服务器
+      const servers = await db('proxy_servers')
+        .orderBy('id');
+      
+      // 为每个服务器获取关联的标签
+      for (const server of servers) {
+        const tags = await db('proxy_tags')
+          .join('proxy_server_tags', 'proxy_tags.id', 'proxy_server_tags.tag_id')
+          .where('proxy_server_tags.proxy_server_id', server.id)
+          .select('proxy_tags.*');
+        
+        server.tags = tags;
+      }
+      
+      return {
+        success: true,
+        data: servers
+      };
+    } catch (error) {
+      console.error('获取所有代理服务器失败:', error);
+      return {
+        success: false,
+        message: `获取所有代理服务器失败: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
    * 批量添加代理服务器（包含标签支持）
    */
   async addProxyServersBatchWithTags(poolId: number, proxyStrings: string[], defaultTags: string[] = []): Promise<ApiResponse> {
