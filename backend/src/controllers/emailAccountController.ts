@@ -829,6 +829,7 @@ const testResults = new Map<string, EmailAccountTestResult>();
 
 /**
  * 发送测试邮件 - SMTP实现
+ * 支持多级代理备选方案和详细错误处理
  */
 async function sendTestEmail(config: any, testId: string): Promise<string> {
     // 记录测试邮件发送的基本信息
@@ -852,8 +853,8 @@ async function sendTestEmail(config: any, testId: string): Promise<string> {
       console.log(`[${testId}] [SMTP测试] 不使用代理，直接连接`);
     }
   
-  // 创建SMTP传输器配置
-  const transportConfig: any = {
+  // 创建基础SMTP传输器配置（无代理）
+  const baseTransportConfig: any = {
     host: config.smtpHost,
     port: config.smtpPort,
     secure: config.smtpSecure,
@@ -863,64 +864,161 @@ async function sendTestEmail(config: any, testId: string): Promise<string> {
     },
     tls: {
       rejectUnauthorized: false // 允许自签名证书
-    }
+    },
+    debug: true, // 开启调试日志，帮助排查问题
+    logger: true  // 启用内置日志记录
   };
   
-  // 处理代理配置
+  // 记录重要的测试信息
+  console.log(`[${testId}] SMTP服务器信息: ${config.smtpHost}:${config.smtpPort} (${config.smtpSecure ? 'SSL/TLS' : '非加密'})`);
+  
+  // 用于存储所有尝试的结果
+  const attemptResults: {success: boolean, method: string, error?: any}[] = [];
+  
+  // 如果启用了代理，尝试所有可能的代理配置
   if (config.useProxy && (config.proxyMode === 'specific' || config.proxyMode === 'tag_random')) {
     try {
       // 动态导入ProxyUtils
-      const { createSmtpProxyConfig, getProxyById, getRandomProxyByTag } = await import('../utils/ProxyUtils');
+      const { createFallbackSmtpProxyConfigs, getProxyById, getRandomProxyByTag } = await import('../utils/ProxyUtils');
       
       // 根据代理模式获取代理配置
       let proxyConfig = null;
       
       if (config.proxyMode === 'specific' && config.proxyServerId) {
         proxyConfig = await getProxyById(config.proxyServerId);
+        console.log(`[${testId}] 获取到指定代理服务器ID=${config.proxyServerId}的配置`);
       } else if (config.proxyMode === 'tag_random' && config.proxyTag) {
         proxyConfig = await getRandomProxyByTag(config.proxyTag);
+        console.log(`[${testId}] 获取到标签为"${config.proxyTag}"的随机代理服务器配置`);
       } else if (config.proxyConfig) {
         proxyConfig = config.proxyConfig;
+        console.log(`[${testId}] 使用内联代理配置`);
       }
       
       if (proxyConfig) {
-        console.log(`[${testId}] 测试邮件发送使用代理: ${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`);
+        console.log(`[${testId}] 成功获取代理配置: ${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`);
         
-        // 添加代理配置
-        const proxySettings = createSmtpProxyConfig(proxyConfig);
-        if (proxySettings) {
-          transportConfig.proxy = proxySettings.url;
+        // 获取所有可能的备选代理配置
+        const proxyConfigs = createFallbackSmtpProxyConfigs(proxyConfig, testId);
+        console.log(`[${testId}] 创建了${proxyConfigs.length}个备选代理配置`);
+        
+        // 依次尝试每个代理配置
+        for (let i = 0; i < proxyConfigs.length; i++) {
+          const proxySettings = proxyConfigs[i];
+          const proxyMethod = `代理尝试 #${i+1}: ${proxySettings.url.split('://')[0]}`;
+          
+          console.log(`[${testId}] 尝试使用${proxyMethod}发送测试邮件`);
+          
+          try {
+            // 创建带有当前代理配置的传输器
+            const transportConfig = { ...baseTransportConfig, proxy: proxySettings };
+            const transporter = nodemailer.createTransport(transportConfig);
+            
+            // 生成测试邮件内容
+            const testSubject = `测试邮件 [${testId}] - 代理测试 #${i+1}`;
+            const testHtml = `
+              <div>
+                <h2>这是一封测试邮件</h2>
+                <p>测试ID: ${testId}</p>
+                <p>代理类型: ${proxySettings.url.split('://')[0]}</p>
+                <p>时间: ${new Date().toLocaleString()}</p>
+                <p>这封邮件用于验证您的邮箱配置是否正确。</p>
+              </div>
+            `;
+            
+            // 发送邮件
+            const info = await transporter.sendMail({
+              from: config.user,
+              to: config.user, // 发给自己
+              subject: testSubject,
+              html: testHtml
+            });
+            
+            // 如果成功，记录并返回
+            console.log(`[${testId}] ${proxyMethod}发送成功! messageId: ${info.messageId}`);
+            attemptResults.push({ success: true, method: proxyMethod });
+            return info.messageId || '';
+          } catch (error) {
+            // 记录当前代理尝试失败
+            console.error(`[${testId}] ${proxyMethod}发送失败:`, error.message);
+            console.log(`[${testId}] 错误详情:`, error.message);
+            attemptResults.push({ 
+              success: false, 
+              method: proxyMethod,
+              error: error.message
+            });
+            
+            // 如果是403错误，记录详细信息以便诊断
+            if (error.message.includes('403')) {
+              console.log(`[${testId}] 检测到403错误，可能是代理服务器拒绝访问`);
+              console.log(`[${testId}] 代理URL: ${proxySettings.url.split('://')[0]}://${proxySettings.url.split('@').pop()}`);
+            }
+            
+            // 继续尝试下一个代理配置
+          }
         }
+        
+        console.log(`[${testId}] 所有代理配置尝试失败，将尝试直连模式`);
+      } else {
+        console.warn(`[${testId}] 未能获取有效的代理配置，将使用直连模式`);
       }
     } catch (proxyError) {
-      console.error(`[${testId}] 设置SMTP代理失败:`, proxyError);
-      // 出错时继续，但不使用代理
+      console.error(`[${testId}] 代理设置过程出错:`, proxyError);
+      attemptResults.push({ 
+        success: false, 
+        method: '代理设置',
+        error: proxyError.message
+      });
+      console.log(`[${testId}] 由于代理设置错误，将尝试直连模式`);
     }
   }
   
-  // 创建SMTP传输器
-  const transporter = nodemailer.createTransport(transportConfig);
-  
-  // 生成测试邮件内容
-  const testSubject = `测试邮件 [${testId}]`;
-  const testHtml = `
-    <div>
-      <h2>这是一封测试邮件</h2>
-      <p>测试ID: ${testId}</p>
-      <p>时间: ${new Date().toLocaleString()}</p>
-      <p>这封邮件用于验证您的邮箱配置是否正确。</p>
-    </div>
-  `;
-  
-  // 发送邮件
-  const info = await transporter.sendMail({
-    from: config.user,
-    to: config.user, // 发给自己
-    subject: testSubject,
-    html: testHtml
-  });
-  
-  return info.messageId || '';
+  // 所有代理尝试都失败或未使用代理，尝试直连
+  console.log(`[${testId}] 使用直连模式发送测试邮件`);
+  try {
+    // 创建不使用代理的传输器
+    const transporter = nodemailer.createTransport(baseTransportConfig);
+    
+    // 生成测试邮件内容
+    const testSubject = `测试邮件 [${testId}] - 直连模式`;
+    const testHtml = `
+      <div>
+        <h2>这是一封测试邮件</h2>
+        <p>测试ID: ${testId}</p>
+        <p>连接模式: 直连 (无代理)</p>
+        <p>时间: ${new Date().toLocaleString()}</p>
+        <p>这封邮件用于验证您的邮箱配置是否正确。</p>
+      </div>
+    `;
+    
+    // 发送邮件
+    const info = await transporter.sendMail({
+      from: config.user,
+      to: config.user, // 发给自己
+      subject: testSubject,
+      html: testHtml
+    });
+    
+    console.log(`[${testId}] 直连模式发送成功! messageId: ${info.messageId}`);
+    attemptResults.push({ success: true, method: '直连模式' });
+    return info.messageId || '';
+  } catch (error) {
+    console.error(`[${testId}] 直连模式发送失败:`, error.message);
+    attemptResults.push({ 
+      success: false, 
+      method: '直连模式',
+      error: error.message
+    });
+    
+    // 汇总所有尝试结果
+    console.error(`[${testId}] 所有发送尝试均失败，共${attemptResults.length}次尝试:`);
+    attemptResults.forEach((result, index) => {
+      console.error(`[${testId}] 尝试#${index+1} - ${result.method}: ${result.success ? '成功' : '失败 - ' + result.error}`);
+    });
+    
+    // 所有尝试都失败，抛出错误
+    throw new Error(`所有发送尝试均失败，请检查邮箱配置和网络连接`);
+  }
 }
 
 /**
