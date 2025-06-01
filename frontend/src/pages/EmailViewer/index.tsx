@@ -356,9 +356,12 @@ const EmailViewer: React.FC = () => {
   }, []);
 
   // 获取邮箱文件夹列表
-  const fetchMailboxes = useCallback(async () => {
+  const fetchMailboxes = useCallback(async (accountId?: number) => {
     try {
-      const response = await api.get(`${apiBaseUrl}/api/emails/mailboxes`);
+      // 如果提供了accountId，则在请求中传递
+      const response = await api.get(`${apiBaseUrl}/api/emails/mailboxes`, {
+        params: accountId ? { accountId } : undefined
+      });
       
       if (response.data.success) {
         setMailboxes(response.data.data);
