@@ -612,19 +612,27 @@ class GmailClient {
       
       // 如果有代理配置，添加代理
       if (proxyConfig) {
-        console.log(`SMTP连接使用代理: ${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`);
+        const proxyUrl = `${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`;
+        const authInfo = proxyConfig.auth ? 
+          `(用户: ${proxyConfig.auth.username || 'anonymous'})` : '(无认证)';
+        
+        console.log(`[SMTP] 发送邮件使用代理: ${proxyUrl} ${authInfo}`);
+        console.log(`[SMTP] 连接详情: 主机=${this.config.smtpHost}, 端口=${this.config.smtpPort}, 安全=${this.config.smtpSecure}`);
         
         try {
           // 添加代理配置
           const proxySettings = createSmtpProxyConfig(proxyConfig);
           if (proxySettings) {
             transportConfig.proxy = proxySettings.url;
+            console.log(`[SMTP] 已成功配置代理: ${proxySettings.url}`);
           } else {
-            console.warn('创建SMTP代理配置失败，将使用直连模式');
+            console.warn('[SMTP] 创建代理配置失败，将使用直连模式');
           }
         } catch (proxyError) {
-          console.error('设置SMTP代理失败:', proxyError);
+          console.error('[SMTP] 设置代理失败:', proxyError);
         }
+      } else {
+        console.log(`[SMTP] 直接连接到服务器: ${this.config.smtpHost}:${this.config.smtpPort} (无代理)`);
       }
       
       // 重新创建SMTP传输器
