@@ -938,18 +938,19 @@ async function sendTestEmail(config: any, testId: string): Promise<string> {
             console.log(`[${testId}] ${proxyMethod}发送成功! messageId: ${info.messageId}`);
             attemptResults.push({ success: true, method: proxyMethod });
             return info.messageId || '';
-          } catch (error) {
+          } catch (error: Error) {
             // 记录当前代理尝试失败
-            console.error(`[${testId}] ${proxyMethod}发送失败:`, error.message);
-            console.log(`[${testId}] 错误详情:`, error.message);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`[${testId}] ${proxyMethod}发送失败:`, errorMessage);
+            console.log(`[${testId}] 错误详情:`, errorMessage);
             attemptResults.push({ 
               success: false, 
               method: proxyMethod,
-              error: error.message
+              error: errorMessage
             });
             
             // 如果是403错误，记录详细信息以便诊断
-            if (error.message.includes('403')) {
+            if (errorMessage.includes('403')) {
               console.log(`[${testId}] 检测到403错误，可能是代理服务器拒绝访问`);
               console.log(`[${testId}] 代理URL: ${proxySettings.url.split('://')[0]}://${proxySettings.url.split('@').pop()}`);
             }
