@@ -71,8 +71,9 @@ interface EmailSyncParams {
   endDate?: string;
 }
 
-interface TaskData {
-  id?: number;
+// 与TaskManage组件中相同的Task接口定义
+interface Task {
+  id: number;
   task_name: string;
   task_key: string;
   cron_expression: string;
@@ -81,11 +82,15 @@ interface TaskData {
   retry_count: number;
   retry_interval: number;
   description: string;
+  next_execution_time: string;
+  last_execution_time: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface EmailSyncTaskModalProps {
   visible: boolean;
-  task?: TaskData;
+  task?: Task | null; // 允许传入Task类型或null
   onClose: () => void;
   onSuccess: () => void;
 }
