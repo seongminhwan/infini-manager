@@ -1090,16 +1090,30 @@ const EmailManage: React.FC = () => {
       // 处理代理配置
       if (record.extra_config?.proxyConfig) {
         const proxyConfig = record.extra_config.proxyConfig;
+        console.log('加载现有代理配置:', proxyConfig);
+        
+        // 设置代理使用状态
         formData.useProxy = !!proxyConfig.useProxy;
         formData.proxyMode = proxyConfig.proxyMode || 'direct';
         
         if (proxyConfig.proxyMode === 'specified') {
           formData.proxyServerId = proxyConfig.proxyServerId;
+          // 预加载代理服务器列表
+          console.log('预加载代理服务器列表，当前选中:', proxyConfig.proxyServerId);
+          fetchProxyServers();
         } else if (proxyConfig.proxyMode === 'random') {
           formData.proxyTag = proxyConfig.proxyTag;
+          // 预加载代理标签列表
+          console.log('预加载代理标签列表，当前选中:', proxyConfig.proxyTag);
+          fetchProxyTags();
         }
+      } else {
+        console.log('账户无代理配置，设置默认为不使用代理');
+        formData.useProxy = false;
+        formData.proxyMode = 'direct';
       }
       
+      console.log('设置表单值:', formData);
       form.setFieldsValue(formData);
     } else {
       // 新建邮箱
@@ -1114,7 +1128,9 @@ const EmailManage: React.FC = () => {
         secure_imap: true,
         host_smtp: 'smtp.gmail.com',
         port_smtp: 465,
-        secure_smtp: true
+        secure_smtp: true,
+        useProxy: false,
+        proxyMode: 'direct'
       });
     }
     
