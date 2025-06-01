@@ -2029,6 +2029,18 @@ export const proxyPoolApi = {
     }
   },
 
+  // 获取所有代理服务器
+  getAllServers: async () => {
+    try {
+      console.log('获取所有代理服务器');
+      const response = await api.get(`${apiBaseUrl}/api/proxy-pools/servers`);
+      return response.data;
+    } catch (error) {
+      console.error('获取所有代理服务器失败:', error);
+      throw error;
+    }
+  },
+
   // 删除代理服务器
   deleteServer: async (serverId: number) => {
     try {
