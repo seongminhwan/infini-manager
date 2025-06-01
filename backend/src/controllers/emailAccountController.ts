@@ -978,11 +978,11 @@ async function sendTestEmail(config: any, testId: string): Promise<string> {
       attemptResults.push({ 
         success: false, 
         method: '代理设置',
-        error: proxyError.message
+        error: proxyError instanceof Error ? proxyError.message : String(proxyError)
       });
       
       // 不尝试直连，直接抛出错误
-      throw new Error(`代理设置过程出错: ${proxyError.message}。不会回退到直连模式以保护账号安全。`);
+      throw new Error(`代理设置过程出错: ${proxyError instanceof Error ? proxyError.message : String(proxyError)}。不会回退到直连模式以保护账号安全。`);
     }
   } else if (!config.useProxy) {
     // 只有在明确配置为不使用代理时，才尝试直连
