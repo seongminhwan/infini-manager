@@ -544,10 +544,26 @@ const EmailManage: React.FC = () => {
   // 打开模态窗时获取代理服务器和标签
   useEffect(() => {
     if (modalVisible) {
+      console.log('模态窗口打开，预加载代理数据');
+      // 预加载代理服务器和标签数据
       fetchProxyServers();
       fetchProxyTags();
+      
+      // 确保表单中的代理配置正确显示
+      const currentFormValues = form.getFieldsValue();
+      console.log('当前表单值:', currentFormValues);
+      
+      if (currentFormValues.useProxy) {
+        const proxyMode = currentFormValues.proxyMode || 'direct';
+        console.log('使用代理模式:', proxyMode);
+        
+        // 确保proxyMode有值
+        if (!proxyMode) {
+          form.setFieldsValue({ proxyMode: 'direct' });
+        }
+      }
     }
-  }, [modalVisible, fetchProxyServers, fetchProxyTags]);
+  }, [modalVisible, fetchProxyServers, fetchProxyTags, form]);
   // 表单提交处理
   const handleSubmit = async (values: any) => {
     if (testStatus === 'testing') {
@@ -1744,12 +1760,25 @@ const EmailManage: React.FC = () => {
                           if (value === 'specified') {
                             console.log('加载代理服务器列表');
                             fetchProxyServers();
+                            // 清除标签选择
+                            form.setFieldsValue({ proxyTag: undefined });
                           } else if (value === 'random') {
                             console.log('加载代理标签列表');
                             fetchProxyTags();
+                            // 清除服务器选择
+                            form.setFieldsValue({ proxyServerId: undefined });
+                          } else {
+                            // 直连模式，清除服务器和标签
+                            form.setFieldsValue({ 
+                              proxyServerId: undefined,
+                              proxyTag: undefined
+                            });
                           }
                         }}
                         allowClear={false}
+                        optionFilterProp="children"
+                        style={{ width: '100%' }}
+                        getPopupContainer={triggerNode => triggerNode.parentNode}
                       >
                         <Option value="direct">直接连接</Option>
                         <Option value="specified">指定代理</Option>
