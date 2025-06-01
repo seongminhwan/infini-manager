@@ -733,16 +733,18 @@ const EmailViewer: React.FC = () => {
   // 初始化加载
   useEffect(() => {
     fetchEmailAccounts();
-    fetchMailboxes();
-  }, [fetchEmailAccounts, fetchMailboxes]);
+    // 不在这里调用fetchMailboxes，等待选择账户后再调用
+  }, [fetchEmailAccounts]);
 
   // 账户变更时加载数据
   useEffect(() => {
     if (selectedAccountId) {
       fetchEmails();
       fetchEmailStats();
+      // 当选择账户后，加载该账户的邮箱文件夹列表
+      fetchMailboxes(selectedAccountId);
     }
-  }, [selectedAccountId, fetchEmails, fetchEmailStats]);
+  }, [selectedAccountId, fetchEmails, fetchEmailStats, fetchMailboxes]);
 
   // 查询参数变更时重新加载邮件
   useEffect(() => {
