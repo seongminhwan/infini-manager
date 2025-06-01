@@ -738,6 +738,28 @@ export async function getMailboxList(req: Request, res: Response): Promise<void>
     // 从查询参数中获取账户ID（如果提供）
     const { accountId } = req.query;
     
+    // 如果提供了accountId，验证其格式和有效性
+    if (accountId !== undefined) {
+      const parsedAccountId = parseInt(accountId as string);
+      if (isNaN(parsedAccountId)) {
+        res.status(400).json({
+          success: false,
+          message: '无效的邮件ID'
+        });
+        return;
+      }
+      
+      // 验证账户是否存在
+      const account = await db('email_accounts').where({ id: parsedAccountId }).first();
+      if (!account) {
+        res.status(404).json({
+          success: false,
+          message: '邮箱账户不存在'
+        });
+        return;
+      }
+    }
+    
     // 常用的邮箱文件夹列表
     const mailboxes = [
       { name: 'INBOX', displayName: '收件箱' },
