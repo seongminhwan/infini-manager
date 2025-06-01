@@ -259,13 +259,13 @@ const EmailSyncTaskModal: React.FC<EmailSyncTaskModalProps> = ({
         description: formValues.description || '内置邮件增量同步任务',
         cronExpression: cronExpression,
         handler: {
-          type: 'function',
+          type: 'function' as const,
           functionName: 'syncEmails',
           params: syncParams
         },
-        status: formValues.status || 'enabled',
-        retryCount: formValues.retryCount || 0,
-        retryInterval: formValues.retryInterval || 0
+        status: (formValues.status || 'enabled') as 'enabled' | 'disabled',
+        retryCount: Number(formValues.retryCount) || 0,
+        retryInterval: Number(formValues.retryInterval) || 0
       };
       
       setSaving(true);
