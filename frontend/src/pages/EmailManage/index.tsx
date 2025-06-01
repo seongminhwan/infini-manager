@@ -1689,7 +1689,21 @@ const EmailManage: React.FC = () => {
                       label="代理模式"
                       dependencies={['useProxy']}
                     >
-                      <Select placeholder="选择代理模式" disabled={!form.getFieldValue('useProxy')}>
+                      <Select 
+                        placeholder="选择代理模式" 
+                        disabled={!form.getFieldValue('useProxy')}
+                        onChange={(value) => {
+                          console.log('代理模式已切换为:', value);
+                          // 根据选择的模式加载相关数据
+                          if (value === 'specified') {
+                            console.log('加载代理服务器列表');
+                            fetchProxyServers();
+                          } else if (value === 'random') {
+                            console.log('加载代理标签列表');
+                            fetchProxyTags();
+                          }
+                        }}
+                      >
                         <Option value="direct">直接连接</Option>
                         <Option value="specified">指定代理</Option>
                         <Option value="random">标签随机</Option>
