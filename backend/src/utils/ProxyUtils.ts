@@ -152,19 +152,92 @@ export function createImapProxyAgent(proxyConfig: SimpleProxyConfig): any {
 /**
  * 获取SMTP代理配置
  * @param proxyConfig 代理配置
+ * @param logId 可选的日志ID，用于跟踪日志
  * @returns SMTP代理配置对象或null
  */
-export function createSmtpProxyConfig(proxyConfig: SimpleProxyConfig): any {
+export function createSmtpProxyConfig(proxyConfig: SimpleProxyConfig, logId?: string): any {
   try {
+    const logPrefix = logId ? `[${logId}]` : '';
+    
+    // 检查代理配置的有效性
+    if (!proxyConfig.host || !proxyConfig.port || !proxyConfig.type) {
+      console.error(`${logPrefix} SMTP代理配置不完整:`, JSON.stringify(proxyConfig));
+      return null;
+    }
+    
+    // 记录详细的代理配置信息
+    console.log(`${logPrefix} 创建SMTP代理配置:`);
+    console.log(`${logPrefix} - 代理类型: ${proxyConfig.type}`);
+    console.log(`${logPrefix} - 代理服务器: ${proxyConfig.host}:${proxyConfig.port}`);
+    console.log(`${logPrefix} - 认证信息: ${proxyConfig.auth ? (proxyConfig.auth.username ? '有用户名/密码' : '无用户名') : '无认证'}`);
+    
     // 根据代理类型创建不同的代理配置
-    const proxyUrl = `${proxyConfig.type}://${proxyConfig.auth?.username ? `${proxyConfig.auth.username}:${proxyConfig.auth.password}@` : ''}${proxyConfig.host}:${proxyConfig.port}`;
+    const authString = proxyConfig.auth?.username ? 
+      `${encodeURIComponent(proxyConfig.auth.username)}:${encodeURIComponent(proxyConfig.auth.password || '')}@` : 
+      '';
+    
+    const proxyUrl = `${proxyConfig.type}://${authString}${proxyConfig.host}:${proxyConfig.port}`;
+    console.log(`${logPrefix} - 最终代理URL: ${proxyConfig.type}://${proxyConfig.auth?.username ? '***:***@' : ''}${proxyConfig.host}:${proxyConfig.port}`);
     
     return {
       url: proxyUrl,
       secure: proxyConfig.type === 'https',
+      onProxyError: (err: Error) => {
+        console.error(`${logPrefix} SMTP代理连接错误:`, err.message);
+        if (err.stack) {
+          console.error(`${logPrefix} 错误堆栈:`, err.stack);
+        }
+      }
     };
   } catch (error) {
-    console.error('创建SMTP代理配置失败:', error);
+    console.error(`${logId ? `[${logId}]` : ''} 创建SMTP代理配置时发生异常:`, error);
     return null;
   }
+}
+
+/**
+ * 尝试使用不同代理类型创建SMTP代理配置
+ * 当HTTP代理失败时，会尝试SOCKS5代理
+ * @param proxyConfig 代理配置
+ * @param logId 可选的日志ID，用于跟踪日志
+ * @returns SMTP代理配置对象数组，按优先级排序
+ */
+export function createFallbackSmtpProxyConfigs(proxyConfig: SimpleProxyConfig, logId?: string): any[] {
+  const proxyConfigs = [];
+  const logPrefix = logId ? `[${logId}]` : '';
+  
+  // 首先尝试使用原始代理类型
+  const originalConfig = createSmtpProxyConfig({...proxyConfig}, logId);
+  if (originalConfig) {
+    proxyConfigs.push(originalConfig);
+    console.log(`${logPrefix} 添加原始代理类型(${proxyConfig.type})配置`);
+  }
+  
+  // 如果原始类型是HTTP或HTTPS，添加SOCKS5作为备选
+  if (proxyConfig.type === 'http' || proxyConfig.type === 'https') {
+    console.log(`${logPrefix} 添加SOCKS5备选代理配置`);
+    const socks5Config = createSmtpProxyConfig({
+      ...proxyConfig,
+      type: 'socks5'
+    }, logId);
+    
+    if (socks5Config) {
+      proxyConfigs.push(socks5Config);
+    }
+  }
+  // 如果原始类型是SOCKS，添加HTTP作为备选
+  else if (proxyConfig.type === 'socks4' || proxyConfig.type === 'socks5') {
+    console.log(`${logPrefix} 添加HTTP备选代理配置`);
+    const httpConfig = createSmtpProxyConfig({
+      ...proxyConfig,
+      type: 'http'
+    }, logId);
+    
+    if (httpConfig) {
+      proxyConfigs.push(httpConfig);
+    }
+  }
+  
+  console.log(`${logPrefix} 创建了${proxyConfigs.length}个备选SMTP代理配置`);
+  return proxyConfigs;
 }
