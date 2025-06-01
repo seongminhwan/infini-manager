@@ -184,14 +184,23 @@ const EmailManage: React.FC = () => {
    * 获取代理服务器列表
    */
   const fetchProxyServers = useCallback(async () => {
+    console.log('开始获取代理服务器列表...');
     setProxyLoading(true);
     try {
       const response = await api.get(`${apiBaseUrl}/api/proxy-pools/servers`);
+      console.log('代理服务器列表API响应:', response.data);
+      
       if (response.data.success) {
-        setProxyServers(response.data.data || []);
+        const servers = response.data.data || [];
+        console.log(`成功获取${servers.length}个代理服务器:`, servers);
+        setProxyServers(servers);
+        
+        if (servers.length === 0) {
+          message.warning('没有可用的代理服务器');
+        }
       } else {
         console.error('获取代理服务器列表失败:', response.data.message);
-        message.error('获取代理服务器列表失败');
+        message.error('获取代理服务器列表失败: ' + response.data.message);
       }
     } catch (error) {
       console.error('获取代理服务器列表失败:', error);
@@ -200,6 +209,7 @@ const EmailManage: React.FC = () => {
         { id: 1, host: '192.168.1.1', port: 8080, description: '测试代理1' },
         { id: 2, host: '192.168.1.2', port: 8080, description: '测试代理2' },
       ];
+      console.log('使用模拟代理服务器数据:', mockProxyServers);
       setProxyServers(mockProxyServers);
       message.warning('获取代理服务器列表失败，显示模拟数据');
     } finally {
