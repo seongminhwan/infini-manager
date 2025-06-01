@@ -930,20 +930,57 @@ async function verifyEmailReceived(config: any, testId: string): Promise<boolean
     attemptCount++;
     console.log(`[${testId}] 开始第${attemptCount}次邮件检测 (已用时${Math.round((Date.now() - startTime)/1000)}秒，最多检测60秒)`);
     
-    // 创建ImapFlow客户端
-    const client = new ImapFlow({
-      host: config.imapHost,
-      port: config.imapPort,
-      secure: config.imapSecure,
-      auth: {
-        user: config.user,
-        pass: config.password
-      },
-      logger: false, // 禁用详细日志
-      tls: {
-        rejectUnauthorized: false // 允许自签名证书
+  // 创建ImapFlow客户端配置
+  const imapConfig: any = {
+    host: config.imapHost,
+    port: config.imapPort,
+    secure: config.imapSecure,
+    auth: {
+      user: config.user,
+      pass: config.password
+    },
+    logger: false, // 禁用详细日志
+    tls: {
+      rejectUnauthorized: false // 允许自签名证书
+    }
+  };
+  
+  // 尝试添加代理配置
+  if (config.useProxy && (config.proxyMode === 'specific' || config.proxyMode === 'tag_random')) {
+    try {
+      // 动态导入ProxyUtils
+      const { createImapProxyAgent, getProxyById, getRandomProxyByTag } = await import('../utils/ProxyUtils');
+      
+      // 根据代理模式获取代理配置
+      let proxyConfig = null;
+      
+      if (config.proxyMode === 'specific' && config.proxyServerId) {
+        proxyConfig = await getProxyById(config.proxyServerId);
+      } else if (config.proxyMode === 'tag_random' && config.proxyTag) {
+        proxyConfig = await getRandomProxyByTag(config.proxyTag);
+      } else if (config.proxyConfig) {
+        proxyConfig = config.proxyConfig;
       }
-    });
+      
+      if (proxyConfig) {
+        console.log(`[${testId}] 测试邮件接收使用代理: ${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`);
+        
+        // 创建代理代理
+        const agent = createImapProxyAgent(proxyConfig);
+        if (agent) {
+          // ImapFlow的tls设置支持agent配置
+          imapConfig.tls.agent = agent;
+          console.log(`[${testId}] IMAP代理代理设置成功`);
+        }
+      }
+    } catch (proxyError) {
+      console.error(`[${testId}] 设置IMAP代理失败:`, proxyError);
+      // 出错时继续，但不使用代理
+    }
+  }
+  
+  // 创建ImapFlow客户端
+  const client = new ImapFlow(imapConfig);
     
     // 使用标志跟踪连接状态
     let isConnected = false;
