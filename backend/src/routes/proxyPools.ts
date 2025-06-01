@@ -421,6 +421,32 @@ router.delete('/:poolId', async (req: Request, res: Response) => {
 
 /**
  * @swagger
+ * /api/proxy-pools/servers:
+ *   get:
+ *     summary: 获取所有代理服务器
+ *     tags: [代理池管理]
+ *     responses:
+ *       200:
+ *         description: 成功获取所有代理服务器
+ */
+router.get('/servers', async (req: Request, res: Response) => {
+  try {
+    console.log('接收到获取所有代理服务器请求');
+    
+    const result = await proxyPoolService.getAllServers();
+    console.log(`获取到 ${result.data?.length || 0} 个代理服务器`);
+    res.json(result);
+  } catch (error) {
+    console.error('获取所有代理服务器失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取所有代理服务器失败'
+    });
+  }
+});
+
+/**
+ * @swagger
  * /api/proxy-pools/servers/{serverId}:
  *   get:
  *     summary: 获取单个代理服务器
