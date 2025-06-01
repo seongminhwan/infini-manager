@@ -53,6 +53,7 @@ import { taskApi } from '../../services/api';
 import CronExpressionBuilder from '../../components/CronExpressionBuilder';
 import AccountFilterBuilder from '../../components/AccountFilterBuilder';
 import EmailSyncTaskEditor from '../../components/EmailSyncTaskEditor';
+import EmailSyncTaskModal from '../../components/EmailSyncTaskModal';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -192,6 +193,10 @@ const TaskManage: React.FC = () => {
     endDate: undefined
   });
   
+  // 内置邮件同步任务模态框状态
+  const [emailSyncModalVisible, setEmailSyncModalVisible] = useState<boolean>(false);
+  const [editingEmailSyncTask, setEditingEmailSyncTask] = useState<Task | null>(null);
+  
   // 安全解析处理器JSON
   const safeParseHandler = (handler: any) => {
     if (typeof handler === 'string') {
@@ -312,9 +317,18 @@ const TaskManage: React.FC = () => {
   
   // 打开任务模态框 - 编辑模式
   const handleOpenEditTaskModal = (task: Task) => {
-    // 判断是否为内置任务
-    const isBuiltinTask = task.task_key.startsWith('BUILTIN_');
+    // 检查是否为内置邮件同步任务
     const isEmailSyncTask = task.task_key === 'BUILTIN_INCREMENTAL_EMAIL_SYNC';
+    
+    // 对于内置邮件同步任务，使用专用的编辑模态框
+    if (isEmailSyncTask) {
+      setEditingEmailSyncTask(task);
+      setEmailSyncModalVisible(true);
+      return;
+    }
+    
+    // 判断是否为其他内置任务
+    const isBuiltinTask = task.task_key.startsWith('BUILTIN_');
     
     // 先重置表单
     taskForm.resetFields();
@@ -327,77 +341,18 @@ const TaskManage: React.FC = () => {
     setSelectedTask(task);
     setHandlerType(handler.type);
     
-    // 对于内置邮件同步任务，解析邮件同步参数
-    if (isEmailSyncTask && handler.type === 'function') {
-      try {
-        const params = typeof handler.params === 'string' 
-          ? JSON.parse(handler.params) 
-          : handler.params || {};
-        
-        const syncParams = {
-          accountIds: params.accountIds || [],
-          syncType: params.syncType || 'incremental',
-          mailboxes: params.mailboxes || ['INBOX'],
-          startDate: params.startDate,
-          endDate: params.endDate
-        };
-        
-        setEmailSyncParams(syncParams);
-        
-        // 设置表单值时也包含这些参数
-        taskForm.setFieldsValue({
-          taskName: task.task_name,
-          taskKey: task.task_key,
-          cronExpression: task.cron_expression,
-          handlerType: handler.type,
-          handlerName: handler.functionName || 'syncEmails',
-          handlerParams: JSON.stringify(params, null, 2),
-          status: task.status,
-          retryCount: task.retry_count,
-          retryInterval: task.retry_interval,
-          description: task.description,
-          emailSyncParams: syncParams
-        });
-      } catch (error) {
-        console.error('解析邮件同步参数失败:', error);
-        // 使用默认值
-        const defaultParams = {
-          accountIds: [],
-          syncType: 'incremental',
-          mailboxes: ['INBOX']
-        };
-        
-        setEmailSyncParams(defaultParams);
-        
-        // 设置默认表单值
-        taskForm.setFieldsValue({
-          taskName: task.task_name,
-          taskKey: task.task_key,
-          cronExpression: task.cron_expression,
-          handlerType: handler.type,
-          handlerName: 'syncEmails',
-          handlerParams: '{}',
-          status: task.status,
-          retryCount: task.retry_count,
-          retryInterval: task.retry_interval,
-          description: task.description,
-          emailSyncParams: defaultParams
-        });
-      }
-    } else {
-      // 非邮件同步任务，正常设置表单值
-      taskForm.setFieldsValue({
-        taskName: task.task_name,
-        taskKey: task.task_key,
-        cronExpression: task.cron_expression,
-        handlerType: handler.type,
-        ...getHandlerFormValues(handler),
-        status: task.status,
-        retryCount: task.retry_count,
-        retryInterval: task.retry_interval,
-        description: task.description
-      });
-    }
+    // 非邮件同步任务，正常设置表单值
+    taskForm.setFieldsValue({
+      taskName: task.task_name,
+      taskKey: task.task_key,
+      cronExpression: task.cron_expression,
+      handlerType: handler.type,
+      ...getHandlerFormValues(handler),
+      status: task.status,
+      retryCount: task.retry_count,
+      retryInterval: task.retry_interval,
+      description: task.description
+    });
     
     // 使用setTimeout来分隔状态更新，避免渲染冲突
     setTimeout(() => {
@@ -405,6 +360,15 @@ const TaskManage: React.FC = () => {
       setCronExpression(task.cron_expression);
       setTaskModalVisible(true);
     }, 50);
+  };
+  
+  // 处理邮件同步任务编辑成功
+  const handleEmailSyncTaskSuccess = () => {
+    // 关闭模态框
+    setEmailSyncModalVisible(false);
+    setEditingEmailSyncTask(null);
+    // 刷新任务列表
+    fetchTasks();
   };
   
   // 根据处理器类型获取表单值
@@ -1544,6 +1508,14 @@ const TaskManage: React.FC = () => {
           </div>
         )}
       </Drawer>
+      
+      {/* 邮件同步任务专用模态框 */}
+      <EmailSyncTaskModal
+        visible={emailSyncModalVisible}
+        task={editingEmailSyncTask}
+        onClose={() => setEmailSyncModalVisible(false)}
+        onSuccess={handleEmailSyncTaskSuccess}
+      />
     </PageContainer>
   );
 };
