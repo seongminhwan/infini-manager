@@ -446,7 +446,7 @@ export class ImapIdleService extends EventEmitter {
         
         // 重新进入IDLE模式
         this.startIdleMode(connection);
-      });
+      }
     } catch (error) {
       console.error(`刷新邮箱 ${connection.email} 的IDLE连接失败:`, error);
       this.handleConnectionError(connection, error);
