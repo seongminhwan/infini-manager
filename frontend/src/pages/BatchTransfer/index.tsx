@@ -474,6 +474,112 @@ const BatchTransfer = () => {
     }
   };
   
+  // 使用单笔转账API执行多笔转账的函数
+  const executeTransfersSequentially = async (transfers: any[], sourceName: string, targetName: string) => {
+    let successCount = 0;
+    let failedCount = 0;
+    const results: any[] = [];
+    const failedTransfers: any[] = [];
+    
+    // 设置进度百分比初始值
+    setProgressPercent(0);
+    
+    // 按顺序执行每笔转账
+    for (let i = 0; i < transfers.length; i++) {
+      const transfer = transfers[i];
+      try {
+        // 根据转账模式决定请求结构
+        const requestData = transferMode === 'one_to_many' 
+          ? {
+              sourceAccountId: transfer.sourceAccountId,
+              targetIdentifier: transfer.targetIdentifier,
+              amount: transfer.amount,
+              remarks: remarks || `批量转账 ${i+1}/${transfers.length}`,
+              auto2FA: auto2FA
+            }
+          : {
+              sourceAccountId: transfer.sourceAccountId,
+              targetIdentifier: transfer.targetIdentifier,
+              amount: transfer.amount,
+              remarks: remarks || `批量转账 ${i+1}/${transfers.length}`,
+              auto2FA: auto2FA
+            };
+        
+        // 使用单笔转账API
+        const response = await infiniAccountApi.transferFunds(requestData);
+        
+        // 处理结果
+        const result = {
+          ...transfer,
+          status: response.success ? 'completed' : 'failed',
+          error_message: response.success ? null : response.message,
+          transfer_id: response.success ? response.data?.transferId : null,
+          created_at: new Date(),
+          updated_at: new Date()
+        };
+        
+        // 更新状态
+        if (response.success) {
+          successCount++;
+        } else {
+          failedCount++;
+          failedTransfers.push(result);
+        }
+        
+        results.push(result);
+        
+        // 更新进度
+        const progress = Math.floor(((i + 1) / transfers.length) * 100);
+        setProgressPercent(progress);
+        setSuccessCount(successCount);
+        setFailedCount(failedCount);
+        setRecentTransfers(results);
+        
+        // 每5笔转账后暂停一下，避免频率限制
+        if ((i + 1) % 5 === 0 && i < transfers.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (error: any) {
+        console.error(`转账失败 (${i+1}/${transfers.length}):`, error);
+        
+        const result = {
+          ...transfer,
+          status: 'failed',
+          error_message: error.message || '转账执行异常',
+          created_at: new Date(),
+          updated_at: new Date()
+        };
+        
+        failedCount++;
+        failedTransfers.push(result);
+        results.push(result);
+        
+        // 更新状态
+        setFailedCount(failedCount);
+        setRecentTransfers(results);
+      }
+    }
+    
+    // 设置最终状态
+    if (failedCount === 0) {
+      setProcessStatus('completed');
+      message.success(`所有${transfers.length}笔转账已成功完成`);
+    } else if (successCount === 0) {
+      setProcessStatus('error');
+      message.error(`所有${transfers.length}笔转账均失败`);
+    } else {
+      setProcessStatus('completed');
+      message.info(`完成${transfers.length}笔转账，成功: ${successCount}，失败: ${failedCount}`);
+    }
+    
+    return {
+      successCount,
+      failedCount,
+      results,
+      failedTransfers
+    };
+  };
+  
   // 执行批量转账
   const handleExecuteTransfer = async () => {
     try {
@@ -483,51 +589,17 @@ const BatchTransfer = () => {
       const relations = prepareRelations();
       const batchName = `批量转账_${new Date().toLocaleString()}`;
       
-      // 准备批量转账数据
-      let targetAccountIdValue = undefined;
+      // 开始执行批量转账
+      message.info('开始执行批量转账，请勿关闭页面...');
+      setProcessStatus('processing');
       
-      // 处理多对一模式下的目标账户ID
-      if (transferMode === 'many_to_one') {
-        if (targetContactType === 'inner' && targetAccount) {
-          // 内部账户模式，使用选择的账户ID
-          targetAccountIdValue = targetAccount.id;
-        } else if (externalTargetId) {
-          // 非内部账户模式(UID或Email)，后端API要求必须提供targetAccountId
-          // 如果使用外部标识符，我们传递一个特殊标记，让后端知道这是一个外部账户
-          targetAccountIdValue = -1; // 使用-1表示这是一个外部账户
-        }
-      }
+      // 使用单笔转账API执行多笔转账
+      const sourceName = transferMode === 'one_to_many' && sourceAccount ? sourceAccount.email : '多个账户';
+      const targetName = transferMode === 'many_to_one' && targetAccount ? targetAccount.email : externalTargetId || '多个账户';
       
-      // 构建API请求数据 - 完全移除所有contactType相关字段
-      const data = {
-        name: batchName,
-        type: transferMode,
-        sourceAccountId: transferMode === 'one_to_many' ? sourceAccount?.id : undefined,
-        targetAccountId: transferMode === 'many_to_one' ? targetAccountIdValue : undefined,
-        relations,
-        remarks: remarks || batchName
-      };
+      // 直接执行转账，不使用批量转账API
+      await executeTransfersSequentially(relations, sourceName, targetName);
       
-      // 创建批量转账任务
-      const createResponse = await batchTransferApi.createBatchTransfer(data);
-      
-      if (createResponse.success) {
-        const { batchId } = createResponse.data;
-        setBatchId(batchId);
-        
-        // 执行批量转账
-        const executeResponse = await batchTransferApi.executeBatchTransfer(batchId, auto2FA);
-        
-        if (executeResponse.success) {
-          message.success('批量转账已开始执行');
-          setProcessStatus('processing');
-        } else {
-          message.error(`执行批量转账失败: ${executeResponse.message}`);
-          setProcessStatus('error');
-        }
-      } else {
-        message.error(`创建批量转账任务失败: ${createResponse.message}`);
-      }
     } catch (error: any) {
       console.error('执行批量转账失败:', error);
       message.error(`执行批量转账失败: ${error.message}`);
