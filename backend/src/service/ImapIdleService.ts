@@ -683,18 +683,13 @@ export class ImapIdleService extends EventEmitter {
       
       // 添加连接详情
       stats.connections.push({
-        // 转换为any类型以绕过参数类型检查
-        ...(({
-          accountId: connection.accountId,
-          email: connection.email,
-          status: connection.status,
         accountId: connection.accountId,
         email: connection.email,
         status: connection.status,
         lastError: connection.lastError,
         reconnectAttempts: connection.reconnectAttempts,
         lastActivity: connection.lastActivity
-      } as any);
+      });
     }
     
     return stats;
@@ -704,7 +699,10 @@ export class ImapIdleService extends EventEmitter {
    * 添加或更新邮箱连接
    * @param accountId 邮箱ID
    */
-  async addOrUpdateConnection(accountId: number): Promise<void> {
+  static async addOrUpdateConnection(accountId: number): Promise<void> {
+    // 获取服务实例
+    const instance = imapIdleServiceInstance;
+    
     // 获取账户信息
     const account = await db('email_accounts')
       .where('id', accountId)
@@ -717,20 +715,21 @@ export class ImapIdleService extends EventEmitter {
     // 如果不启用IDLE连接或账户不活跃,断开连接
     if (!account.use_idle_connection || account.status !== 'active') {
       console.log(`邮箱 ${account.email} 不启用IDLE连接或不活跃,断开连接`);
-      await this.disconnectAccount(accountId);
+      await instance.disconnectAccount(accountId);
       return;
     }
     
     // 连接或重连
-    await this.connectAccount(account);
+    await instance.connectAccount(account);
   }
   
   /**
    * 移除邮箱连接
    * @param accountId 邮箱ID
    */
-  async removeConnection(accountId: number): Promise<void> {
-    await this.disconnectAccount(accountId);
+  static async removeConnection(accountId: number): Promise<void> {
+    const instance = imapIdleServiceInstance;
+    await instance.disconnectAccount(accountId);
   }
   
   /**
@@ -752,5 +751,8 @@ export class ImapIdleService extends EventEmitter {
   }
 }
 
+// 创建服务实例
+const imapIdleServiceInstance = new ImapIdleService();
+
 // 导出服务单例
-export default new ImapIdleService();
+export default imapIdleServiceInstance;
