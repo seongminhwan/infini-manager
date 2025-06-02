@@ -1458,10 +1458,10 @@ const TaskManage: React.FC = () => {
         )}
       </Drawer>
       
-      {/* 邮件同步任务专用模态框 */}
+      {/* 邮件同步任务专用模态框 - 只传递ID而不是完整对象，避免循环渲染 */}
       <EmailSyncTaskModal
         visible={emailSyncModalVisible}
-        task={editingEmailSyncTask}
+        taskId={editingEmailSyncTask?.id}
         onClose={() => setEmailSyncModalVisible(false)}
         onSuccess={handleEmailSyncTaskSuccess}
       />
