@@ -15,7 +15,8 @@ import {
   Spin,
   Typography,
   Space,
-  Divider
+  Divider,
+  Alert
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -224,26 +225,46 @@ const EditEmailSyncTask: React.FC = () => {
   // 处理表单提交
   const handleSubmit = async () => {
     try {
-      // 构建任务数据 - 只包含允许修改的字段
-      const taskData = {
-        taskName: formState.taskName,
-        description: formState.description,
-        cronExpression: formState.cronExpression,
-        status: formState.status,
-        retryCount: formState.retryCount,
-        retryInterval: formState.retryInterval
-        // 不包含handler字段，因为内置任务不允许修改handler
-      };
-      
       setSaving(true);
       
       let response;
       if (taskId) {
+        // 更新任务 - 只包含允许修改的字段
+        const updateData = {
+          taskName: formState.taskName,
+          description: formState.description,
+          cronExpression: formState.cronExpression,
+          status: formState.status,
+          retryCount: formState.retryCount,
+          retryInterval: formState.retryInterval
+          // 不包含handler字段，因为内置任务不允许修改handler
+        };
+        
         // 更新任务 - 只发送允许修改的字段
-        response = await taskApi.updateTask(taskId, taskData);
+        response = await taskApi.updateTask(taskId, updateData);
       } else {
+        // 创建任务 - 需要包含所有必要字段
+        const createData = {
+          taskName: formState.taskName,
+          taskKey: 'BUILTIN_INCREMENTAL_EMAIL_SYNC', // 必须提供taskKey
+          description: formState.description,
+          cronExpression: formState.cronExpression,
+          handler: {
+            type: 'function' as const,
+            functionName: 'syncEmails',
+            params: {
+              accountIds: formState.accountIds,
+              syncType: formState.syncType,
+              mailboxes: ['INBOX'] // 简化：默认只同步收件箱
+            }
+          },
+          status: formState.status,
+          retryCount: formState.retryCount,
+          retryInterval: formState.retryInterval
+        };
+        
         // 创建任务
-        response = await taskApi.createTask(taskData);
+        response = await taskApi.createTask(createData);
       }
       
       if (response && response.success) {
