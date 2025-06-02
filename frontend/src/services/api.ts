@@ -1899,6 +1899,18 @@ export const taskApi = {
     }
   },
   
+  // 获取单个任务详情
+  getScheduledTaskById: async (id: string) => {
+    try {
+      console.log(`获取任务详情，任务ID: ${id}`);
+      const response = await api.get(`${apiBaseUrl}/api/tasks/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取任务详情失败:', error);
+      throw error;
+    }
+  },
+  
   // 获取可用的函数处理器列表
   getAvailableHandlers: async () => {
     try {
