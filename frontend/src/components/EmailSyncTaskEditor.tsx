@@ -191,7 +191,7 @@ const EmailSyncTaskEditor: React.FC<EmailSyncTaskEditorProps> = ({
   };
 
   // 处理穿梭框选择变化
-  const handleTransferChange = (nextTargetKeys: string[]) => {
+  const handleTransferChange = (nextTargetKeys: any[], direction: string, moveKeys: any[]) => {
     setTargetKeys(nextTargetKeys);
     const accountIds = nextTargetKeys.map(key => parseInt(key, 10));
     updateParams('accountIds', accountIds);
