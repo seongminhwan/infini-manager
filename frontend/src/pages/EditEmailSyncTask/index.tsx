@@ -75,7 +75,7 @@ const EditEmailSyncTask: React.FC = () => {
         setEmailAccounts(activeAccounts);
         
         // 直接设置Transfer数据源
-        const items = activeAccounts.map((account) => ({
+        const items = activeAccounts.map((account: EmailAccount) => ({
           key: account.id.toString(),
           title: `${account.name} (${account.email})`,
           description: account.email,
@@ -117,9 +117,7 @@ const EditEmailSyncTask: React.FC = () => {
             
             // 提取accountIds
             const accountIds = handler?.params?.accountIds || [];
-            setSelectedAccountIds(accountIds);
-            
-            // 只设置selectedAccountIds，不再同时维护targetKeys
+            // 设置唯一的数据源
             setSelectedAccountIds(accountIds);
             
             // 设置cron表达式
