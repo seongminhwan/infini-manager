@@ -312,18 +312,15 @@ class ImapIdleService extends EventEmitter {
         
         console.log(`邮箱 ${connection.email} 收件箱已打开,邮件数量: ${box.messages.total}`);
         
-        // 保存当前邮件数量
+      // 保存当前邮件数量
         connection.lastMailCount = box.messages.total;
-        
-        // 开始IDLE模式
-        this.startIdleMode(connection);
         
         // 更新连接状态
         connection.status = IdleConnectionStatus.CONNECTED;
         connection.lastActivity = new Date();
         connection.reconnectAttempts = 0;
         
-        // 更新数据库状态
+        // 更新数据库连接状态
         db('email_accounts')
           .where('id', connection.accountId)
           .update({
@@ -333,6 +330,58 @@ class ImapIdleService extends EventEmitter {
           })
           .catch(err => {
             console.error(`更新邮箱 ${connection.email} 的连接状态失败:`, err);
+          });
+          
+        // 检测服务器是否支持IDLE命令
+        this.detectIdleSupport(connection)
+          .then(supportsIdle => {
+            console.log(`邮箱 ${connection.email} ${supportsIdle ? '支持' : '不支持'} IDLE命令`);
+            
+            // 更新数据库IDLE支持状态
+            db('email_accounts')
+              .where('id', connection.accountId)
+              .update({
+                supports_idle: supportsIdle
+              })
+              .catch(err => {
+                console.error(`更新邮箱 ${connection.email} 的IDLE支持状态失败:`, err);
+              });
+              
+            // 如果不支持IDLE,关闭该账户的IDLE连接
+            if (!supportsIdle) {
+              console.log(`邮箱 ${connection.email} 不支持IDLE命令,禁用IDLE连接`);
+              db('email_accounts')
+                .where('id', connection.accountId)
+                .update({
+                  use_idle_connection: false
+                })
+                .then(() => {
+                  // 断开连接,不再使用IDLE模式
+                  this.disconnectAccount(connection.accountId);
+                })
+                .catch(err => {
+                  console.error(`禁用邮箱 ${connection.email} 的IDLE连接失败:`, err);
+                });
+            } else {
+              // 支持IDLE,启动IDLE模式
+              this.startIdleMode(connection);
+            }
+          })
+          .catch(error => {
+            console.error(`检测邮箱 ${connection.email} IDLE支持失败:`, error);
+            // 检测失败,默认不支持IDLE
+            db('email_accounts')
+              .where('id', connection.accountId)
+              .update({
+                supports_idle: false,
+                use_idle_connection: false
+              })
+              .then(() => {
+                this.disconnectAccount(connection.accountId);
+              })
+              .catch(err => {
+                console.error(`更新邮箱 ${connection.email} IDLE支持状态失败:`, err);
+              });
           });
       });
     });
@@ -397,6 +446,108 @@ class ImapIdleService extends EventEmitter {
     });
   }
 
+  /**
+   * 检测服务器是否支持IDLE命令
+   * @param connection 连接信息
+   * @returns 服务器是否支持IDLE
+   */
+  private async detectIdleSupport(connection: ImapIdleConnection): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
+      try {
+        console.log(`检测邮箱 ${connection.email} 是否支持IDLE命令...`);
+        const imap = connection.imap;
+        
+        // 检查IMAP连接是否存在idle方法
+        if (typeof imap.idle !== 'function') {
+          console.log(`邮箱 ${connection.email} 的IMAP客户端不支持IDLE命令`);
+          resolve(false);
+          return;
+        }
+        
+        // 尝试进入IDLE模式
+        const timeoutId = setTimeout(() => {
+          console.log(`邮箱 ${connection.email} IDLE命令测试超时`);
+          
+          // 尝试安全退出IDLE模式
+          try {
+            if (imap.state === 'idling') {
+              imap.idle();
+            }
+          } catch (error) {
+            console.error(`邮箱 ${connection.email} 退出IDLE模式失败:`, error);
+          }
+          
+          // 超时,认为不支持IDLE
+          resolve(false);
+        }, 5000); // 5秒超时
+        
+        // 先注册一个临时的error事件处理器,用于捕获IDLE测试过程中的错误
+        const errorHandler = (err: Error) => {
+          clearTimeout(timeoutId);
+          
+          console.error(`邮箱 ${connection.email} IDLE命令测试出错:`, err);
+          
+          // 检查错误是否表明服务器不支持IDLE
+          const errorMsg = err.message || String(err);
+          if (errorMsg.includes('IDLE') || 
+              errorMsg.includes('not supported') || 
+              errorMsg.includes('not implemented') ||
+              errorMsg.includes('unknown command') ||
+              errorMsg.includes('ended by the other party') ||
+              errorMsg.includes('EPIPE')) {
+            console.log(`邮箱 ${connection.email} 服务器不支持IDLE命令`);
+            resolve(false);
+          } else {
+            // 其他错误,可能是连接问题而非IDLE支持问题
+            reject(err);
+          }
+        };
+        
+        imap.once('error', errorHandler);
+        
+        // 尝试进入IDLE模式测试
+        try {
+          imap.idle();
+          
+          // 短暂等待后退出IDLE模式
+          setTimeout(() => {
+            try {
+              // 移除临时error处理器
+              imap.removeListener('error', errorHandler);
+              
+              // 退出IDLE模式
+              imap.idle();
+              
+              clearTimeout(timeoutId);
+              
+              console.log(`邮箱 ${connection.email} 支持IDLE命令`);
+              resolve(true);
+            } catch (exitError) {
+              clearTimeout(timeoutId);
+              console.error(`邮箱 ${connection.email} 退出IDLE测试模式失败:`, exitError);
+              
+              // 如果退出都失败,可能是服务器不支持
+              resolve(false);
+            }
+          }, 1000); // 1秒后退出IDLE测试
+        } catch (enterError) {
+          clearTimeout(timeoutId);
+          
+          // 移除临时error处理器
+          imap.removeListener('error', errorHandler);
+          
+          console.error(`邮箱 ${connection.email} 进入IDLE测试模式失败:`, enterError);
+          
+          // 无法进入IDLE模式,视为不支持
+          resolve(false);
+        }
+      } catch (error) {
+        console.error(`检测邮箱 ${connection.email} IDLE支持出错:`, error);
+        reject(error);
+      }
+    });
+  }
+  
   /**
    * 启动IDLE模式
    * @param connection 连接信息
