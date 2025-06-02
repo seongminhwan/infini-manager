@@ -1097,16 +1097,31 @@ const BatchTransfer = () => {
                       title={account.email}
                       description={`UID: ${account.uid}`}
                     />
-                    <InputNumber
-                      placeholder="输入金额"
-                      value={customAmounts[account.id.toString()] 
-                        ? parseFloat(customAmounts[account.id.toString()]) 
-                        : undefined
-                      }
-                      onChange={(value) => handleCustomAmountChange(index, value)}
-                      min={0}
-                      precision={6}
-                    />
+                    <Space>
+                      <InputNumber
+                        placeholder="输入金额"
+                        value={customAmounts[account.id.toString()] 
+                          ? parseFloat(customAmounts[account.id.toString()]) 
+                          : undefined
+                        }
+                        onChange={(value) => handleCustomAmountChange(index, value)}
+                        min={0}
+                        precision={6}
+                      />
+                      <Button 
+                        size="small" 
+                        type="default"
+                        onClick={() => {
+                          if (account.availableBalance) {
+                            handleCustomAmountChange(index, account.availableBalance);
+                          } else {
+                            message.warning('无法获取账户余额信息');
+                          }
+                        }}
+                      >
+                        账户所有余额
+                      </Button>
+                    </Space>
                   </List.Item>
                 )}
               />
