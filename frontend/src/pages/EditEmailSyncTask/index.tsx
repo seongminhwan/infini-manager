@@ -120,7 +120,7 @@ const EditEmailSyncTask: React.FC = () => {
             setSelectedAccountIds(accountIds);
             
             // 设置已选择的项目
-            setTargetKeys(accountIds.map(id => id.toString()));
+            setTargetKeys(accountIds.map((id: number) => id.toString()));
             
             // 设置cron表达式
             setCronExpression(task.cron_expression);
