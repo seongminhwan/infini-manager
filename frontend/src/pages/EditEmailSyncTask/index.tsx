@@ -165,11 +165,13 @@ const EditEmailSyncTask: React.FC = () => {
     setTargetKeys([]);
   }, []);
   
-  // 处理穿梭框选择变化 - 将两个状态更新合并为一个操作
-  const handleTransferChange = useCallback((nextTargetKeys: string[]) => {
-    setTargetKeys(nextTargetKeys);
+  // 处理穿梭框选择变化
+  const handleTransferChange = useCallback((nextTargetKeys: string[], direction: string, moveKeys: any[]) => {
+    // 将nextTargetKeys转换为string[]类型
+    const stringKeys = nextTargetKeys.map(key => key.toString());
+    setTargetKeys(stringKeys);
     // 使用转换后的键更新accountIds
-    const accountIds = nextTargetKeys.map(key => parseInt(key, 10));
+    const accountIds = stringKeys.map(key => parseInt(key, 10));
     setSelectedAccountIds(accountIds);
   }, []);
 
