@@ -15,7 +15,8 @@ import {
   message, 
   Spin,
   Alert,
-  Divider
+  Divider,
+  Transfer
 } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined, MailOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { emailAccountApi, taskApi } from '../../services/api';
@@ -58,6 +59,8 @@ const EditEmailSyncTask: React.FC = () => {
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
   const [taskDetail, setTaskDetail] = useState<Task | null>(null);
   const [cronExpression, setCronExpression] = useState<string>('');
+  const [transferData, setTransferData] = useState<any[]>([]);
+  const [targetKeys, setTargetKeys] = useState<string[]>([]);
   
   // 邮箱账户数据加载
   const fetchEmailAccounts = useCallback(async () => {
@@ -70,6 +73,15 @@ const EditEmailSyncTask: React.FC = () => {
           (account: EmailAccount) => account.status === 'active'
         );
         setEmailAccounts(activeAccounts);
+        
+        // 转换为Transfer数据格式
+        const transferItems = activeAccounts.map((account: EmailAccount) => ({
+          key: account.id.toString(),
+          title: `${account.name} (${account.email})`,
+          description: account.email,
+          disabled: false
+        }));
+        setTransferData(transferItems);
       } else {
         message.error(response.message || '获取邮箱账户失败');
       }
@@ -107,6 +119,9 @@ const EditEmailSyncTask: React.FC = () => {
             const accountIds = handler?.params?.accountIds || [];
             setSelectedAccountIds(accountIds);
             
+            // 设置已选择的项目
+            setTargetKeys(accountIds.map(id => id.toString()));
+            
             // 设置cron表达式
             setCronExpression(task.cron_expression);
           } catch (e) {
@@ -134,13 +149,23 @@ const EditEmailSyncTask: React.FC = () => {
   // 处理选择全部邮箱
   const handleSelectAllAccounts = useCallback(() => {
     const allAccountIds = emailAccounts.map(account => account.id);
+    const allKeys = emailAccounts.map((account) => account.id.toString());
     setSelectedAccountIds(allAccountIds);
+    setTargetKeys(allKeys);
   }, [emailAccounts]);
 
   // 处理清除所有选择
   const handleClearAllAccounts = useCallback(() => {
     setSelectedAccountIds([]);
+    setTargetKeys([]);
   }, []);
+  
+  // 处理穿梭框选择变化
+  const handleTransferChange = (nextTargetKeys: any[], direction: string, moveKeys: any[]) => {
+    setTargetKeys(nextTargetKeys);
+    const accountIds = nextTargetKeys.map(key => parseInt(key, 10));
+    setSelectedAccountIds(accountIds);
+  };
 
   // 保存配置
   const handleSubmit = useCallback(async () => {
@@ -247,24 +272,24 @@ const EditEmailSyncTask: React.FC = () => {
                       <Button onClick={handleSelectAllAccounts}>全选</Button>
                       <Button onClick={handleClearAllAccounts}>清除选择</Button>
                     </Space>
-                    <Select
-                      mode="multiple"
-                      placeholder="请选择需要同步的邮箱账户"
-                      style={{ width: '100%' }}
-                      value={selectedAccountIds}
-                      onChange={setSelectedAccountIds}
-                      optionFilterProp="children"
-                      loading={loading}
-                    >
-                      {emailAccounts.map(account => (
-                        <Option key={account.id} value={account.id}>
-                          {account.name} ({account.email})
-                        </Option>
-                      ))}
-                    </Select>
+                    <Transfer
+                      dataSource={transferData}
+                      titles={['可用邮箱账户', '已选择邮箱账户']}
+                      targetKeys={targetKeys}
+                      onChange={handleTransferChange}
+                      render={item => item.title}
+                      listStyle={{
+                        width: '100%',
+                        height: '300px',
+                      }}
+                      showSearch
+                      filterOption={(inputValue, item) =>
+                        item.title.indexOf(inputValue) !== -1 || item.description.indexOf(inputValue) !== -1
+                      }
+                    />
                     <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-                      {selectedAccountIds.length > 0 ? 
-                        `已选择 ${selectedAccountIds.length} 个邮箱账户` : 
+                      {targetKeys.length > 0 ? 
+                        `已选择 ${targetKeys.length} 个邮箱账户` : 
                         '未选择任何邮箱账户，将同步所有有效的邮箱账户'
                       }
                     </div>
