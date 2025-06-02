@@ -437,6 +437,8 @@ const BatchTransfer = () => {
         return {
           targetAccountId: account.id,
           targetIdentifier: account.id.toString(),
+          // 固定为内部账户类型
+          inner_type: 'inner',
           amount
         };
       });
@@ -465,8 +467,9 @@ const BatchTransfer = () => {
         
         return {
           sourceAccountId: account.id,
-          // 完全移除contactType和targetType相关字段，后端数据库表中没有这些字段
           targetIdentifier: targetId,
+          // 直接在每个关系对象中添加一个特殊字段，用不同名称避免与数据库冲突
+          inner_type: targetContactType, // 使用inner_type字段传递联系类型
           amount
         };
       });
