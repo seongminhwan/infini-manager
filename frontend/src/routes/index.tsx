@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import EditEmailSyncTask from '../pages/EditEmailSyncTask';
 import MainLayout from '../layouts/MainLayout';
 import Overview from '../pages/Overview';
 import AccountMonitor from '../pages/AccountMonitor';
@@ -56,6 +57,9 @@ const AppRoutes: React.FC = () => {
         <Route path="/batch-transfer-details" element={<BatchTransferDetails />} />
         {/* 定时任务管理路由 */}
         <Route path="/task-manage" element={<TaskManage />} />
+        {/* 邮件同步任务编辑页面 - 支持创建模式(不带ID)和编辑模式(带ID) */}
+        <Route path="/edit-email-sync-task" element={<EditEmailSyncTask />} />
+        <Route path="/edit-email-sync-task/:taskId" element={<EditEmailSyncTask />} />
         {/* API日志监控路由 */}
         <Route path="/api-log-monitor" element={<ApiLogMonitor />} />
         {/* 系统设置路由 */}
