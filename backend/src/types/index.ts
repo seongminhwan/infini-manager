@@ -122,6 +122,7 @@ export interface EmailAccount {
   domainName?: string; // 邮箱域名，用于随机用户生成
   useIdleConnection?: boolean; // 是否使用IDLE长连接
   idleConnectionStatus?: string; // IDLE连接状态
+  supportsIdle?: boolean; // 服务器是否支持IDLE命令
 }
 
 // IDLE连接状态枚举
