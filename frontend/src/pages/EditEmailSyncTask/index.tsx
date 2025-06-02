@@ -224,38 +224,22 @@ const EditEmailSyncTask: React.FC = () => {
   // 处理表单提交
   const handleSubmit = async () => {
     try {
-      // 如果没有选择邮箱账户，提示用户
-      if (formState.accountIds.length === 0) {
-        if (!window.confirm('您没有选择任何邮箱账户，系统将同步所有有效的邮箱账户。是否继续？')) {
-          return;
-        }
-      }
-      
-      // 构建任务数据
+      // 构建任务数据 - 只包含允许修改的字段
       const taskData = {
         taskName: formState.taskName,
-        taskKey: 'BUILTIN_INCREMENTAL_EMAIL_SYNC',
         description: formState.description,
         cronExpression: formState.cronExpression,
-        handler: {
-          type: 'function' as const,
-          functionName: 'syncEmails',
-          params: {
-            accountIds: formState.accountIds,
-            syncType: formState.syncType,
-            mailboxes: ['INBOX'] // 简化：默认只同步收件箱
-          }
-        },
         status: formState.status,
         retryCount: formState.retryCount,
         retryInterval: formState.retryInterval
+        // 不包含handler字段，因为内置任务不允许修改handler
       };
       
       setSaving(true);
       
       let response;
       if (taskId) {
-        // 更新任务
+        // 更新任务 - 只发送允许修改的字段
         response = await taskApi.updateTask(taskId, taskData);
       } else {
         // 创建任务
@@ -326,21 +310,33 @@ const EditEmailSyncTask: React.FC = () => {
         
         <StyledCard title="同步设置">
           <Form layout="vertical">
+            <Alert
+              type="warning"
+              message="系统限制"
+              description="由于系统限制，内置邮件同步任务的同步设置（包括邮箱选择和同步类型）暂不支持修改。"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+            
             <Form.Item label="同步类型">
               <Radio.Group 
                 value={formState.syncType}
                 onChange={(e) => handleFieldChange('syncType', e.target.value)}
+                disabled={true}
               >
                 <Radio value="incremental">增量同步</Radio>
                 <Radio value="full">全量同步</Radio>
               </Radio.Group>
+              <div style={{ marginTop: 8, color: '#999' }}>
+                当前使用增量同步模式，只同步上次同步后的新邮件
+              </div>
             </Form.Item>
             
             <Form.Item label="选择邮箱账户">
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Space>
-                  <Button onClick={handleSelectAllAccounts}>全选</Button>
-                  <Button onClick={handleClearAllAccounts}>清除选择</Button>
+                  <Button onClick={handleSelectAllAccounts} disabled={true}>全选</Button>
+                  <Button onClick={handleClearAllAccounts} disabled={true}>清除选择</Button>
                 </Space>
                 <Select
                   mode="multiple"
@@ -348,6 +344,7 @@ const EditEmailSyncTask: React.FC = () => {
                   style={{ width: '100%' }}
                   value={formState.accountIds}
                   onChange={(values) => handleFieldChange('accountIds', values)}
+                  disabled={true}
                 >
                   {emailAccounts.map((account) => (
                     <Option key={account.id} value={account.id}>
@@ -355,11 +352,8 @@ const EditEmailSyncTask: React.FC = () => {
                     </Option>
                   ))}
                 </Select>
-                <div style={{ fontSize: '12px', color: '#666' }}>
-                  {formState.accountIds.length > 0 ? 
-                    `已选择 ${formState.accountIds.length} 个邮箱账户` : 
-                    '未选择任何邮箱账户，将同步所有有效的邮箱账户'
-                  }
+                <div style={{ fontSize: '12px', color: '#ff4d4f' }}>
+                  注意：由于系统限制，暂不支持修改邮箱选择。请联系系统管理员修改配置。
                 </div>
               </Space>
             </Form.Item>
