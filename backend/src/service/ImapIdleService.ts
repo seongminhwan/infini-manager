@@ -403,6 +403,15 @@ class ImapIdleService extends EventEmitter {
    */
   private startIdleMode(connection: ImapIdleConnection): void {
     try {
+      // 先检查连接状态
+      if (!connection.imap || 
+          connection.imap.state === 'disconnected' || 
+          connection.status === IdleConnectionStatus.ERROR) {
+        console.log(`邮箱 ${connection.email} 连接状态异常,尝试重连而非启动IDLE`);
+        this.scheduleReconnect(connection.accountId);
+        return;
+      }
+      
       console.log(`邮箱 ${connection.email} 启动IDLE模式`);
       
       const imap = connection.imap;
@@ -413,14 +422,29 @@ class ImapIdleService extends EventEmitter {
       }
       
       // 设置IDLE超时,IMAP规范建议20-30分钟内刷新IDLE
-      // 防止某些服务器超时断开连接
+      // 防止某些服务器超时断开连接 (减少到15分钟,提高可靠性)
       connection.idleTimeout = setTimeout(() => {
         this.refreshIdleConnection(connection);
-      }, this.idleRefreshInterval);
+      }, 15 * 60 * 1000); // 15分钟
       
-      // 开启IDLE模式
-      if (typeof imap.idle === 'function') {
-        imap.idle();
+      // 开启IDLE模式 - 使用try-catch增强稳定性
+      try {
+        if (typeof imap.idle === 'function') {
+          imap.idle();
+        }
+      } catch (idleError) {
+        console.error(`邮箱 ${connection.email} 启动IDLE命令失败:`, idleError);
+        // 如果IDLE命令失败,尝试使用NOOP命令保持连接活跃
+        if (typeof imap.noop === 'function') {
+          imap.noop();
+        }
+        // 缩短IDLE刷新间隔
+        if (connection.idleTimeout) {
+          clearTimeout(connection.idleTimeout);
+        }
+        connection.idleTimeout = setTimeout(() => {
+          this.refreshIdleConnection(connection);
+        }, 2 * 60 * 1000); // 2分钟
       }
       
       console.log(`邮箱 ${connection.email} IDLE模式已启动`);
@@ -440,38 +464,76 @@ class ImapIdleService extends EventEmitter {
       
       const imap = connection.imap;
       
-      // 如果连接已断开,尝试重连
-      if (imap.state === 'disconnected') {
-        console.log(`邮箱 ${connection.email} 连接已断开,尝试重连`);
+      // 进行全面连接状态检查
+      if (!imap || 
+          imap.state === 'disconnected' || 
+          connection.status === IdleConnectionStatus.ERROR) {
+        console.log(`邮箱 ${connection.email} 连接状态异常,尝试重连而非刷新`);
         this.scheduleReconnect(connection.accountId);
         return;
       }
       
-      // 退出IDLE模式
-      if (typeof imap.idle === 'function') {
-        imap.idle();
+      // 捕获可能的IDLE退出错误
+      try {
+        // 退出IDLE模式
+        if (typeof imap.idle === 'function') {
+          imap.idle();
+        }
+      } catch (idleError) {
+        console.error(`邮箱 ${connection.email} 退出IDLE模式失败:`, idleError);
+        // IDLE退出失败通常表明连接已经有问题,尝试重连
+        if (idleError.message && (
+            idleError.message.includes('ended by the other party') ||
+            idleError.message.includes('EPIPE') ||
+            idleError.message.includes('connection closed') ||
+            idleError.message.includes('not connected'))) {
+          this.scheduleReconnect(connection.accountId);
+          return;
+        }
       }
       
-      // 执行NOOP命令保持连接活跃
-      if (typeof imap.noop === 'function') {
-        imap.noop(() => {
-          console.log(`邮箱 ${connection.email} NOOP命令执行成功`);
-          
-          // 更新最后活动时间
-          connection.lastActivity = new Date();
-          
-          // 重新进入IDLE模式
+      // 使用Promise和超时保护NOOP操作
+      const noopPromise = new Promise<boolean>((resolve, reject) => {
+        try {
+          if (typeof imap.noop === 'function') {
+            imap.noop((err: Error | null) => {
+              if (err) {
+                console.error(`邮箱 ${connection.email} NOOP命令执行失败:`, err);
+                reject(err);
+                return;
+              }
+              console.log(`邮箱 ${connection.email} NOOP命令执行成功`);
+              // 更新最后活动时间
+              connection.lastActivity = new Date();
+              resolve(true);
+            });
+          } else {
+            // 如果没有noop方法,直接成功
+            console.log(`邮箱 ${connection.email} 没有NOOP方法,跳过执行`);
+            resolve(false);
+          }
+        } catch (noopError) {
+          reject(noopError);
+        }
+      });
+      
+      // 添加超时保护
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`邮箱 ${connection.email} NOOP命令执行超时`));
+        }, 10000); // 10秒超时
+      });
+      
+      // 竞争执行
+      Promise.race([noopPromise, timeoutPromise])
+        .then(() => {
+          // 不管NOOP结果如何,尝试重新进入IDLE模式
           this.startIdleMode(connection);
+        })
+        .catch((error) => {
+          console.error(`邮箱 ${connection.email} 刷新连接失败:`, error);
+          this.handleConnectionError(connection, error);
         });
-      } else {
-        console.log(`邮箱 ${connection.email} NOOP命令执行成功`);
-        
-        // 更新最后活动时间
-        connection.lastActivity = new Date();
-        
-        // 重新进入IDLE模式
-        this.startIdleMode(connection);
-      }
     } catch (error) {
       console.error(`刷新邮箱 ${connection.email} 的IDLE连接失败:`, error);
       this.handleConnectionError(connection, error);
@@ -486,6 +548,16 @@ class ImapIdleService extends EventEmitter {
   private async handleConnectionError(connection: ImapIdleConnection, error: any): Promise<void> {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`邮箱 ${connection.email} 连接错误: ${errorMsg}`);
+    
+    // 安全结束连接
+    try {
+      if (connection.imap && connection.imap.state !== 'disconnected') {
+        connection.imap.end();
+      }
+    } catch (endError) {
+      console.error(`邮箱 ${connection.email} 结束连接失败:`, endError);
+      // 忽略结束错误,继续处理
+    }
     
     // 更新连接状态
     connection.status = IdleConnectionStatus.ERROR;
@@ -503,15 +575,27 @@ class ImapIdleService extends EventEmitter {
       console.error(`更新邮箱 ${connection.email} 的错误状态失败:`, dbError);
     }
     
-    // 尝试重连
-    this.scheduleReconnect(connection.accountId);
+    // 针对特定错误调整重连策略
+    if (errorMsg.includes('ended by the other party') || 
+        errorMsg.includes('EPIPE') ||
+        errorMsg.includes('connection closed') ||
+        errorMsg.includes('timeout')) {
+      // 这些错误通常需要更长的冷却期
+      console.log(`邮箱 ${connection.email} 发生网络相关错误,设置更长的重连冷却期`);
+      // 使用更长的初始延迟进行重连
+      this.scheduleReconnect(connection.accountId, true);
+    } else {
+      // 其他错误使用标准重连
+      this.scheduleReconnect(connection.accountId);
+    }
   }
 
   /**
    * 安排重连
    * @param accountId 邮箱ID
+   * @param useExtendedDelay 是否使用更长的延迟(针对网络错误)
    */
-  private scheduleReconnect(accountId: number): void {
+  private scheduleReconnect(accountId: number, useExtendedDelay: boolean = false): void {
     const connection = this.connections.get(accountId);
     if (!connection) {
       console.warn(`无法重连邮箱ID ${accountId}: 连接不存在`);
@@ -541,8 +625,12 @@ class ImapIdleService extends EventEmitter {
       return;
     }
     
-    // 计算重连延迟
-    const attemptIndex = Math.min(connection.reconnectAttempts, this.reconnectIntervals.length - 1);
+    // 计算重连延迟 - 网络错误使用更长的初始延迟
+    let attemptIndex = Math.min(connection.reconnectAttempts, this.reconnectIntervals.length - 1);
+    // 网络错误第一次重试使用至少30秒延迟
+    if (useExtendedDelay && connection.reconnectAttempts === 0) {
+      attemptIndex = Math.min(2, this.reconnectIntervals.length - 1); // 使用第3个延迟值(通常为30秒)
+    }
     const delaySeconds = this.reconnectIntervals[attemptIndex];
     
     console.log(`计划在 ${delaySeconds} 秒后重连邮箱 ${connection.email} (尝试 ${connection.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
@@ -562,6 +650,16 @@ class ImapIdleService extends EventEmitter {
       
     // 安排重连
     setTimeout(async () => {
+      // 清理旧连接
+      try {
+        if (connection.imap && connection.imap.state !== 'disconnected') {
+          connection.imap.end();
+        }
+      } catch (endError) {
+        console.error(`结束邮箱 ${connection.email} 的旧连接失败:`, endError);
+        // 忽略结束错误,继续重连
+      }
+      
       connection.reconnectAttempts++;
       
       try {
@@ -582,6 +680,10 @@ class ImapIdleService extends EventEmitter {
           this.connections.delete(connection.accountId);
           return;
         }
+        
+        // 尝试重新连接前加入随机延迟,避免同时连接
+        const randomDelay = Math.floor(Math.random() * 3000); // 0-3秒随机延迟
+        await new Promise(resolve => setTimeout(resolve, randomDelay));
         
         // 尝试重新连接
         await this.connectAccount(account);
