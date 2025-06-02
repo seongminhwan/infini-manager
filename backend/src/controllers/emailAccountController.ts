@@ -17,6 +17,7 @@ import {
   GmailMessage,
   GmailQueryOptions
 } from '../types';
+import ImapIdleService from '../service/ImapIdleService';
 
 // 使用动态导入以避免node-imap初始化
 // 仅在处理邮件列表和详情时才动态导入GmailClient
@@ -51,6 +52,8 @@ export async function getAllEmailAccounts(req: Request, res: Response): Promise<
       updatedAt: account.updated_at,
       username: account.username, // 确保用户名也被返回
       domainName: account.domain_name, // 返回域名邮箱字段
+      useIdleConnection: account.use_idle_connection, // 添加IDLE连接字段
+      idleConnectionStatus: account.idle_connection_status, // 添加IDLE连接状态
       extraConfig: account.extra_config ? JSON.parse(account.extra_config) : undefined
     }));
     
@@ -120,6 +123,8 @@ export async function getEmailAccountById(req: Request, res: Response): Promise<
       updatedAt: account.updated_at,
       username: account.username, // 确保用户名也被返回
       domainName: account.domain_name, // 返回域名邮箱字段
+      useIdleConnection: account.use_idle_connection, // 添加IDLE连接字段
+      idleConnectionStatus: account.idle_connection_status, // 添加IDLE连接状态
       extraConfig: account.extra_config ? JSON.parse(account.extra_config) : undefined
     };
     const response: ApiResponse = {
@@ -172,6 +177,10 @@ export async function createEmailAccount(req: Request, res: Response): Promise<v
   if (accountData.useProxy !== undefined) {
     proxyConfig.useProxy = accountData.useProxy;
   }
+  
+  // 是否使用IDLE长连接
+  const useIdleConnection = accountData.useIdleConnection !== undefined ? 
+    accountData.useIdleConnection : true; // 默认启用
   
   // 代理模式
   if (accountData.proxyMode !== undefined) {
@@ -308,6 +317,7 @@ export async function createEmailAccount(req: Request, res: Response): Promise<v
       status: accountData.status || 'pending', // 默认状态为待验证
       is_default: normalizedData.isDefault || false,
       domain_name: normalizedData.domainName, // 添加域名邮箱字段
+      use_idle_connection: useIdleConnection, // 添加IDLE连接设置
       extra_config: normalizedData.extraConfig ? JSON.stringify(normalizedData.extraConfig) : null
     };
     
@@ -336,6 +346,8 @@ export async function createEmailAccount(req: Request, res: Response): Promise<v
       createdAt: newAccount.created_at,
       updatedAt: newAccount.updated_at,
       domainName: newAccount.domain_name, // 返回域名邮箱字段
+      useIdleConnection: newAccount.use_idle_connection, // 添加IDLE连接字段
+      idleConnectionStatus: newAccount.idle_connection_status, // 添加IDLE连接状态
       extraConfig: newAccount.extra_config ? JSON.parse(newAccount.extra_config) : undefined
     };
     
@@ -427,6 +439,7 @@ export async function updateEmailAccount(req: Request, res: Response): Promise<v
     if (accountData.isDefault !== undefined) updateData.is_default = accountData.isDefault;
     if (accountData.extraConfig !== undefined) updateData.extra_config = JSON.stringify(accountData.extraConfig);
     if (accountData.domainName !== undefined) updateData.domain_name = accountData.domainName;
+    if (accountData.useIdleConnection !== undefined) updateData.use_idle_connection = accountData.useIdleConnection;
     
     // 更新时间戳
     updateData.updated_at = db.fn.now();
@@ -454,8 +467,37 @@ export async function updateEmailAccount(req: Request, res: Response): Promise<v
       createdAt: updatedAccount.created_at,
       updatedAt: updatedAccount.updated_at,
       domainName: updatedAccount.domain_name, // 返回域名邮箱字段
+      useIdleConnection: updatedAccount.use_idle_connection, // 添加IDLE连接字段
+      idleConnectionStatus: updatedAccount.idle_connection_status, // 添加IDLE连接状态
       extraConfig: updatedAccount.extra_config ? JSON.parse(updatedAccount.extra_config) : undefined
     };
+    
+    // 检查是否需要更新IDLE连接
+    const idleConnectionChanged = 
+      accountData.useIdleConnection !== undefined && 
+      accountData.useIdleConnection !== existingAccount.use_idle_connection;
+    
+    const statusChanged = 
+      accountData.status !== undefined && 
+      accountData.status !== existingAccount.status;
+    
+    // 如果IDLE连接设置或账户状态发生变化，更新IDLE连接
+    if (idleConnectionChanged || statusChanged) {
+      try {
+        if (updatedAccount.use_idle_connection && updatedAccount.status === 'active') {
+          // 添加或更新IDLE连接
+          await ImapIdleService.addOrUpdateConnection(id);
+          console.log(`已为邮箱账户 ${updatedAccount.email} 更新IDLE连接 (启用)`);
+        } else {
+          // 移除IDLE连接
+          await ImapIdleService.removeConnection(id);
+          console.log(`已为邮箱账户 ${updatedAccount.email} 移除IDLE连接 (禁用)`);
+        }
+      } catch (idleError) {
+        console.error(`更新邮箱账户 ${updatedAccount.email} 的IDLE连接失败:`, idleError);
+        // 不阻止主流程，记录错误继续执行
+      }
+    }
     
     const response: ApiResponse = {
       success: true,
@@ -582,6 +624,27 @@ export async function setEmailAccountStatus(req: Request, res: Response): Promis
       status,
       updated_at: db.fn.now()
     });
+    
+    // 获取更新后的账户信息
+    const updatedAccount = await db(TABLE_NAME).where({ id }).first();
+    
+    // 如果账户状态改变，更新IDLE连接状态
+    if (existingAccount.status !== status) {
+      try {
+        if (status === 'active' && updatedAccount.use_idle_connection) {
+          // 如果账户激活且启用了IDLE连接，添加或更新IDLE连接
+          await ImapIdleService.addOrUpdateConnection(id);
+          console.log(`已为邮箱账户 ${updatedAccount.email} 更新IDLE连接 (已激活)`);
+        } else if (status === 'disabled' && existingAccount.status === 'active') {
+          // 如果账户被禁用，移除IDLE连接
+          await ImapIdleService.removeConnection(id);
+          console.log(`已为邮箱账户 ${updatedAccount.email} 移除IDLE连接 (已禁用)`);
+        }
+      } catch (idleError) {
+        console.error(`更新邮箱账户 ${updatedAccount.email} 的IDLE连接状态失败:`, idleError);
+        // 不阻止主流程，记录错误继续执行
+      }
+    }
     
     const response: ApiResponse = {
       success: true,
