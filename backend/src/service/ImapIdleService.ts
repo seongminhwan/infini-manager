@@ -14,7 +14,7 @@ let GmailClient: any = null;
 /**
  * IMAP连接状态
  */
-enum IdleConnectionStatus {
+export enum IdleConnectionStatus {
   CONNECTED = 'connected',
   DISCONNECTED = 'disconnected',
   ERROR = 'error',
@@ -28,7 +28,7 @@ enum IdleConnectionStatus {
 interface ImapIdleConnection {
   accountId: number;
   email: string;
-  imap: IMAP;
+  imap: any; // 使用any类型避免类型错误
   status: IdleConnectionStatus;
   lastError?: string;
   reconnectAttempts: number;
@@ -38,10 +38,34 @@ interface ImapIdleConnection {
 }
 
 /**
+ * 连接详情接口
+ */
+export interface ConnectionDetail {
+  accountId: number;
+  email: string;
+  status: IdleConnectionStatus;
+  lastError?: string;
+  reconnectAttempts: number;
+  lastActivity: Date;
+}
+
+/**
+ * 连接状态统计接口
+ */
+export interface ImapIdleServiceStats {
+  totalConnections: number;
+  connectedCount: number;
+  disconnectedCount: number;
+  reconnectingCount: number;
+  errorCount: number;
+  connections: ConnectionDetail[]; // 连接详情列表
+}
+
+/**
  * IMAP IDLE长连接服务类
  * 负责管理所有邮箱的IDLE连接
  */
-export class ImapIdleService extends EventEmitter {
+class ImapIdleService extends EventEmitter {
   private connections: Map<number, ImapIdleConnection> = new Map();
   private reconnectIntervals: number[] = [5, 15, 30, 60, 120, 300]; // 重连间隔(秒)
   private maxReconnectAttempts = 10; // 最大重连次数
@@ -178,13 +202,13 @@ export class ImapIdleService extends EventEmitter {
       }
 
       // 创建IMAP客户端
-      const imap = new IMAP.default(imapConfig);
+      const imap = new IMAP(imapConfig);
 
       // 保存连接信息
       const connection: ImapIdleConnection = {
         accountId: account.id,
         email: account.email,
-        imap: imap as any, // 使用any类型绕过类型检查
+        imap: imap, // 使用any类型绕过类型检查
         status: IdleConnectionStatus.DISCONNECTED,
         reconnectAttempts: 0,
         lastActivity: new Date()
@@ -278,7 +302,7 @@ export class ImapIdleService extends EventEmitter {
       console.log(`邮箱 ${connection.email} IMAP连接就绪`);
       
       // 打开收件箱
-      imap.openBox('INBOX', false, (err, box) => {
+      imap.openBox('INBOX', false, (err: any, box: any) => {
         if (err) {
           console.error(`打开邮箱 ${connection.email} 的收件箱失败:`, err);
           this.handleConnectionError(connection, err);
@@ -322,8 +346,8 @@ export class ImapIdleService extends EventEmitter {
       
       try {
         // 暂时退出IDLE模式
-        if (typeof (imap as any).idle === 'function') {
-          (imap as any).idle();
+        if (typeof imap.idle === 'function') {
+          imap.idle();
         }
         
         // 执行增量同步
@@ -394,8 +418,8 @@ export class ImapIdleService extends EventEmitter {
       }, this.idleRefreshInterval);
       
       // 开启IDLE模式
-      if (typeof (imap as any).idle === 'function') {
-        (imap as any).idle();
+      if (typeof imap.idle === 'function') {
+        imap.idle();
       }
       
       console.log(`邮箱 ${connection.email} IDLE模式已启动`);
@@ -423,13 +447,13 @@ export class ImapIdleService extends EventEmitter {
       }
       
       // 退出IDLE模式
-      if (typeof (imap as any).idle === 'function') {
-        (imap as any).idle();
+      if (typeof imap.idle === 'function') {
+        imap.idle();
       }
       
       // 执行NOOP命令保持连接活跃
-      if (typeof (imap as any).noop === 'function') {
-        (imap as any).noop(() => {
+      if (typeof imap.noop === 'function') {
+        imap.noop(() => {
           console.log(`邮箱 ${connection.email} NOOP命令执行成功`);
           
           // 更新最后活动时间
@@ -654,8 +678,8 @@ export class ImapIdleService extends EventEmitter {
   /**
    * 获取连接统计信息
    */
-  getConnectionStats(): any {
-    const stats = {
+  getConnectionStats(): ImapIdleServiceStats {
+    const stats: ImapIdleServiceStats = {
       totalConnections: this.connections.size,
       connectedCount: 0,
       disconnectedCount: 0,
@@ -696,6 +720,23 @@ export class ImapIdleService extends EventEmitter {
   }
   
   /**
+   * 停止所有连接
+   */
+  async stopAllConnections(): Promise<void> {
+    console.log(`停止所有IMAP IDLE连接(${this.connections.size}个)`);
+    
+    // 创建断开连接的Promise数组
+    const disconnectPromises = Array.from(this.connections.keys()).map(
+      accountId => this.disconnectAccount(accountId)
+    );
+    
+    // 等待所有连接断开
+    await Promise.all(disconnectPromises);
+    
+    console.log('所有IMAP IDLE连接已停止');
+  }
+  
+  /**
    * 添加或更新邮箱连接
    * @param accountId 邮箱ID
    */
@@ -731,28 +772,11 @@ export class ImapIdleService extends EventEmitter {
     const instance = imapIdleServiceInstance;
     await instance.disconnectAccount(accountId);
   }
-  
-  /**
-   * 停止所有连接
-   */
-  async stopAllConnections(): Promise<void> {
-    console.log(`停止所有IMAP IDLE连接(${this.connections.size}个)`);
-    
-    // 创建断开连接的Promise数组
-    const disconnectPromises = Array.from(this.connections.keys()).map(
-      accountId => this.disconnectAccount(accountId)
-    );
-    
-    // 等待所有连接断开
-    await Promise.all(disconnectPromises);
-    
-    this.isInitialized = false;
-    console.log('所有IMAP IDLE连接已停止');
-  }
 }
 
-// 创建服务实例
+// 创建单例实例
 const imapIdleServiceInstance = new ImapIdleService();
 
-// 导出服务单例
-export default imapIdleServiceInstance;
+// 导出单例实例和类型
+export default ImapIdleService;
+export { imapIdleServiceInstance };
