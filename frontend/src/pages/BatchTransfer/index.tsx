@@ -436,7 +436,6 @@ const BatchTransfer = () => {
         
         return {
           targetAccountId: account.id,
-          // 移除contactType字段，后端表中不存在该字段
           targetIdentifier: account.id.toString(),
           amount
         };
@@ -466,10 +465,8 @@ const BatchTransfer = () => {
         
         return {
           sourceAccountId: account.id,
-          // 移除contactType字段，后端表中不存在该字段
-          // 但传递targetContactType的值作为targetType，以保留用户选择的联系方式类型
-          targetType: targetContactType, // 使用新的字段名称
-          targetIdentifier: targetId,    // 使用对应的目标标识符
+          // 完全移除contactType和targetType相关字段，后端数据库表中没有这些字段
+          targetIdentifier: targetId,
           amount
         };
       });
