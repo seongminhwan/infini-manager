@@ -506,36 +506,85 @@ const BatchTransfer = () => {
             };
         
         // 使用单笔转账API
-        const response = await transferApi.executeInternalTransfer(
-          transfer.sourceAccountId.toString(),
-          transferMode === 'one_to_many' ? 'inner' : targetContactType,
-          transfer.targetIdentifier,
-          transfer.amount,
-          'batch',          // 来源: 批量转账
-          false,            // isForced
-          remarks || `批量转账 ${i+1}/${transfers.length}`,
-          auto2FA           // 是否自动处理2FA
-        );
-        
-        // 处理结果
-        const result = {
-          ...transfer,
-          status: response.success ? 'completed' : 'failed',
-          error_message: response.success ? null : response.message,
-          transfer_id: response.success ? response.data?.transferId : null,
-          created_at: new Date(),
-          updated_at: new Date()
-        };
-        
-        // 更新状态
-        if (response.success) {
-          successCount++;
-        } else {
+        try {
+          const response = await transferApi.executeInternalTransfer(
+            transfer.sourceAccountId.toString(),
+            transferMode === 'one_to_many' ? 'inner' : targetContactType,
+            transfer.targetIdentifier,
+            transfer.amount,
+            'batch',          // 来源: 批量转账
+            false,            // isForced
+            remarks || `批量转账 ${i+1}/${transfers.length}`,
+            auto2FA           // 是否自动处理2FA
+          );
+          
+          // 处理结果
+          const result = {
+            ...transfer,
+            status: response.success ? 'completed' : 'failed',
+            error_message: response.success ? null : response.message,
+            transfer_id: response.success ? response.data?.transferId : null,
+            created_at: new Date(),
+            updated_at: new Date()
+          };
+          
+          // 更新状态
+          if (response.success) {
+            successCount++;
+          } else {
+            failedCount++;
+            failedTransfers.push(result);
+            
+            // 检查是否是登录凭证错误
+            if (response.message && response.message.includes('登录凭证')) {
+              // 提供更友好的错误提示
+              message.error(`账户 ${transfer.sourceAccountId} 的登录凭证无效，请确保账户已登录并有效`);
+              
+              // 如果是首次出现此错误，提供更详细的指导
+              if (failedCount === 1) {
+                Modal.error({
+                  title: '转账失败 - 登录凭证问题',
+                  content: (
+                    <div>
+                      <p>系统无法获取有效的登录凭证，可能是由于以下原因：</p>
+                      <ol>
+                        <li>账户登录状态已过期</li>
+                        <li>账户需要重新登录</li>
+                        <li>账户可能被锁定或有安全限制</li>
+                      </ol>
+                      <p>建议操作：</p>
+                      <ol>
+                        <li>尝试先对源账户执行同步操作</li>
+                        <li>检查账户状态是否正常</li>
+                        <li>如果问题持续，请联系管理员</li>
+                      </ol>
+                    </div>
+                  ),
+                });
+              }
+            }
+          }
+          
+          results.push(result);
+        } catch (error: any) {
+          console.error(`转账执行异常 (${i+1}/${transfers.length}):`, error);
+          
+          const result = {
+            ...transfer,
+            status: 'failed',
+            error_message: error.message || '转账执行异常',
+            created_at: new Date(),
+            updated_at: new Date()
+          };
+          
           failedCount++;
           failedTransfers.push(result);
+          results.push(result);
+          
+          // 显示错误消息
+          message.error(`转账失败: ${error.message || '未知错误'}`);
         }
         
-        results.push(result);
         
         // 更新进度
         const progress = Math.floor(((i + 1) / transfers.length) * 100);
