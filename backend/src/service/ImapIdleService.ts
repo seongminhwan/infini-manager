@@ -2,7 +2,8 @@
  * IMAP IDLE长连接服务
  * 使用IMAP IDLE命令与邮件服务器建立长连接,实时获取新邮件
  */
-import * as IMAP from 'node-imap';
+// 导入node-imap库
+import IMAP from 'node-imap';
 import { EventEmitter } from 'events';
 import db from '../db/db';
 import EmailSyncService from './EmailSyncService';
