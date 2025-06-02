@@ -1,9 +1,8 @@
 /**
  * 邮件同步任务编辑模态框
- * 用于编辑内置邮件同步定时任务的专用模态框组件
- * 独立于通用任务表单，避免状态循环更新问题
+ * 采用基于ID的数据获取模式，避免循环渲染问题
  */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   Form,
@@ -29,14 +28,16 @@ import {
   SyncOutlined,
   CalendarOutlined,
   InfoCircleOutlined,
-  SaveOutlined,
-  QuestionCircleOutlined
+  FilterOutlined,
+  QuestionCircleOutlined,
+  ClockCircleOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import { emailAccountApi, taskApi } from '../services/api';
 import CronExpressionBuilder from './CronExpressionBuilder';
+import moment from 'moment';
 
-const { Text } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 
@@ -70,30 +71,6 @@ interface EmailSyncParams {
   endDate?: string;
 }
 
-// 与TaskManage组件中相同的Task接口定义
-interface Task {
-  id: number;
-  task_name: string;
-  task_key: string;
-  cron_expression: string;
-  handler: string;
-  status: 'enabled' | 'disabled' | 'deleted';
-  retry_count: number;
-  retry_interval: number;
-  description: string;
-  next_execution_time: string;
-  last_execution_time: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface EmailSyncTaskModalProps {
-  visible: boolean;
-  task?: Task | null; // 允许传入Task类型或null
-  onClose: () => void;
-  onSuccess: () => void;
-}
-
 // 可选邮箱文件夹列表
 const availableMailboxes = [
   { value: 'INBOX', label: '收件箱' },
@@ -104,32 +81,20 @@ const availableMailboxes = [
   { value: 'Archive', label: '存档' }
 ];
 
-// 解析任务处理器
-const parseTaskHandler = (task: Task | null | undefined) => {
-  if (!task) return null;
-  
-  try {
-    const handlerObj = typeof task.handler === 'string' ? 
-      JSON.parse(task.handler) : task.handler;
-    
-    // 验证处理器结构
-    if (typeof handlerObj !== 'object' || !handlerObj) {
-      return null;
-    }
-    
-    return handlerObj;
-  } catch (error) {
-    console.error('解析任务处理器失败:', error);
-    return null;
-  }
-};
-
 /**
  * 邮件同步任务编辑模态框组件
+ * 采用基于ID的数据获取模式，避免循环渲染
  */
+interface EmailSyncTaskModalProps {
+  visible: boolean;
+  taskId?: number | null; // 仅传递任务ID，其他数据通过API获取
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
 const EmailSyncTaskModal: React.FC<EmailSyncTaskModalProps> = ({
   visible,
-  task,
+  taskId,
   onClose,
   onSuccess
 }) => {
@@ -139,6 +104,7 @@ const EmailSyncTaskModal: React.FC<EmailSyncTaskModalProps> = ({
   // 状态
   const [loading, setLoading] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
+  const [taskLoading, setTaskLoading] = useState<boolean>(false);
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
   const [cronExpression, setCronExpression] = useState<string>('*/5 * * * *');
   const [syncParams, setSyncParams] = useState<EmailSyncParams>({
@@ -149,72 +115,11 @@ const EmailSyncTaskModal: React.FC<EmailSyncTaskModalProps> = ({
     endDate: undefined
   });
   
-  // 获取默认值
-  const defaultValues = useMemo(() => {
-    if (!task) {
-      return {
-        taskName: '内置邮件增量同步',
-        description: '定时同步邮箱中的邮件',
-        status: 'enabled',
-        retryCount: 0,
-        retryInterval: 0
-      };
-    }
-    
-    return {
-      taskName: task.task_name,
-      description: task.description,
-      status: task.status,
-      retryCount: task.retry_count,
-      retryInterval: task.retry_interval
-    };
-  }, [task]);
-  
-  // 初始化表单和状态 - 使用惰性初始化避免重复设置
-  const initFormAndState = useCallback(() => {
-    if (!visible) return;
-    
-    // 重置表单
-    form.setFieldsValue(defaultValues);
-    
-    // 初始化Cron表达式
-    if (task) {
-      setCronExpression(task.cron_expression);
-    } else {
-      setCronExpression('*/5 * * * *');
-    }
-    
-    // 解析处理器参数
-    if (task) {
-      const handler = parseTaskHandler(task);
-      if (handler && handler.params) {
-        const params = handler.params;
-        
-        // 使用函数式更新，一次性设置所有参数，避免多次渲染
-        setSyncParams({
-          accountIds: Array.isArray(params.accountIds) ? params.accountIds : [],
-          syncType: params.syncType === 'full' ? 'full' : 'incremental',
-          mailboxes: Array.isArray(params.mailboxes) ? params.mailboxes : ['INBOX'],
-          startDate: params.startDate,
-          endDate: params.endDate
-        });
-      }
-    } else {
-      // 新建任务时的默认值
-      setSyncParams({
-        accountIds: [],
-        syncType: 'incremental',
-        mailboxes: ['INBOX'],
-        startDate: undefined,
-        endDate: undefined
-      });
-    }
-  }, [visible, task, form, defaultValues]);
+  // 任务详情状态 - 从API获取，而不是通过props传递
+  const [taskDetail, setTaskDetail] = useState<any>(null);
   
   // 加载邮箱账户列表
-  const fetchEmailAccounts = useCallback(async () => {
-    if (!visible) return;
-    
+  const fetchEmailAccounts = async () => {
     try {
       setLoading(true);
       const response = await emailAccountApi.getAllEmailAccounts();
@@ -234,70 +139,107 @@ const EmailSyncTaskModal: React.FC<EmailSyncTaskModalProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [visible]);
+  };
   
-  // 初始化逻辑 - 使用单一useEffect管理所有初始化操作
-  useEffect(() => {
-    // 当模态框打开时，执行初始化操作
-    if (visible) {
-      // 使用setTimeout延迟初始化，避免React状态更新冲突
-      const timerId = setTimeout(() => {
-        fetchEmailAccounts();
-        initFormAndState();
-      }, 0);
+  // 加载任务详情 - 根据ID从API获取
+  const fetchTaskDetail = async (id: number) => {
+    try {
+      setTaskLoading(true);
+      const response = await taskApi.getTask(id.toString());
       
-      return () => clearTimeout(timerId);
+      if (response.success) {
+        setTaskDetail(response.data);
+        initFormData(response.data);
+      } else {
+        message.error(response.message || '获取任务详情失败');
+      }
+    } catch (error: any) {
+      console.error('获取任务详情失败:', error);
+      message.error(error.message || '获取任务详情失败');
+    } finally {
+      setTaskLoading(false);
     }
-  }, [visible, fetchEmailAccounts, initFormAndState]);
+  };
+  
+  // 解析任务数据，初始化表单
+  const initFormData = (task: any) => {
+    if (!task) return;
+    
+    try {
+      // 重置表单
+      form.resetFields();
+      
+      // 解析处理器JSON
+      const handlerObj = typeof task.handler === 'string' ? 
+        JSON.parse(task.handler) : task.handler;
+      
+      // 解析处理器参数
+      const params = handlerObj.params || {};
+      
+      // 设置同步参数
+      const initialParams = {
+        accountIds: params.accountIds || [],
+        syncType: params.syncType || 'incremental',
+        mailboxes: params.mailboxes || ['INBOX'],
+        startDate: params.startDate,
+        endDate: params.endDate
+      };
+      
+      // 设置表单初始值
+      form.setFieldsValue({
+        taskName: task.task_name,
+        description: task.description,
+        status: task.status,
+        retryCount: task.retry_count,
+        retryInterval: task.retry_interval
+      });
+      
+      // 设置Cron表达式
+      setCronExpression(task.cron_expression);
+      
+      // 设置同步参数
+      setSyncParams(initialParams);
+    } catch (error) {
+      console.error('解析任务数据失败:', error);
+      message.error('解析任务数据失败，请重试');
+    }
+  };
+  
+  // 当模态框显示且有任务ID时，加载任务详情
+  useEffect(() => {
+    if (visible) {
+      // 无论是否有任务ID，都加载邮箱账户列表
+      fetchEmailAccounts();
+      
+      if (taskId) {
+        // 如果有任务ID，加载任务详情
+        fetchTaskDetail(taskId);
+      } else {
+        // 如果没有任务ID，重置表单和状态（创建模式）
+        setTaskDetail(null);
+        form.resetFields();
+        setCronExpression('*/5 * * * *');
+        setSyncParams({
+          accountIds: [],
+          syncType: 'incremental',
+          mailboxes: ['INBOX'],
+          startDate: undefined,
+          endDate: undefined
+        });
+      }
+    }
+  }, [visible, taskId]);
   
   // 处理选择全部邮箱
-  const handleSelectAllAccounts = useCallback(() => {
-    setSyncParams(prev => ({
-      ...prev,
-      accountIds: emailAccounts.map(account => account.id)
-    }));
-  }, [emailAccounts]);
+  const handleSelectAllAccounts = () => {
+    const allAccountIds = emailAccounts.map((account) => account.id);
+    setSyncParams({...syncParams, accountIds: allAccountIds});
+  };
   
   // 处理清除所有选择
-  const handleClearAllAccounts = useCallback(() => {
-    setSyncParams(prev => ({
-      ...prev,
-      accountIds: []
-    }));
-  }, []);
-  
-  // 处理账户选择变化
-  const handleAccountIdsChange = useCallback((values: number[]) => {
-    setSyncParams(prev => ({
-      ...prev,
-      accountIds: values
-    }));
-  }, []);
-  
-  // 处理同步类型变化
-  const handleSyncTypeChange = useCallback((e: any) => {
-    setSyncParams(prev => ({
-      ...prev,
-      syncType: e.target.value
-    }));
-  }, []);
-  
-  // 处理邮箱文件夹变化
-  const handleMailboxesChange = useCallback((values: any) => {
-    setSyncParams(prev => ({
-      ...prev,
-      mailboxes: values
-    }));
-  }, []);
-  
-  // 处理日期范围变化
-  const handleDateRangeChange = useCallback((dates: any, dateStrings: [string, string]) => {
-    setSyncParams(prev => ({
-      ...prev,
-      startDate: dateStrings[0] || undefined,
-      endDate: dateStrings[1] || undefined
-    }));
-  }, []);
+  const handleClearAllAccounts = () => {
+    setSyncParams({...syncParams, accountIds: []});
+  };
   
   // 处理表单提交
   const handleSubmit = async () => {
@@ -322,50 +264,55 @@ const EmailSyncTaskModal: React.FC<EmailSyncTaskModalProps> = ({
         description: formValues.description || '内置邮件增量同步任务',
         cronExpression: cronExpression,
         handler: {
-          type: 'function' as const,
+          type: 'function',
           functionName: 'syncEmails',
           params: syncParams
         },
-        status: (formValues.status || 'enabled') as 'enabled' | 'disabled',
-        retryCount: Number(formValues.retryCount) || 0,
-        retryInterval: Number(formValues.retryInterval) || 0
+        status: formValues.status || 'enabled',
+        retryCount: formValues.retryCount || 0,
+        retryInterval: formValues.retryInterval || 0
       };
       
       setSaving(true);
       
       let response;
-      if (task && task.id) {
+      if (taskId) {
         // 更新任务
-        response = await taskApi.updateTask(task.id.toString(), taskData);
+        response = await taskApi.updateTask(taskId.toString(), taskData);
       } else {
         // 创建任务
         response = await taskApi.createTask(taskData);
       }
       
       if (response && response.success) {
-        message.success(`${task ? '更新' : '创建'}邮件同步任务成功`);
+        message.success(`${taskId ? '更新' : '创建'}邮件同步任务成功`);
         onSuccess();
       } else {
-        message.error(`${task ? '更新' : '创建'}邮件同步任务失败: ${response?.message || '未知错误'}`);
+        message.error(`${taskId ? '更新' : '创建'}邮件同步任务失败: ${response?.message || '未知错误'}`);
       }
     } catch (error: any) {
-      console.error('提交表单失败:', error);
-      message.error(`提交表单失败: ${error.message || '未知错误'}`);
+      console.error('提交任务失败:', error);
+      message.error(`提交任务失败: ${error.message || '网络错误，请稍后重试'}`);
     } finally {
       setSaving(false);
     }
   };
   
-  // 渲染模态框内容
-  const renderModalContent = () => {
+  // 渲染表单
+  const renderForm = () => {
+    const isIncrementalSync = syncParams.syncType === 'incremental';
+    
     return (
       <Form
         form={form}
         layout="vertical"
-        initialValues={defaultValues}
+        initialValues={{
+          status: 'enabled',
+          retryCount: 0,
+          retryInterval: 0
+        }}
       >
-        {/* 基本信息 */}
-        <StyledCard>
+        <StyledCard title="基本设置">
           <Form.Item
             label="任务名称"
             name="taskName"
@@ -375,284 +322,162 @@ const EmailSyncTaskModal: React.FC<EmailSyncTaskModalProps> = ({
           </Form.Item>
           
           <Form.Item
-            label="任务描述"
-            name="description"
+            label="Cron表达式"
+            tooltip="定时任务的执行周期，使用Cron表达式格式"
           >
-            <Input.TextArea
-              placeholder="请输入任务描述"
-              rows={2}
+            <CronExpressionBuilder
+              value={cronExpression}
+              onChange={(value) => setCronExpression(value)}
             />
           </Form.Item>
           
-          <Form.Item label="Cron表达式">
-            <CronExpressionBuilder
-              value={cronExpression}
-              onChange={(value) => {
-                if (value !== cronExpression) {
-                  setCronExpression(value);
-                }
-              }}
-            />
+          <Form.Item
+            label="任务状态"
+            name="status"
+          >
+            <Radio.Group>
+              <Radio value="enabled">启用</Radio>
+              <Radio value="disabled">禁用</Radio>
+            </Radio.Group>
           </Form.Item>
         </StyledCard>
         
-        {/* 邮箱账户选择 */}
-        <StyledCard
-          title={
-            <Space>
-              <MailOutlined />
-              <span>选择邮箱账户</span>
-              <Tooltip title="选择需要同步邮件的邮箱账户">
-                <QuestionCircleOutlined style={{ color: '#999' }} />
-              </Tooltip>
-            </Space>
-          }
-          extra={
-            <Space>
-              <Button 
-                size="small" 
-                onClick={handleSelectAllAccounts}
-                disabled={loading || emailAccounts.length === 0}
-              >
-                全选
-              </Button>
-              <Button 
-                size="small" 
-                onClick={handleClearAllAccounts}
-                disabled={loading || syncParams.accountIds.length === 0}
-              >
-                清空
-              </Button>
-              <Button 
-                size="small"
-                type="primary" 
-                icon={<SyncOutlined />} 
-                onClick={fetchEmailAccounts}
+        <StyledCard title="同步设置">
+          <Form.Item label="同步类型">
+            <Radio.Group 
+              value={syncParams.syncType}
+              onChange={(e) => setSyncParams({...syncParams, syncType: e.target.value})}
+            >
+              <Radio value="incremental">增量同步</Radio>
+              <Radio value="full">全量同步</Radio>
+            </Radio.Group>
+            <div style={{ marginTop: 8, color: '#666' }}>
+              {isIncrementalSync ? 
+                '增量同步：仅同步上次同步后的新邮件' : 
+                '全量同步：同步指定日期范围内的所有邮件'
+              }
+            </div>
+          </Form.Item>
+          
+          <Form.Item label="选择邮箱账户">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Space>
+                <Button onClick={handleSelectAllAccounts}>全选</Button>
+                <Button onClick={handleClearAllAccounts}>清除选择</Button>
+              </Space>
+              <Select
+                mode="multiple"
+                placeholder="请选择需要同步的邮箱账户"
+                style={{ width: '100%' }}
+                value={syncParams.accountIds}
+                onChange={(values) => setSyncParams({...syncParams, accountIds: values})}
                 loading={loading}
               >
-                刷新
-              </Button>
-            </Space>
-          }
-        >
-          <Spin spinning={loading}>
-            {emailAccounts.length === 0 ? (
-              <Alert
-                message="没有找到可用的邮箱账户"
-                description="请先添加并验证邮箱账户，然后再配置邮件同步任务"
-                type="warning"
-                showIcon
-              />
-            ) : (
-              <>
-                <FormLabel>
-                  请选择需要同步邮件的邮箱账户（可多选）：
-                </FormLabel>
-                <Select
-                  mode="multiple"
-                  placeholder="请选择邮箱账户"
-                  value={syncParams.accountIds}
-                  onChange={handleAccountIdsChange}
-                  style={{ width: '100%' }}
-                  optionFilterProp="children"
-                  allowClear
-                >
-                  {emailAccounts.map((account) => (
-                    <Option key={account.id} value={account.id}>
-                      {account.name} ({account.email})
-                      {account.is_default === 1 && " (默认)"}
-                    </Option>
-                  ))}
-                </Select>
-                
-                <div style={{ marginTop: 8, color: '#999' }}>
-                  已选择 {syncParams.accountIds.length} 个邮箱账户
-                  {syncParams.accountIds.length === 0 && (
-                    <Text type="warning"> (未选择任何账户时，将同步所有激活的邮箱账户)</Text>
-                  )}
-                </div>
-              </>
-            )}
-          </Spin>
-        </StyledCard>
-
-        {/* 同步参数配置 */}
-        <StyledCard
-          title={
-            <Space>
-              <SyncOutlined />
-              <span>同步参数配置</span>
-              <Tooltip title="配置邮件同步的详细参数">
-                <QuestionCircleOutlined style={{ color: '#999' }} />
-              </Tooltip>
-            </Space>
-          }
-        >
-          <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <FormLabel>同步类型：</FormLabel>
-              <Radio.Group
-                value={syncParams.syncType}
-                onChange={handleSyncTypeChange}
-              >
-                <Radio value="incremental">
-                  <Space>
-                    <span>增量同步</span>
-                    <Tooltip title="只同步上次同步后的新邮件，更节省资源">
-                      <InfoCircleOutlined style={{ color: '#1890ff' }} />
-                    </Tooltip>
-                  </Space>
-                </Radio>
-                <Radio value="full">
-                  <Space>
-                    <span>全量同步</span>
-                    <Tooltip title="同步指定日期范围内的所有邮件，较消耗资源">
-                      <InfoCircleOutlined style={{ color: '#faad14' }} />
-                    </Tooltip>
-                  </Space>
-                </Radio>
-              </Radio.Group>
-            </Col>
-
-            <Col span={24}>
-              <FormLabel>邮箱文件夹：</FormLabel>
-              <Checkbox.Group
-                value={syncParams.mailboxes}
-                onChange={handleMailboxesChange}
-                style={{ width: '100%' }}
-              >
-                <Row gutter={[16, 8]}>
-                  {availableMailboxes.map((mailbox) => (
-                    <Col span={8} key={mailbox.value}>
-                      <Checkbox value={mailbox.value}>{mailbox.label}</Checkbox>
-                    </Col>
-                  ))}
-                </Row>
-              </Checkbox.Group>
-              <div style={{ marginTop: 4, color: '#999' }}>
-                至少选择一个邮箱文件夹 (默认为"收件箱")
+                {emailAccounts.map((account) => (
+                  <Option key={account.id} value={account.id}>
+                    {account.name} ({account.email})
+                  </Option>
+                ))}
+              </Select>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                {syncParams.accountIds.length > 0 ? 
+                  `已选择 ${syncParams.accountIds.length} 个邮箱账户` : 
+                  '未选择任何邮箱账户，将同步所有有效的邮箱账户'
+                }
               </div>
-            </Col>
-
-            {syncParams.syncType === 'full' && (
-              <Col span={24}>
-                <FormLabel>
-                  <Space>
-                    <CalendarOutlined />
-                    <span>日期范围：</span>
-                    <Tooltip title="仅在全量同步模式下有效，留空表示不限制">
-                      <QuestionCircleOutlined style={{ color: '#999' }} />
-                    </Tooltip>
-                  </Space>
-                </FormLabel>
-                <RangePicker
-                  style={{ width: '100%' }}
-                  placeholder={['开始日期', '结束日期']}
-                  onChange={handleDateRangeChange}
-                />
-                <div style={{ color: '#999', marginTop: 4 }}>
-                  不设置日期范围则默认同步最近一个月的邮件
-                </div>
-              </Col>
-            )}
-          </Row>
-        </StyledCard>
-
-        {/* 高级设置 */}
-        <StyledCard
-          title={
-            <Space>
-              <InfoCircleOutlined />
-              <span>高级设置</span>
             </Space>
-          }
-        >
-          <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <Form.Item
-                label="任务状态"
-                name="status"
-              >
-                <Radio.Group>
-                  <Radio value="enabled">启用</Radio>
-                  <Radio value="disabled">禁用</Radio>
-                </Radio.Group>
-              </Form.Item>
-            </Col>
-            
-            <Col span={12}>
-              <Form.Item
-                label="重试次数"
-                name="retryCount"
-                extra="任务失败后的重试次数，0表示不重试"
-              >
-                <Input type="number" min={0} />
-              </Form.Item>
-            </Col>
-            
-            <Col span={12}>
-              <Form.Item
-                label="重试间隔(秒)"
-                name="retryInterval"
-                extra="任务失败后的重试间隔时间，单位为秒"
-              >
-                <Input type="number" min={0} />
-              </Form.Item>
-            </Col>
-          </Row>
+          </Form.Item>
+          
+          <Form.Item label="邮箱文件夹">
+            <Checkbox.Group
+              options={availableMailboxes}
+              value={syncParams.mailboxes}
+              onChange={(values) => setSyncParams({...syncParams, mailboxes: values as string[]})}
+            />
+          </Form.Item>
+          
+          {!isIncrementalSync && (
+            <Form.Item label="日期范围">
+              <RangePicker
+                value={
+                  syncParams.startDate && syncParams.endDate ?
+                  [moment(syncParams.startDate), moment(syncParams.endDate)] :
+                  null
+                }
+                onChange={(dates) => {
+                  if (dates && dates[0] && dates[1]) {
+                    setSyncParams({
+                      ...syncParams,
+                      startDate: dates[0].format('YYYY-MM-DD'),
+                      endDate: dates[1].format('YYYY-MM-DD')
+                    });
+                  } else {
+                    setSyncParams({
+                      ...syncParams,
+                      startDate: undefined,
+                      endDate: undefined
+                    });
+                  }
+                }}
+              />
+            </Form.Item>
+          )}
         </StyledCard>
-
-        {/* 说明信息 */}
-        <Alert
-          message="邮件同步说明"
-          description={
-            <div>
-              <p>
-                <strong>增量同步：</strong> 只同步上次同步以来的新邮件，适合日常使用。
-              </p>
-              <p>
-                <strong>全量同步：</strong> 同步指定日期范围内的所有邮件，会消耗更多资源。
-              </p>
-              <p>
-                定时任务执行时，将按照您的配置对选定的邮箱账户进行邮件同步操作。每个邮箱将按顺序处理，同步结果将记录在系统日志中。
-              </p>
-            </div>
-          }
-          type="info"
-          showIcon
-          style={{ marginTop: 16 }}
-        />
+        
+        <StyledCard title="高级设置">
+          <Form.Item
+            label="重试次数"
+            name="retryCount"
+            tooltip="任务失败后的重试次数，0表示不重试"
+          >
+            <Input type="number" min={0} />
+          </Form.Item>
+          
+          <Form.Item
+            label="重试间隔(秒)"
+            name="retryInterval"
+            tooltip="任务失败后的重试间隔时间，单位为秒"
+          >
+            <Input type="number" min={0} />
+          </Form.Item>
+          
+          <Form.Item
+            label="任务描述"
+            name="description"
+          >
+            <Input.TextArea rows={3} placeholder="请输入任务描述" />
+          </Form.Item>
+        </StyledCard>
       </Form>
     );
   };
   
   return (
     <Modal
-      title={`${task ? '编辑' : '创建'}内置邮件同步任务`}
+      title={`${taskId ? '编辑' : '创建'}邮件同步任务`}
       open={visible}
+      width={700}
       onCancel={onClose}
-      width={800}
       footer={[
         <Button key="cancel" onClick={onClose}>
           取消
         </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          icon={<SaveOutlined />}
+        <Button 
+          key="submit" 
+          type="primary" 
           loading={saving}
           onClick={handleSubmit}
         >
           保存
         </Button>
       ]}
-      maskClosable={false}
       destroyOnClose={true}
     >
-      {renderModalContent()}
+      <Spin spinning={taskLoading}>
+        {renderForm()}
+      </Spin>
     </Modal>
   );
 };
 
-// 使用React.memo包装组件以避免不必要的重渲染
-export default React.memo(EmailSyncTaskModal);
+export default EmailSyncTaskModal;
