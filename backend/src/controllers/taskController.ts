@@ -501,5 +501,102 @@ export default {
   updateTask,
   deleteTask,
   triggerTask,
-  getTaskHistory
-};
+  getTaskHistory,
+  
+  /**
+   * 更新任务配置
+   * @param req 请求对象
+   * @param res 响应对象
+   */
+  updateTaskConfig: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { taskId } = req.params;
+      const { handlerParams } = req.body;
+      
+      // 检查任务是否存在
+      const existingTask = await db('infini_scheduled_tasks')
+        .where('id', taskId)
+        .first();
+      
+      if (!existingTask) {
+        const response: ApiResponse = {
+          success: false,
+          message: `任务ID ${taskId} 不存在`
+        };
+        
+        res.status(404).json(response);
+        return;
+      }
+
+      // 解析当前处理器配置
+      let handler;
+      try {
+        handler = JSON.parse(existingTask.handler);
+      } catch (error) {
+        const response: ApiResponse = {
+          success: false,
+          message: `解析任务处理器配置失败: ${(error as Error).message}`
+        };
+        
+        res.status(500).json(response);
+        return;
+      }
+      
+      // 更新处理器参数
+      if (handlerParams) {
+        if (handler.type === 'function') {
+          // 合并现有参数和新参数
+          handler.params = { ...handler.params, ...handlerParams };
+        } else if (handler.type === 'http') {
+          // 对于HTTP处理器，更新body中的参数
+          handler.body = { ...handler.body, ...handlerParams };
+        } else if (handler.type === 'service') {
+          // 对于服务处理器，更新params中的参数
+          handler.params = { ...handler.params, ...handlerParams };
+        }
+      }
+      
+      // 更新任务处理器
+      const updatedHandler = JSON.stringify(handler);
+      
+      await db('infini_scheduled_tasks')
+        .where('id', taskId)
+        .update({
+          handler: updatedHandler,
+          updated_at: new Date()
+        });
+      
+      // 如果任务启用，则重新调度
+      if (existingTask.status === TaskStatus.ENABLED) {
+        // 获取更新后的任务
+        const updatedTask = await db('infini_scheduled_tasks')
+          .where('id', taskId)
+          .first();
+        
+        if (updatedTask) {
+          // 重新调度任务
+          await taskService.updateTask(parseInt(taskId, 10), {
+            handler: handler
+          });
+        }
+      }
+      
+      // 构造响应
+      const response: ApiResponse = {
+        success: true,
+        message: '任务配置更新成功'
+      };
+      
+      res.json(response);
+    } catch (error) {
+      console.error('更新任务配置失败:', error);
+      
+      const response: ApiResponse = {
+        success: false,
+        message: `更新任务配置失败: ${(error as Error).message}`
+      };
+      
+      res.status(500).json(response);
+    }
+  }
+}
