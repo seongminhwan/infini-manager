@@ -3,6 +3,7 @@
  * 采用基于ID的数据获取模式，避免循环渲染问题
  */
 import React, { useState, useEffect } from 'react';
+import dayjs from 'dayjs';
 import {
   Modal,
   Form,
@@ -145,10 +146,20 @@ const EmailSyncTaskModal: React.FC<EmailSyncTaskModalProps> = ({
   const fetchTaskDetail = async (id: number) => {
     try {
       setTaskLoading(true);
-      const response = await taskApi.getTask(id.toString());
+      // 获取所有任务，然后根据ID过滤出指定任务
+      const response = await taskApi.getTasks();
       
       if (response.success) {
-        setTaskDetail(response.data);
+        // 查找指定ID的任务
+        const taskData = response.data?.tasks?.find((t: any) => t.id === id) || 
+                         response.data?.find((t: any) => t.id === id);
+        
+        if (taskData) {
+          setTaskDetail(taskData);
+          initFormData(taskData);
+        } else {
+          message.error('未找到指定任务');
+        }
         initFormData(response.data);
       } else {
         message.error(response.message || '获取任务详情失败');
@@ -264,7 +275,7 @@ const EmailSyncTaskModal: React.FC<EmailSyncTaskModalProps> = ({
         description: formValues.description || '内置邮件增量同步任务',
         cronExpression: cronExpression,
         handler: {
-          type: 'function',
+          type: 'function' as const,
           functionName: 'syncEmails',
           params: syncParams
         },
@@ -401,7 +412,7 @@ const EmailSyncTaskModal: React.FC<EmailSyncTaskModalProps> = ({
               <RangePicker
                 value={
                   syncParams.startDate && syncParams.endDate ?
-                  [moment(syncParams.startDate), moment(syncParams.endDate)] :
+                  [dayjs(syncParams.startDate), dayjs(syncParams.endDate)] :
                   null
                 }
                 onChange={(dates) => {
