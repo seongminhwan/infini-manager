@@ -13,6 +13,43 @@ dotenv.config();
 // 设置端口
 const PORT: number = parseInt(process.env.PORT || '5000', 10);
 
+// 声明服务器变量,以便在关闭时使用
+let server: any;
+
+// 进程优雅退出处理
+const gracefulShutdown = async (): Promise<void> => {
+  console.log('接收到退出信号,正在关闭应用...');
+  
+  // 停止所有IMAP IDLE连接
+  try {
+    console.log('正在关闭IMAP IDLE长连接...');
+    await imapIdleServiceInstance.stopAllConnections();
+    console.log('IMAP IDLE长连接已关闭');
+  } catch (error) {
+    console.error('关闭IMAP IDLE长连接失败:', error);
+  }
+  
+  // 关闭HTTP服务器
+  if (server) {
+    server.close(() => {
+      console.log('HTTP服务器已关闭');
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+  
+  // 设置超时强制退出
+  setTimeout(() => {
+    console.error('应用关闭超时,强制退出');
+    process.exit(1);
+  }, 10000);
+};
+
+// 注册进程信号处理
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
 // 初始化数据库并启动服务器
 initializeDatabase()
   .then(async () => {
@@ -37,41 +74,11 @@ initializeDatabase()
     }
 
     // 启动服务器 - 监听所有网络接口以支持容器化环境
-    const server = app.listen(PORT, '0.0.0.0', () => {
+    server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`服务器已启动，监听地址 0.0.0.0:${PORT}`);
       console.log(`Swagger文档地址: http://localhost:${PORT}/api-docs`);
       console.log(`健康检查地址: http://localhost:${PORT}/api/health`);
     });
-  })
-    // 添加进程退出处理
-    const gracefulShutdown = async () => {
-      console.log('接收到退出信号,正在关闭应用...');
-      
-      // 停止所有IMAP IDLE连接
-      try {
-        console.log('正在关闭IMAP IDLE长连接...');
-        await imapIdleServiceInstance.stopAllConnections();
-        console.log('IMAP IDLE长连接已关闭');
-      } catch (error) {
-        console.error('关闭IMAP IDLE长连接失败:', error);
-      }
-      
-      // 关闭HTTP服务器
-      server.close(() => {
-        console.log('HTTP服务器已关闭');
-        process.exit(0);
-      });
-      
-      // 设置超时强制退出
-      setTimeout(() => {
-        console.error('应用关闭超时,强制退出');
-        process.exit(1);
-      }, 10000);
-    };
-    
-    // 注册进程信号处理
-    process.on('SIGTERM', gracefulShutdown);
-    process.on('SIGINT', gracefulShutdown);
   })
   .catch((error) => {
     console.error('服务器启动失败，数据库初始化错误:', error);
