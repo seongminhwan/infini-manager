@@ -1909,6 +1909,23 @@ export const taskApi = {
       console.error('获取可用的函数处理器列表失败:', error);
       throw error;
     }
+  },
+  
+  // 更新内置邮件同步任务配置
+  updateEmailSyncTaskConfig: async (id: string, accountIds: number[]) => {
+    try {
+      console.log(`更新内置邮件同步任务配置，任务ID: ${id}, 选择账户数量: ${accountIds.length}`);
+      // 使用PATCH请求，只更新handler参数中的accountIds
+      const response = await api.patch(`${apiBaseUrl}/api/tasks/${id}/config`, {
+        handlerParams: {
+          accountIds
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('更新内置邮件同步任务配置失败:', error);
+      throw error;
+    }
   }
 };
 
