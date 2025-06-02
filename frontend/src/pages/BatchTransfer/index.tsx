@@ -839,47 +839,90 @@ const BatchTransfer = () => {
                               type="primary"
                               block
                               onClick={() => {
-                                // 根据筛选条件过滤账户
-                                let filtered = [...accounts];
-                                
-                                // 余额区间筛选
-                                if (balanceMinValue) {
-                                  const minValue = parseFloat(balanceMinValue);
-                                  filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') >= minValue);
-                                }
-                                
-                                if (balanceMaxValue) {
-                                  const maxValue = parseFloat(balanceMaxValue);
-                                  filtered = filtered.filter(a => parseFloat(a.availableBalance || '0') <= maxValue);
-                                }
-                                
-                                // 红包余额区间筛选
-                                if (redPacketMinValue) {
-                                  const minValue = parseFloat(redPacketMinValue);
-                                  filtered = filtered.filter(a => parseFloat(a.redPacketBalance || '0') >= minValue);
-                                }
-                                
-                                if (redPacketMaxValue) {
-                                  const maxValue = parseFloat(redPacketMaxValue);
-                                  filtered = filtered.filter(a => parseFloat(a.redPacketBalance || '0') <= maxValue);
-                                }
-                                
-                                // 账户状态筛选
-                                if (statusFilter) {
-                                  switch (statusFilter) {
-                                    case 'active':
-                                      filtered = filtered.filter(a => a.status === 'active');
-                                      break;
-                                    case 'inactive':
-                                      filtered = filtered.filter(a => a.status === 'inactive');
-                                      break;
-                                    case 'locked':
-                                      filtered = filtered.filter(a => a.status === 'locked');
-                                      break;
+                                try {
+                                  // 根据筛选条件过滤账户
+                                  let filtered = [...accounts];
+                                  let filterCount = 0;
+                                  
+                                  // 余额区间筛选
+                                  if (balanceMinValue && balanceMinValue.trim() !== '') {
+                                    const minValue = parseFloat(balanceMinValue);
+                                    if (!isNaN(minValue)) {
+                                      filtered = filtered.filter(a => {
+                                        const balance = parseFloat(a.availableBalance || '0');
+                                        return !isNaN(balance) && balance >= minValue;
+                                      });
+                                      filterCount++;
+                                    }
                                   }
+                                  
+                                  if (balanceMaxValue && balanceMaxValue.trim() !== '') {
+                                    const maxValue = parseFloat(balanceMaxValue);
+                                    if (!isNaN(maxValue)) {
+                                      filtered = filtered.filter(a => {
+                                        const balance = parseFloat(a.availableBalance || '0');
+                                        return !isNaN(balance) && balance <= maxValue;
+                                      });
+                                      filterCount++;
+                                    }
+                                  }
+                                  
+                                  // 红包余额区间筛选
+                                  if (redPacketMinValue && redPacketMinValue.trim() !== '') {
+                                    const minValue = parseFloat(redPacketMinValue);
+                                    if (!isNaN(minValue)) {
+                                      filtered = filtered.filter(a => {
+                                        const redPacket = parseFloat(a.redPacketBalance || '0');
+                                        return !isNaN(redPacket) && redPacket >= minValue;
+                                      });
+                                      filterCount++;
+                                    }
+                                  }
+                                  
+                                  if (redPacketMaxValue && redPacketMaxValue.trim() !== '') {
+                                    const maxValue = parseFloat(redPacketMaxValue);
+                                    if (!isNaN(maxValue)) {
+                                      filtered = filtered.filter(a => {
+                                        const redPacket = parseFloat(a.redPacketBalance || '0');
+                                        return !isNaN(redPacket) && redPacket <= maxValue;
+                                      });
+                                      filterCount++;
+                                    }
+                                  }
+                                  
+                                  // 账户状态筛选
+                                  if (statusFilter) {
+                                    switch (statusFilter) {
+                                      case 'active':
+                                        filtered = filtered.filter(a => a.status === 'active');
+                                        filterCount++;
+                                        break;
+                                      case 'inactive':
+                                        filtered = filtered.filter(a => a.status === 'inactive');
+                                        filterCount++;
+                                        break;
+                                      case 'locked':
+                                        filtered = filtered.filter(a => a.status === 'locked');
+                                        filterCount++;
+                                        break;
+                                    }
+                                  }
+                                  
+                                  setFilteredAccounts(filtered);
+                                  
+                                  // 提供用户反馈
+                                  if (filterCount > 0) {
+                                    message.success(`已筛选出 ${filtered.length} 个账户`);
+                                  } else {
+                                    message.info('请设置筛选条件后再应用');
+                                  }
+                                  
+                                  // 关闭下拉菜单
+                                  document.body.click();
+                                } catch (error) {
+                                  console.error('筛选账户时出错:', error);
+                                  message.error('筛选账户时出错，请重试');
                                 }
-                                
-                                setFilteredAccounts(filtered);
                               }}
                             >
                               应用筛选
