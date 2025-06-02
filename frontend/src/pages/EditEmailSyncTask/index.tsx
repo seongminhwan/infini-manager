@@ -101,13 +101,12 @@ const EditEmailSyncTask: React.FC = () => {
     
     try {
       setLoading(true);
-      const response = await taskApi.getTasks();
+      // 使用getScheduledTaskById方法直接获取指定ID的任务
+      const response = await taskApi.getScheduledTaskById(taskId);
       
       if (response.success) {
-        // 查找指定ID的任务
-        const task = Array.isArray(response.data) 
-          ? response.data.find((t: Task) => t.id === parseInt(taskId, 10))
-          : (response.data?.tasks?.find((t: Task) => t.id === parseInt(taskId, 10)) || null);
+        // 直接使用response.data获取任务详情
+        const task = response.data;
         
         if (task) {
           setTaskDetail(task);
@@ -131,8 +130,11 @@ const EditEmailSyncTask: React.FC = () => {
         } else {
           message.error('未找到指定任务');
         }
+      } else {
+        message.error(response.message || '获取任务详情失败');
       }
     } catch (error: any) {
+      console.error('获取任务详情出错:', error);
       message.error(error.message || '获取任务详情失败');
     } finally {
       setLoading(false);
