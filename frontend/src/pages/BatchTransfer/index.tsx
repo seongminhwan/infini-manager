@@ -1087,7 +1087,34 @@ const BatchTransfer = () => {
           
           {amountType === 'custom' && (
             <div>
-              <Title level={5}>自定义金额</Title>
+              <Row justify="space-between" align="middle">
+                <Title level={5} style={{ margin: 0 }}>自定义金额</Title>
+                <Button 
+                  type="default"
+                  onClick={() => {
+                    // 遍历所有选中的账户，将它们的可用余额设置为转账金额
+                    const newCustomAmounts = { ...customAmounts };
+                    let hasEmptyBalance = false;
+                    
+                    selectedAccounts.forEach((account, index) => {
+                      const accountId = account.id.toString();
+                      if (account.availableBalance) {
+                        newCustomAmounts[accountId] = account.availableBalance;
+                      } else {
+                        hasEmptyBalance = true;
+                      }
+                    });
+                    
+                    setCustomAmounts(newCustomAmounts);
+                    
+                    if (hasEmptyBalance) {
+                      message.warning('部分账户无法获取余额信息');
+                    }
+                  }}
+                >
+                  账户所有余额
+                </Button>
+              </Row>
               <List
                 dataSource={selectedAccounts}
                 renderItem={(account, index) => (
