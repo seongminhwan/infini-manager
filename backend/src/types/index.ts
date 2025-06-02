@@ -120,16 +120,29 @@ export interface EmailAccount {
   updatedAt?: string;
   extraConfig?: Record<string, any>;
   domainName?: string; // 邮箱域名，用于随机用户生成
+  useIdleConnection?: boolean; // 是否使用IDLE长连接
+  idleConnectionStatus?: string; // IDLE连接状态
+}
+
+// IDLE连接状态枚举
+export enum IdleConnectionStatus {
+  DISCONNECTED = 'disconnected',
+  CONNECTING = 'connecting',
+  CONNECTED = 'connected',
+  RECONNECTING = 'reconnecting',
+  ERROR = 'error'
 }
 
 export type EmailAccountStatus = 'active' | 'pending' | 'disabled';
 
-export interface EmailAccountCreate extends Omit<EmailAccount, 'id' | 'status' | 'isDefault' | 'createdAt' | 'updatedAt'> {
+export interface EmailAccountCreate extends Omit<EmailAccount, 'id' | 'status' | 'isDefault' | 'createdAt' | 'updatedAt' | 'useIdleConnection' | 'idleConnectionStatus'> {
   isDefault?: boolean;
+  useIdleConnection?: boolean;
 }
 
 export interface EmailAccountUpdate extends Partial<Omit<EmailAccount, 'id' | 'createdAt' | 'updatedAt'>> {
   id: number;
+  useIdleConnection?: boolean;
 }
 
 export interface EmailAccountTestResult {
