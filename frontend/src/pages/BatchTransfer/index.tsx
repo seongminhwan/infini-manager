@@ -483,14 +483,29 @@ const BatchTransfer = () => {
       const relations = prepareRelations();
       const batchName = `批量转账_${new Date().toLocaleString()}`;
       
-      // 添加name字段以满足TypeScript类型要求，但实际值会由后端处理
+      // 准备批量转账数据
+      let targetAccountIdValue = undefined;
+      
+      // 处理多对一模式下的目标账户ID
+      if (transferMode === 'many_to_one') {
+        if (targetContactType === 'inner' && targetAccount) {
+          // 内部账户模式，使用选择的账户ID
+          targetAccountIdValue = targetAccount.id;
+        } else if (externalTargetId) {
+          // 非内部账户模式(UID或Email)，后端API要求必须提供targetAccountId
+          // 如果使用外部标识符，我们传递一个特殊标记，让后端知道这是一个外部账户
+          targetAccountIdValue = -1; // 使用-1表示这是一个外部账户
+        }
+      }
+      
+      // 构建API请求数据
       const data = {
-        name: batchName, // 添加name字段以符合类型定义
+        name: batchName,
         type: transferMode,
         sourceAccountId: transferMode === 'one_to_many' ? sourceAccount?.id : undefined,
-        targetAccountId: transferMode === 'many_to_one' ? targetAccount?.id : undefined,
+        targetAccountId: transferMode === 'many_to_one' ? targetAccountIdValue : undefined,
         relations,
-        remarks: remarks || batchName // 保留备注字段
+        remarks: remarks || batchName
       };
       
       // 创建批量转账任务
