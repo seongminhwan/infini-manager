@@ -511,7 +511,7 @@ export default {
   updateTaskConfig: async (req: Request, res: Response): Promise<void> => {
     try {
       const { taskId } = req.params;
-      const { handlerParams } = req.body;
+      const { handlerParams, cronExpression } = req.body;
       
       // 检查任务是否存在
       const existingTask = await db('infini_scheduled_tasks')
@@ -556,15 +556,23 @@ export default {
         }
       }
       
-      // 更新任务处理器
-      const updatedHandler = JSON.stringify(handler);
+      // 准备更新数据
+      const updateData: any = {
+        updated_at: new Date()
+      };
       
+      // 更新任务处理器
+      updateData.handler = JSON.stringify(handler);
+      
+      // 如果提供了cron表达式，也一并更新
+      if (cronExpression) {
+        updateData.cron_expression = cronExpression;
+      }
+      
+      // 执行更新
       await db('infini_scheduled_tasks')
         .where('id', taskId)
-        .update({
-          handler: updatedHandler,
-          updated_at: new Date()
-        });
+        .update(updateData);
       
       // 如果任务启用，则重新调度
       if (existingTask.status === TaskStatus.ENABLED) {
