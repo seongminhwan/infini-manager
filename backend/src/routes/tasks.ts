@@ -202,4 +202,35 @@ router.post('/:taskId/trigger', taskController.triggerTask);
  */
 router.get('/:taskId/history', taskController.getTaskHistory);
 
+/**
+ * @swagger
+ * /api/tasks/{taskId}/config:
+ *   patch:
+ *     summary: 更新任务配置
+ *     tags: [任务]
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 任务ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               handlerParams:
+ *                 type: object
+ *                 description: 任务处理器参数
+ *     responses:
+ *       200:
+ *         description: 成功更新任务配置
+ *       404:
+ *         description: 任务不存在
+ */
+router.patch('/:taskId/config', taskController.updateTaskConfig);
+
 export default router;
