@@ -1502,7 +1502,9 @@ const BatchTransfer = () => {
                         return (
                           <Space direction="vertical" size={0}>
                             <Text>{record.target_identifier}</Text>
-                            <Tag color="blue">{record.contact_type.toUpperCase()}</Tag>
+                            {record.contact_type && (
+                              <Tag color="blue">{record.contact_type.toUpperCase()}</Tag>
+                            )}
                           </Space>
                         );
                       }
