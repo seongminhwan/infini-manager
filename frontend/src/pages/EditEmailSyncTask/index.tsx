@@ -1,21 +1,22 @@
 /**
  * 邮件同步任务编辑页面
- * 简化版本，专门用于编辑内置邮件同步任务的邮箱选择
+ * 专门用于编辑内置邮件同步任务的邮箱选择和cron表达式
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Card, 
   Form, 
   Input, 
   Button, 
-  Select, 
   Space, 
   Typography, 
   message, 
   Spin,
   Alert,
-  Divider
+  Divider,
+  Transfer,
+  Tag
 } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined, MailOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { emailAccountApi, taskApi } from '../../services/api';
@@ -23,7 +24,6 @@ import { emailAccountApi, taskApi } from '../../services/api';
 // import CronExpressionBuilder from '../../components/CronExpressionBuilder';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 
 // 定义任务类型接口
 interface Task {
@@ -46,6 +46,14 @@ interface EmailAccount {
   status: string;
 }
 
+// 为Transfer组件定义邮箱账户项接口
+interface EmailAccountItem {
+  key: string;
+  title: string;
+  description: string;
+  disabled: boolean;
+}
+
 // 邮件同步任务编辑页面
 const EditEmailSyncTask: React.FC = () => {
   // 获取路由参数
@@ -56,9 +64,19 @@ const EditEmailSyncTask: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
-  const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [taskDetail, setTaskDetail] = useState<Task | null>(null);
   const [cronExpression, setCronExpression] = useState<string>('');
+  
+  // 为Transfer组件准备数据源
+  const emailAccountItems = useMemo(() => {
+    return emailAccounts.map(account => ({
+      key: account.id.toString(),
+      title: account.name,
+      description: account.email,
+      disabled: account.status !== 'active'
+    }));
+  }, [emailAccounts]);
   
   // 邮箱账户数据加载
   const fetchEmailAccounts = useCallback(async () => {
@@ -66,13 +84,7 @@ const EditEmailSyncTask: React.FC = () => {
       setLoading(true);
       const response = await emailAccountApi.getAllEmailAccounts();
       if (response.success && response.data) {
-        // 过滤出激活状态的邮箱账户
-        const activeAccounts = response.data.filter(
-          (account: EmailAccount) => account.status === 'active'
-        );
-        setEmailAccounts(activeAccounts);
-        
-        // 只设置邮箱账户数据，不再设置Transfer数据源
+        setEmailAccounts(response.data);
       } else {
         message.error(response.message || '获取邮箱账户失败');
       }
@@ -106,10 +118,9 @@ const EditEmailSyncTask: React.FC = () => {
               ? JSON.parse(task.handler) 
               : task.handler;
             
-            // 提取accountIds
+            // 提取accountIds并转换为字符串数组
             const accountIds = handler?.params?.accountIds || [];
-            // 设置唯一的数据源
-            setSelectedAccountIds(accountIds);
+            setSelectedAccountIds(accountIds.map((id: number) => id.toString()));
             
             // 设置cron表达式
             setCronExpression(task.cron_expression);
@@ -135,17 +146,10 @@ const EditEmailSyncTask: React.FC = () => {
     fetchTaskDetail();
   }, [fetchEmailAccounts, fetchTaskDetail]);
 
-  // 处理选择全部邮箱
-  const handleSelectAllAccounts = useCallback(() => {
-    const allAccountIds = emailAccounts.map(account => account.id);
-    setSelectedAccountIds(allAccountIds);
-  }, [emailAccounts]);
-
-  // 处理清除所有选择
-  const handleClearAllAccounts = useCallback(() => {
-    setSelectedAccountIds([]);
+  // 处理Transfer组件的变化
+  const handleTransferChange = useCallback((nextTargetKeys: string[]) => {
+    setSelectedAccountIds(nextTargetKeys);
   }, []);
-  
 
   // 保存配置
   const handleSubmit = useCallback(async () => {
@@ -157,10 +161,13 @@ const EditEmailSyncTask: React.FC = () => {
     try {
       setSaving(true);
       
+      // 将字符串ID转换为数字ID
+      const numericIds = selectedAccountIds.map(id => parseInt(id, 10));
+      
       // 使用API方法更新邮箱配置和cron表达式
       const response = await taskApi.updateEmailSyncTaskConfig(
         taskId,
-        selectedAccountIds,
+        numericIds,
         cronExpression
       );
       
@@ -182,6 +189,18 @@ const EditEmailSyncTask: React.FC = () => {
   const handleGoBack = useCallback(() => {
     navigate('/task-manage');
   }, [navigate]);
+
+  // 自定义渲染Transfer中的列表项
+  const renderItem = useCallback((item: EmailAccountItem) => {
+    return {
+      label: (
+        <span>
+          <Tag color="blue">{item.title}</Tag> {item.description}
+        </span>
+      ),
+      value: item.key,
+    };
+  }, []);
 
   return (
     <div style={{ padding: '20px' }}>
@@ -253,35 +272,34 @@ const EditEmailSyncTask: React.FC = () => {
                     </Space>
                   }
                 >
-                  <Space direction="vertical" style={{ width: '100%' }}>
-                    <Space>
-                      <Button onClick={handleSelectAllAccounts}>全选</Button>
-                      <Button onClick={handleClearAllAccounts}>清除选择</Button>
-                    </Space>
-                    {/* 注释掉Transfer组件，避免无限渲染循环问题 */}
-                    {/* Transfer组件在当前实现中可能导致渲染循环，暂时使用Select替代 */}
-                    {/* 后续可以通过更全面重构解决此问题 */}
-                    <Select
-                      mode="multiple"
-                      placeholder="请选择需要同步的邮箱账户"
-                      style={{ width: '100%' }}
-                      value={selectedAccountIds}
-                      onChange={setSelectedAccountIds}
-                      optionFilterProp="children"
-                    >
-                      {emailAccounts.map(account => (
-                        <Option key={account.id} value={account.id}>
-                          {account.name} ({account.email})
-                        </Option>
-                      ))}
-                    </Select>
-                    <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-                      {selectedAccountIds.length > 0 ? 
-                        `已选择 ${selectedAccountIds.length} 个邮箱账户` : 
-                        '未选择任何邮箱账户，将同步所有有效的邮箱账户'
+                  <div style={{ marginBottom: '16px' }}>
+                    {/* 使用穿梭框组件，以列表形式展示邮箱账户 */}
+                    <Transfer
+                      dataSource={emailAccountItems}
+                      titles={['可选邮箱账户', '已选邮箱账户']}
+                      targetKeys={selectedAccountIds}
+                      onChange={handleTransferChange}
+                      render={item => `${item.title} (${item.description})`}
+                      listStyle={{
+                        width: '45%',
+                        height: 300,
+                      }}
+                      operations={['选择', '移除']}
+                      showSearch
+                      filterOption={(inputValue, item) => 
+                        item.title.indexOf(inputValue) > -1 || 
+                        item.description.indexOf(inputValue) > -1
                       }
-                    </div>
-                  </Space>
+                      showSelectAll
+                    />
+                  </div>
+                  
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+                    {selectedAccountIds.length > 0 ? 
+                      `已选择 ${selectedAccountIds.length} 个邮箱账户` : 
+                      '未选择任何邮箱账户，将同步所有有效的邮箱账户'
+                    }
+                  </div>
                 </Form.Item>
                 
                 <Form.Item label="描述">
