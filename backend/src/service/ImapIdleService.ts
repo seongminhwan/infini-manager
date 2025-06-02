@@ -18,7 +18,8 @@ enum IdleConnectionStatus {
   CONNECTED = 'connected',
   DISCONNECTED = 'disconnected',
   ERROR = 'error',
-  RECONNECTING = 'reconnecting'
+  RECONNECTING = 'reconnecting',
+  CONNECTING = 'connecting' // 添加连接中状态
 }
 
 /**
@@ -46,7 +47,7 @@ export class ImapIdleService extends EventEmitter {
   private maxReconnectAttempts = 10; // 最大重连次数
   private idleRefreshInterval = 25 * 60 * 1000; // IDLE刷新间隔(25分钟)
   private isInitialized = false;
-  private emailSyncService: EmailSyncService;
+  private emailSyncService: typeof EmailSyncService;
 
   /**
    * 构造函数
@@ -177,7 +178,7 @@ export class ImapIdleService extends EventEmitter {
       }
 
       // 创建IMAP客户端
-      const imap = new IMAP(imapConfig);
+      const imap = new IMAP.default(imapConfig);
 
       // 保存连接信息
       const connection: ImapIdleConnection = {
@@ -321,7 +322,9 @@ export class ImapIdleService extends EventEmitter {
       
       try {
         // 暂时退出IDLE模式
-        imap.idle();
+        if (typeof imap.idle === 'function') {
+          imap.idle();
+        }
         
         // 执行增量同步
         await this.processFetchNewEmails(connection);
@@ -391,7 +394,9 @@ export class ImapIdleService extends EventEmitter {
       }, this.idleRefreshInterval);
       
       // 开启IDLE模式
-      imap.idle();
+      if (typeof imap.idle === 'function') {
+        imap.idle();
+      }
       
       console.log(`邮箱 ${connection.email} IDLE模式已启动`);
     } catch (error) {
@@ -418,10 +423,22 @@ export class ImapIdleService extends EventEmitter {
       }
       
       // 退出IDLE模式
-      imap.idle();
+      if (typeof imap.idle === 'function') {
+        imap.idle();
+      }
       
       // 执行NOOP命令保持连接活跃
-      imap.noop(() => {
+      if (typeof imap.noop === 'function') {
+        imap.noop(() => {
+          console.log(`邮箱 ${connection.email} NOOP命令执行成功`);
+          
+          // 更新最后活动时间
+          connection.lastActivity = new Date();
+          
+          // 重新进入IDLE模式
+          this.startIdleMode(connection);
+        });
+      } else {
         console.log(`邮箱 ${connection.email} NOOP命令执行成功`);
         
         // 更新最后活动时间
@@ -672,7 +689,7 @@ export class ImapIdleService extends EventEmitter {
         lastError: connection.lastError,
         reconnectAttempts: connection.reconnectAttempts,
         lastActivity: connection.lastActivity
-      });
+      } as any);
     }
     
     return stats;
