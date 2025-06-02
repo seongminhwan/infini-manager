@@ -473,7 +473,7 @@ class ImapIdleService extends EventEmitter {
         return;
       }
       
-      // 捕获可能的IDLE退出错误
+        // 捕获可能的IDLE退出错误
       try {
         // 退出IDLE模式
         if (typeof imap.idle === 'function') {
@@ -482,11 +482,11 @@ class ImapIdleService extends EventEmitter {
       } catch (idleError) {
         console.error(`邮箱 ${connection.email} 退出IDLE模式失败:`, idleError);
         // IDLE退出失败通常表明连接已经有问题,尝试重连
-        if (idleError.message && (
-            idleError.message.includes('ended by the other party') ||
-            idleError.message.includes('EPIPE') ||
-            idleError.message.includes('connection closed') ||
-            idleError.message.includes('not connected'))) {
+        const errorMsg = idleError instanceof Error ? idleError.message : String(idleError);
+        if (errorMsg.includes('ended by the other party') ||
+            errorMsg.includes('EPIPE') ||
+            errorMsg.includes('connection closed') ||
+            errorMsg.includes('not connected')) {
           this.scheduleReconnect(connection.accountId);
           return;
         }
