@@ -15,12 +15,12 @@ import {
   message, 
   Spin,
   Alert,
-  Divider,
-  Transfer
+  Divider
 } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined, MailOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { emailAccountApi, taskApi } from '../../services/api';
-import CronExpressionBuilder from '../../components/CronExpressionBuilder';
+// 暂时注释，避免渲染循环
+// import CronExpressionBuilder from '../../components/CronExpressionBuilder';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -231,10 +231,16 @@ const EditEmailSyncTask: React.FC = () => {
                     </Space>
                   }
                 >
-                  <CronExpressionBuilder
+                  {/* 临时使用Input代替CronExpressionBuilder，避免渲染循环问题 */}
+                  {/* 后续可以全面重构解决此问题 */}
+                  <Input
                     value={cronExpression}
-                    onChange={(value) => setCronExpression(value)}
+                    onChange={(e) => setCronExpression(e.target.value)}
+                    placeholder="请输入Cron表达式，例如: 0 0 * * *"
                   />
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                    示例: 0 0 * * * (每天午夜执行), */10 * * * * (每10分钟执行一次)
+                  </div>
                 </Form.Item>
                 
                 <Divider />
