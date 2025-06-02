@@ -1911,6 +1911,48 @@ export const taskApi = {
     }
   },
   
+  // 获取邮件同步任务配置
+  getEmailSyncTaskConfig: async (id: string) => {
+    try {
+      console.log(`获取邮件同步任务配置，任务ID: ${id}`);
+      // 获取任务列表，然后查找指定ID的任务
+      const response = await api.get(`${apiBaseUrl}/api/tasks`);
+      if (response.data.success) {
+        // 查找指定任务
+        const tasks = response.data.data.tasks || response.data.data;
+        const task = Array.isArray(tasks) ? tasks.find((t: any) => t.id === parseInt(id, 10)) : null;
+        
+        if (task && task.handler) {
+          // 解析handler字段
+          const handler = typeof task.handler === 'string' ? JSON.parse(task.handler) : task.handler;
+          // 返回accountIds配置
+          return {
+            success: true,
+            data: {
+              accountIds: handler.params?.accountIds || []
+            }
+          };
+        }
+      }
+      // 如果找不到任务或配置为空，返回空数组
+      return {
+        success: true,
+        data: {
+          accountIds: []
+        }
+      };
+    } catch (error) {
+      console.error('获取邮件同步任务配置失败:', error);
+      return {
+        success: false,
+        message: '获取邮件同步任务配置失败',
+        data: {
+          accountIds: []
+        }
+      };
+    }
+  },
+  
   // 获取可用的函数处理器列表
   getAvailableHandlers: async () => {
     try {
