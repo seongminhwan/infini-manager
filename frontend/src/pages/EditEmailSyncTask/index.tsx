@@ -147,8 +147,9 @@ const EditEmailSyncTask: React.FC = () => {
   }, [fetchEmailAccounts, fetchTaskDetail]);
 
   // 处理Transfer组件的变化
-  const handleTransferChange = useCallback((nextTargetKeys: string[]) => {
-    setSelectedAccountIds(nextTargetKeys);
+  const handleTransferChange = useCallback((targetKeys: any[], direction: string, moveKeys: any[]) => {
+    // 只关注targetKeys参数，忽略direction和moveKeys
+    setSelectedAccountIds(targetKeys as string[]);
   }, []);
 
   // 保存配置
