@@ -2,7 +2,7 @@
  * 邮件同步任务编辑页面
  * 简化版本，专门用于编辑内置邮件同步任务的邮箱选择
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Card, 
@@ -61,6 +61,11 @@ const EditEmailSyncTask: React.FC = () => {
   const [taskDetail, setTaskDetail] = useState<Task | null>(null);
   const [cronExpression, setCronExpression] = useState<string>('');
   const [transferData, setTransferData] = useState<any[]>([]);
+  
+  // 使用useMemo缓存targetKeys，避免每次渲染时创建新数组
+  const targetKeys = useMemo(() => {
+    return selectedAccountIds.map(id => id.toString());
+  }, [selectedAccountIds]);
   
   // 邮箱账户数据加载
   const fetchEmailAccounts = useCallback(async () => {
@@ -155,11 +160,18 @@ const EditEmailSyncTask: React.FC = () => {
     setSelectedAccountIds([]);
   }, []);
   
-  // 处理穿梭框选择变化 - 使用简化的逻辑
+  // 处理穿梭框选择变化 - 使用防止循环更新的逻辑
   const handleTransferChange = useCallback((nextTargetKeys: any) => {
-    // 直接转换为数字ID数组
-    const accountIds = nextTargetKeys.map((key: any) => parseInt(key.toString(), 10));
-    setSelectedAccountIds(accountIds);
+    // 直接转换为数字ID数组，使用函数式更新，避免依赖于当前状态
+    setSelectedAccountIds(prevIds => {
+      const newIds = nextTargetKeys.map((key: any) => parseInt(key.toString(), 10));
+      // 检查是否与之前的值相同，如果相同则不更新
+      if (prevIds.length === newIds.length && 
+          prevIds.every((id, index) => id === newIds[index])) {
+        return prevIds;
+      }
+      return newIds;
+    });
   }, []);
 
   // 保存配置
@@ -270,7 +282,7 @@ const EditEmailSyncTask: React.FC = () => {
                     <Transfer
                       dataSource={transferData}
                       titles={['可用邮箱账户', '已选择邮箱账户']}
-                      targetKeys={selectedAccountIds.map(id => id.toString())}
+                      targetKeys={targetKeys}
                       onChange={handleTransferChange}
                       render={item => item.title}
                       listStyle={{
