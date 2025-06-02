@@ -479,10 +479,17 @@ class ImapIdleService extends EventEmitter {
         if (typeof imap.idle === 'function') {
           imap.idle();
         }
-      } catch (idleError) {
+      } catch (idleError: unknown) {
         console.error(`邮箱 ${connection.email} 退出IDLE模式失败:`, idleError);
+        
         // IDLE退出失败通常表明连接已经有问题,尝试重连
-        const errorMsg = idleError instanceof Error ? idleError.message : String(idleError);
+        // 使用完整的类型守卫处理不同类型的错误对象
+        const errorMsg = 
+          idleError instanceof Error ? idleError.message : 
+          (typeof idleError === 'object' && idleError !== null && 'message' in idleError) ? 
+            String((idleError as {message: unknown}).message) : 
+            String(idleError);
+        
         if (errorMsg.includes('ended by the other party') ||
             errorMsg.includes('EPIPE') ||
             errorMsg.includes('connection closed') ||
