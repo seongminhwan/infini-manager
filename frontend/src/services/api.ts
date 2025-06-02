@@ -1912,15 +1912,24 @@ export const taskApi = {
   },
   
   // 更新内置邮件同步任务配置
-  updateEmailSyncTaskConfig: async (id: string, accountIds: number[]) => {
+  updateEmailSyncTaskConfig: async (id: string, accountIds: number[], cronExpression?: string) => {
     try {
-      console.log(`更新内置邮件同步任务配置，任务ID: ${id}, 选择账户数量: ${accountIds.length}`);
-      // 使用PATCH请求，只更新handler参数中的accountIds
-      const response = await api.patch(`${apiBaseUrl}/api/tasks/${id}/config`, {
+      console.log(`更新内置邮件同步任务配置，任务ID: ${id}, 选择账户数量: ${accountIds.length}, cron表达式: ${cronExpression || '未修改'}`);
+      
+      // 准备请求数据
+      const requestData: any = {
         handlerParams: {
           accountIds
         }
-      });
+      };
+      
+      // 如果提供了cron表达式，则一并更新
+      if (cronExpression) {
+        requestData.cronExpression = cronExpression;
+      }
+      
+      // 使用PATCH请求更新配置
+      const response = await api.patch(`${apiBaseUrl}/api/tasks/${id}/config`, requestData);
       return response.data;
     } catch (error) {
       console.error('更新内置邮件同步任务配置失败:', error);
