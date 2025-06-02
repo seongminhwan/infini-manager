@@ -21,7 +21,8 @@ import {
   Alert,
   Tooltip,
   message,
-  Spin
+  Spin,
+  Transfer
 } from 'antd';
 import {
   MailOutlined,
@@ -106,6 +107,8 @@ const EmailSyncTaskEditor: React.FC<EmailSyncTaskEditorProps> = ({
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
   const [params, setParams] = useState<EmailSyncParams>(value || defaultParams);
   const [error, setError] = useState<string | null>(null);
+  const [transferData, setTransferData] = useState<any[]>([]);
+  const [targetKeys, setTargetKeys] = useState<string[]>([]);
 
   // 加载邮箱账户列表
   const fetchEmailAccounts = async () => {
@@ -120,11 +123,25 @@ const EmailSyncTaskEditor: React.FC<EmailSyncTaskEditorProps> = ({
         );
         setEmailAccounts(activeAccounts);
 
+        // 转换为Transfer数据格式
+        const transferItems = activeAccounts.map((account: EmailAccount) => ({
+          key: account.id.toString(),
+          title: `${account.name} (${account.email})${account.is_default === 1 ? " (默认)" : ""}`,
+          description: account.email,
+          disabled: false
+        }));
+        setTransferData(transferItems);
+
+        // 设置已选择的项目
+        setTargetKeys(params.accountIds.map(id => id.toString()));
+
         // 如果没有选择任何账户，且有默认账户，则自动选择默认账户
         if (params.accountIds.length === 0) {
           const defaultAccount = activeAccounts.find((acc: EmailAccount) => acc.is_default === 1);
           if (defaultAccount) {
-            updateParams('accountIds', [defaultAccount.id]);
+            const newAccountIds = [defaultAccount.id];
+            updateParams('accountIds', newAccountIds);
+            setTargetKeys([defaultAccount.id.toString()]);
           }
         }
       } else {
@@ -162,12 +179,22 @@ const EmailSyncTaskEditor: React.FC<EmailSyncTaskEditorProps> = ({
   // 处理选择全部邮箱
   const handleSelectAllAccounts = () => {
     const allAccountIds = emailAccounts.map((account) => account.id);
+    const allKeys = emailAccounts.map((account) => account.id.toString());
     updateParams('accountIds', allAccountIds);
+    setTargetKeys(allKeys);
   };
 
   // 处理清除所有选择
   const handleClearAllAccounts = () => {
     updateParams('accountIds', []);
+    setTargetKeys([]);
+  };
+
+  // 处理穿梭框选择变化
+  const handleTransferChange = (nextTargetKeys: string[]) => {
+    setTargetKeys(nextTargetKeys);
+    const accountIds = nextTargetKeys.map(key => parseInt(key, 10));
+    updateParams('accountIds', accountIds);
   };
 
   return (
@@ -234,31 +261,30 @@ const EmailSyncTaskEditor: React.FC<EmailSyncTaskEditorProps> = ({
           ) : (
             <>
               <EmailSyncParamLabel>
-                请选择需要同步邮件的邮箱账户（可多选）：
+                请选择需要同步邮件的邮箱账户：
               </EmailSyncParamLabel>
               <Form.Item style={{ marginBottom: 0 }}>
-                <Select
-                  mode="multiple"
-                  placeholder="请选择邮箱账户"
-                  value={params.accountIds}
-                  onChange={(value) => updateParams('accountIds', value)}
-                  style={{ width: '100%' }}
-                  optionFilterProp="children"
+                <Transfer
+                  dataSource={transferData}
+                  titles={['可用邮箱账户', '已选择邮箱账户']}
+                  targetKeys={targetKeys}
+                  onChange={handleTransferChange}
+                  render={item => item.title}
                   disabled={disabled}
-                  allowClear
-                >
-                  {emailAccounts.map((account) => (
-                    <Option key={account.id} value={account.id}>
-                      {account.name} ({account.email})
-                      {account.is_default === 1 && " (默认)"}
-                    </Option>
-                  ))}
-                </Select>
+                  listStyle={{
+                    width: '100%',
+                    height: '300px',
+                  }}
+                  showSearch
+                  filterOption={(inputValue, item) =>
+                    item.title.indexOf(inputValue) !== -1 || item.description.indexOf(inputValue) !== -1
+                  }
+                />
               </Form.Item>
               
               <div style={{ marginTop: 8, color: '#999' }}>
-                已选择 {params.accountIds.length} 个邮箱账户
-                {params.accountIds.length === 0 && (
+                已选择 {targetKeys.length} 个邮箱账户
+                {targetKeys.length === 0 && (
                   <Text type="warning"> (未选择任何账户时，将同步所有激活的邮箱账户)</Text>
                 )}
               </div>
