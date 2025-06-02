@@ -52,7 +52,6 @@ import styled from 'styled-components';
 import { taskApi } from '../../services/api';
 import CronExpressionBuilder from '../../components/CronExpressionBuilder';
 import AccountFilterBuilder from '../../components/AccountFilterBuilder';
-import EmailSyncTaskEditor from '../../components/EmailSyncTaskEditor';
 import EmailSyncTaskModal from '../../components/EmailSyncTaskModal';
 
 const { Title, Text, Paragraph } = Typography;
@@ -158,6 +157,9 @@ const HANDLER_TYPE_ICONS: Record<HandlerType, React.ReactNode> = {
   service: <RobotOutlined />
 };
 
+// 内置任务键常量
+const BUILTIN_EMAIL_SYNC_KEY = 'BUILTIN_INCREMENTAL_EMAIL_SYNC';
+
 // 主组件
 const TaskManage: React.FC = () => {
   // 状态
@@ -179,19 +181,10 @@ const TaskManage: React.FC = () => {
   // 处理器配置状态
   const [handlerType, setHandlerType] = useState<'function' | 'http' | 'service'>('function');
   
-  // 新增：任务模板和配置状态
+  // 任务模板和配置状态
   const [taskTemplate, setTaskTemplate] = useState<string>('custom');
   const [cronExpression, setCronExpression] = useState<string>('');
   const [accountFilterConfig, setAccountFilterConfig] = useState<any>({});
-  
-  // 新增：邮件同步参数状态
-  const [emailSyncParams, setEmailSyncParams] = useState<any>({
-    accountIds: [],
-    syncType: 'incremental',
-    mailboxes: ['INBOX'],
-    startDate: undefined,
-    endDate: undefined
-  });
   
   // 内置邮件同步任务模态框状态
   const [emailSyncModalVisible, setEmailSyncModalVisible] = useState<boolean>(false);
@@ -237,6 +230,13 @@ const TaskManage: React.FC = () => {
       },
       // 为同步账户信息任务提供默认的cron表达式
       defaultCronExpression: '0 */30 * * * *' // 每30分钟执行一次
+    },
+    {
+      key: 'email_sync',
+      name: '邮件同步任务',
+      description: '定时同步邮箱邮件到本地数据库',
+      icon: <MailOutlined />,
+      // 无需提供默认值，使用专用模态框创建
     }
   ];
   
@@ -295,6 +295,14 @@ const TaskManage: React.FC = () => {
   
   // 打开任务模态框 - 创建模式
   const handleOpenCreateTaskModal = () => {
+    // 根据用户选择的模板类型处理
+    if (taskTemplate === 'email_sync') {
+      // 对于邮件同步任务，直接使用专用模态框
+      setEditingEmailSyncTask(null); // 设为null表示创建模式
+      setEmailSyncModalVisible(true);
+      return;
+    }
+    
     setTaskModalMode('create');
     
     // 重置表单和状态
@@ -303,32 +311,26 @@ const TaskManage: React.FC = () => {
     setTaskTemplate('custom');
     setCronExpression('');
     setAccountFilterConfig({});
-    setEmailSyncParams({
-      accountIds: [],
-      syncType: 'incremental',
-      mailboxes: ['INBOX'],
-      startDate: undefined,
-      endDate: undefined
-    });
     
-    // 最后再显示模态框，避免状态更新冲突
+    // 显示通用任务模态框
     setTaskModalVisible(true);
   };
   
   // 打开任务模态框 - 编辑模式
   const handleOpenEditTaskModal = (task: Task) => {
     // 检查是否为内置邮件同步任务
-    const isEmailSyncTask = task.task_key === 'BUILTIN_INCREMENTAL_EMAIL_SYNC';
+    const isEmailSyncTask = task.task_key === BUILTIN_EMAIL_SYNC_KEY;
     
     // 对于内置邮件同步任务，使用专用的编辑模态框
     if (isEmailSyncTask) {
+      // 只设置必要的状态，避免触发其他组件的更新
       setEditingEmailSyncTask(task);
       setEmailSyncModalVisible(true);
+      // 立即返回，不执行后续代码，避免通用表单的状态更新
       return;
     }
     
-    // 判断是否为其他内置任务
-    const isBuiltinTask = task.task_key.startsWith('BUILTIN_');
+    // 非内置邮件同步任务的处理逻辑
     
     // 先重置表单
     taskForm.resetFields();
@@ -341,7 +343,7 @@ const TaskManage: React.FC = () => {
     setSelectedTask(task);
     setHandlerType(handler.type);
     
-    // 非邮件同步任务，正常设置表单值
+    // 设置表单值
     taskForm.setFieldsValue({
       taskName: task.task_name,
       taskKey: task.task_key,
@@ -354,12 +356,56 @@ const TaskManage: React.FC = () => {
       description: task.description
     });
     
-    // 使用setTimeout来分隔状态更新，避免渲染冲突
+    // 使用setTimeout分隔状态更新，避免渲染冲突
     setTimeout(() => {
-      // 设置cron表达式状态，这是最后一步，防止触发重渲染循环
+      // 设置cron表达式状态并显示模态框
       setCronExpression(task.cron_expression);
       setTaskModalVisible(true);
     }, 50);
+  };
+  
+  // 处理模板选择
+  const handleTemplateChange = (templateKey: string) => {
+    setTaskTemplate(templateKey);
+    
+    // 如果选择邮件同步任务模板，则打开专用模态框
+    if (templateKey === 'email_sync') {
+      // 关闭通用模态框
+      setTaskModalVisible(false);
+      // 延迟打开专用模态框，避免界面闪烁
+      setTimeout(() => {
+        setEditingEmailSyncTask(null); // null表示创建模式
+        setEmailSyncModalVisible(true);
+      }, 100);
+      return;
+    }
+    
+    const template = taskTemplates.find(t => t.key === templateKey);
+    if (template) {
+      // 设置表单默认值
+      if (template.defaultValues) {
+        taskForm.setFieldsValue(template.defaultValues);
+        
+        // 设置处理器类型
+        if (template.defaultValues.handlerType) {
+          const handlerTypeValue = template.defaultValues.handlerType as 'function' | 'http' | 'service';
+          setHandlerType(handlerTypeValue);
+        }
+      }
+      
+      // 为同步账户信息任务设置默认的cron表达式
+      if (templateKey === 'sync_accounts' && template.defaultCronExpression) {
+        setCronExpression(template.defaultCronExpression);
+        taskForm.setFieldsValue({ cronExpression: template.defaultCronExpression });
+      } else {
+        // 其他模板重置cron表达式
+        setCronExpression('');
+        taskForm.setFieldsValue({ cronExpression: '' });
+      }
+      
+      // 重置账户筛选配置
+      setAccountFilterConfig({});
+    }
   };
   
   // 处理邮件同步任务编辑成功
@@ -407,52 +453,6 @@ const TaskManage: React.FC = () => {
     fetchTaskExecutions(task.id.toString());
   };
   
-  // 处理模板选择
-  const handleTemplateChange = (templateKey: string) => {
-    setTaskTemplate(templateKey);
-    
-    const template = taskTemplates.find(t => t.key === templateKey);
-    if (template) {
-      // 设置表单默认值
-      if (template.defaultValues) {
-        taskForm.setFieldsValue(template.defaultValues);
-        
-        // 设置处理器类型
-        if (template.defaultValues.handlerType) {
-          const handlerTypeValue = template.defaultValues.handlerType as 'function' | 'http' | 'service';
-          setHandlerType(handlerTypeValue);
-        }
-      }
-      
-      // 为同步账户信息任务设置默认的cron表达式
-      if (templateKey === 'sync_accounts' && template.defaultCronExpression) {
-        setCronExpression(template.defaultCronExpression);
-        taskForm.setFieldsValue({ cronExpression: template.defaultCronExpression });
-      } else {
-        // 其他模板重置cron表达式
-        setCronExpression('');
-        taskForm.setFieldsValue({ cronExpression: '' });
-      }
-      
-      // 重置账户筛选配置
-      setAccountFilterConfig({});
-    }
-  };
-  
-  // 处理邮件同步参数变更
-  const handleEmailSyncParamsChange = (params: any) => {
-    setEmailSyncParams(params);
-    
-    // 更新表单中的处理器参数
-    const handlerParams = JSON.stringify(params, null, 2);
-    taskForm.setFieldsValue({ 
-      handlerParams,
-      // 设置隐藏字段，确保表单知道这些值已更新
-      handlerType: 'function',
-      handlerName: 'syncEmails'
-    });
-  };
-  
   // 提交任务表单
   const handleTaskSubmit = async (values: any) => {
     try {
@@ -474,20 +474,14 @@ const TaskManage: React.FC = () => {
         return;
       }
       
+      // 确保内置邮件同步任务不会通过通用表单提交
+      if (values.taskKey === BUILTIN_EMAIL_SYNC_KEY) {
+        message.error('内置邮件同步任务请使用专用界面编辑');
+        return;
+      }
+      
       // 构建处理器对象
       const buildHandler = () => {
-        // 检查是否为内置邮件同步任务
-        const isEmailSyncTask = values.taskKey === 'BUILTIN_INCREMENTAL_EMAIL_SYNC';
-        
-        if (isEmailSyncTask) {
-          // 使用邮件同步参数构建处理器
-          return {
-            type: 'function' as const,
-            functionName: 'syncEmails',
-            params: emailSyncParams
-          };
-        }
-        
         switch (handlerType) {
           case 'function': {
             let params = {};
@@ -586,8 +580,6 @@ const TaskManage: React.FC = () => {
         retryInterval: values.retryInterval || 0
       };
       
-      console.log('提交任务数据:', taskData);
-      
       let response;
       
       if (taskModalMode === 'create') {
@@ -604,13 +596,6 @@ const TaskManage: React.FC = () => {
         setHandlerType('function');
         setTaskTemplate('custom');
         setAccountFilterConfig({});
-        setEmailSyncParams({
-          accountIds: [],
-          syncType: 'incremental',
-          mailboxes: ['INBOX'],
-          startDate: undefined,
-          endDate: undefined
-        });
         fetchTasks();
       } else {
         message.error(`${taskModalMode === 'create' ? '创建' : '更新'}任务失败: ${response?.message || '未知错误'}`);
@@ -690,6 +675,9 @@ const TaskManage: React.FC = () => {
             <Tag color={STATUS_COLORS[record.status]}>
               {record.status === 'enabled' ? '已启用' : record.status === 'disabled' ? '已禁用' : '已删除'}
             </Tag>
+            {record.task_key === BUILTIN_EMAIL_SYNC_KEY && (
+              <Tag color="blue">内置任务</Tag>
+            )}
           </Space>
         )
       },
@@ -893,10 +881,6 @@ const TaskManage: React.FC = () => {
   
   // 渲染任务表单
   const renderTaskForm = () => {
-    // 获取当前任务键，用于判断是否为内置邮件同步任务
-    const currentTaskKey = taskForm.getFieldValue('taskKey');
-    const isEmailSyncTask = currentTaskKey === 'BUILTIN_INCREMENTAL_EMAIL_SYNC';
-    
     return (
       <Form
         form={taskForm}
@@ -977,213 +961,168 @@ const TaskManage: React.FC = () => {
               // 只有当cron值确实变化时才更新状态，避免循环更新
               if (cron !== cronExpression) {
                 setCronExpression(cron);
-                // 如果不是在编辑内置邮件同步任务，也更新表单值
-                if (!isEmailSyncTask || taskModalMode !== 'edit') {
-                  taskForm.setFieldsValue({ cronExpression: cron });
-                }
+                taskForm.setFieldsValue({ cronExpression: cron });
               }
             }}
           />
         </StyledFormItem>
         
-        {/* 检查是否为内置邮件同步任务 */}
-        {isEmailSyncTask ? (
+        <Divider orientation="left">处理器配置</Divider>
+        
+        <StyledFormItem
+          label="处理器类型"
+          name="handlerType"
+          rules={[{ required: true, message: '请选择处理器类型' }]}
+        >
+          <Radio.Group onChange={(e) => setHandlerType(e.target.value)}>
+            <Radio value="function">函数</Radio>
+            <Radio value="http">HTTP请求</Radio>
+            <Radio value="service">服务</Radio>
+          </Radio.Group>
+        </StyledFormItem>
+        
+        {handlerType === 'function' && (
           <>
-            <Divider orientation="left">邮件同步配置</Divider>
-            
-            <Alert
-              message="内置邮件同步任务"
-              description="此任务将定时同步邮箱中的邮件到本地数据库。请配置要同步的邮箱账户和其他参数。"
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-            
-            {/* 内置邮件同步任务使用专用编辑器 */}
             <StyledFormItem
-              label="同步参数"
-              name="emailSyncParams"
+              label="函数名称"
+              name="handlerName"
+              rules={[{ required: true, message: '请输入函数名称' }]}
+              extra="该函数必须通过TaskService的registerFunctionHandler方法注册"
             >
-              <EmailSyncTaskEditor 
-                value={emailSyncParams}
-                onChange={handleEmailSyncParamsChange}
-                disabled={taskModalMode === 'edit' && selectedTask?.status === 'deleted'}
+              {taskTemplate === 'sync_accounts' ? (
+                <Input value="syncAccountsInfo" disabled />
+              ) : (
+                <Input placeholder="请输入函数名称" />
+              )}
+            </StyledFormItem>
+            
+            {/* 同步账户信息模板的特殊配置 */}
+            {taskTemplate === 'sync_accounts' && (
+              <>
+                <Alert
+                  message="账户同步任务"
+                  description="此任务将定时同步指定账户的信息。请配置要同步的账户范围。"
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
+                
+                <StyledFormItem label="账户筛选配置">
+                  <AccountFilterBuilder
+                    value={accountFilterConfig}
+                    onChange={setAccountFilterConfig}
+                  />
+                </StyledFormItem>
+              </>
+            )}
+            
+            <StyledFormItem
+              label="函数参数"
+              name="handlerParams"
+              extra={taskTemplate === 'sync_accounts' ? 
+                "账户筛选配置将自动生成参数，您也可以手动调整" : 
+                "JSON格式的函数参数"
+              }
+            >
+              <Input.TextArea 
+                placeholder={taskTemplate === 'sync_accounts' ? 
+                  '参数将根据账户筛选配置自动生成' :
+                  '例如：{ "key": "value" }'
+                }
+                rows={taskTemplate === 'sync_accounts' ? 8 : 4}
+                value={taskTemplate === 'sync_accounts' ? 
+                  JSON.stringify(accountFilterConfig, null, 2) : 
+                  undefined
+                }
+                readOnly={taskTemplate === 'sync_accounts'}
+              />
+            </StyledFormItem>
+          </>
+        )}
+        
+        {handlerType === 'http' && (
+          <>
+            <StyledFormItem
+              label="请求方法"
+              name="httpMethod"
+              rules={[{ required: true, message: '请选择请求方法' }]}
+            >
+              <Select>
+                <Option value="GET">GET</Option>
+                <Option value="POST">POST</Option>
+                <Option value="PUT">PUT</Option>
+                <Option value="DELETE">DELETE</Option>
+                <Option value="PATCH">PATCH</Option>
+              </Select>
+            </StyledFormItem>
+            
+            <StyledFormItem
+              label="请求URL"
+              name="httpUrl"
+              rules={[{ required: true, message: '请输入请求URL' }]}
+            >
+              <Input placeholder="请输入请求URL" />
+            </StyledFormItem>
+            
+            <StyledFormItem
+              label="请求头"
+              name="httpHeaders"
+              extra="JSON格式的请求头"
+            >
+              <Input.TextArea 
+                placeholder='例如：{ "Content-Type": "application/json" }'
+                rows={3} 
               />
             </StyledFormItem>
             
-            {/* 隐藏处理器字段，但仍然保留在表单中 */}
-            <div style={{ display: 'none' }}>
-              <Form.Item name="handlerType" initialValue="function">
-                <Input />
-              </Form.Item>
-              <Form.Item name="handlerName" initialValue="syncEmails">
-                <Input />
-              </Form.Item>
-              <Form.Item name="handlerParams">
-                <Input.TextArea />
-              </Form.Item>
-            </div>
-          </>
-        ) : (
-          <>
-            <Divider orientation="left">处理器配置</Divider>
-            
             <StyledFormItem
-              label="处理器类型"
-              name="handlerType"
-              rules={[{ required: true, message: '请选择处理器类型' }]}
+              label="请求体"
+              name="httpBody"
+              extra="JSON格式的请求体"
             >
-              <Radio.Group onChange={(e) => setHandlerType(e.target.value)}>
-                <Radio value="function">函数</Radio>
-                <Radio value="http">HTTP请求</Radio>
-                <Radio value="service">服务</Radio>
-              </Radio.Group>
+              <Input.TextArea 
+                placeholder='例如：{ "key": "value" }'
+                rows={4} 
+              />
             </StyledFormItem>
             
-            {handlerType === 'function' && (
-              <>
-                <StyledFormItem
-                  label="函数名称"
-                  name="handlerName"
-                  rules={[{ required: true, message: '请输入函数名称' }]}
-                  extra="该函数必须通过TaskService的registerFunctionHandler方法注册"
-                >
-                  {taskTemplate === 'sync_accounts' ? (
-                    <Input value="syncAccountsInfo" disabled />
-                  ) : (
-                    <Input placeholder="请输入函数名称" />
-                  )}
-                </StyledFormItem>
-                
-                {/* 同步账户信息模板的特殊配置 */}
-                {taskTemplate === 'sync_accounts' && (
-                  <>
-                    <Alert
-                      message="账户同步任务"
-                      description="此任务将定时同步指定账户的信息。请配置要同步的账户范围。"
-                      type="info"
-                      showIcon
-                      style={{ marginBottom: 16 }}
-                    />
-                    
-                    <StyledFormItem label="账户筛选配置">
-                      <AccountFilterBuilder
-                        value={accountFilterConfig}
-                        onChange={setAccountFilterConfig}
-                      />
-                    </StyledFormItem>
-                  </>
-                )}
-                
-                <StyledFormItem
-                  label="函数参数"
-                  name="handlerParams"
-                  extra={taskTemplate === 'sync_accounts' ? 
-                    "账户筛选配置将自动生成参数，您也可以手动调整" : 
-                    "JSON格式的函数参数"
-                  }
-                >
-                  <Input.TextArea 
-                    placeholder={taskTemplate === 'sync_accounts' ? 
-                      '参数将根据账户筛选配置自动生成' :
-                      '例如：{ "key": "value" }'
-                    }
-                    rows={taskTemplate === 'sync_accounts' ? 8 : 4}
-                    value={taskTemplate === 'sync_accounts' ? 
-                      JSON.stringify(accountFilterConfig, null, 2) : 
-                      undefined
-                    }
-                    readOnly={taskTemplate === 'sync_accounts'}
-                  />
-                </StyledFormItem>
-              </>
-            )}
+            <StyledFormItem
+              label="超时时间(毫秒)"
+              name="httpTimeout"
+            >
+              <InputNumber min={0} placeholder="请输入超时时间" style={{ width: '100%' }} />
+            </StyledFormItem>
+          </>
+        )}
+        
+        {handlerType === 'service' && (
+          <>
+            <StyledFormItem
+              label="服务名称"
+              name="serviceName"
+              rules={[{ required: true, message: '请输入服务名称' }]}
+            >
+              <Input placeholder="请输入服务名称" />
+            </StyledFormItem>
             
-            {handlerType === 'http' && (
-              <>
-                <StyledFormItem
-                  label="请求方法"
-                  name="httpMethod"
-                  rules={[{ required: true, message: '请选择请求方法' }]}
-                >
-                  <Select>
-                    <Option value="GET">GET</Option>
-                    <Option value="POST">POST</Option>
-                    <Option value="PUT">PUT</Option>
-                    <Option value="DELETE">DELETE</Option>
-                    <Option value="PATCH">PATCH</Option>
-                  </Select>
-                </StyledFormItem>
-                
-                <StyledFormItem
-                  label="请求URL"
-                  name="httpUrl"
-                  rules={[{ required: true, message: '请输入请求URL' }]}
-                >
-                  <Input placeholder="请输入请求URL" />
-                </StyledFormItem>
-                
-                <StyledFormItem
-                  label="请求头"
-                  name="httpHeaders"
-                  extra="JSON格式的请求头"
-                >
-                  <Input.TextArea 
-                    placeholder='例如：{ "Content-Type": "application/json" }'
-                    rows={3} 
-                  />
-                </StyledFormItem>
-                
-                <StyledFormItem
-                  label="请求体"
-                  name="httpBody"
-                  extra="JSON格式的请求体"
-                >
-                  <Input.TextArea 
-                    placeholder='例如：{ "key": "value" }'
-                    rows={4} 
-                  />
-                </StyledFormItem>
-                
-                <StyledFormItem
-                  label="超时时间(毫秒)"
-                  name="httpTimeout"
-                >
-                  <InputNumber min={0} placeholder="请输入超时时间" style={{ width: '100%' }} />
-                </StyledFormItem>
-              </>
-            )}
+            <StyledFormItem
+              label="方法名称"
+              name="methodName"
+              rules={[{ required: true, message: '请输入方法名称' }]}
+            >
+              <Input placeholder="请输入方法名称" />
+            </StyledFormItem>
             
-            {handlerType === 'service' && (
-              <>
-                <StyledFormItem
-                  label="服务名称"
-                  name="serviceName"
-                  rules={[{ required: true, message: '请输入服务名称' }]}
-                >
-                  <Input placeholder="请输入服务名称" />
-                </StyledFormItem>
-                
-                <StyledFormItem
-                  label="方法名称"
-                  name="methodName"
-                  rules={[{ required: true, message: '请输入方法名称' }]}
-                >
-                  <Input placeholder="请输入方法名称" />
-                </StyledFormItem>
-                
-                <StyledFormItem
-                  label="方法参数"
-                  name="serviceParams"
-                  extra="JSON格式的方法参数"
-                >
-                  <Input.TextArea 
-                    placeholder='例如：{ "key": "value" }'
-                    rows={4} 
-                  />
-                </StyledFormItem>
-              </>
-            )}
+            <StyledFormItem
+              label="方法参数"
+              name="serviceParams"
+              extra="JSON格式的方法参数"
+            >
+              <Input.TextArea 
+                placeholder='例如：{ "key": "value" }'
+                rows={4} 
+              />
+            </StyledFormItem>
           </>
         )}
         
@@ -1233,6 +1172,9 @@ const TaskManage: React.FC = () => {
       );
     }
     
+    // 检查是否为内置邮件同步任务
+    const isEmailSyncTask = selectedTask.task_key === BUILTIN_EMAIL_SYNC_KEY;
+    
     // 解析处理器配置
     const handler = safeParseHandler(selectedTask.handler);
     
@@ -1249,9 +1191,14 @@ const TaskManage: React.FC = () => {
                     <Row gutter={[16, 16]}>
                       <Col span={24}>
                         <Title level={4}>{selectedTask.task_name}</Title>
-                        <Tag color={STATUS_COLORS[selectedTask.status]}>
-                          {selectedTask.status === 'enabled' ? '已启用' : selectedTask.status === 'disabled' ? '已禁用' : '已删除'}
-                        </Tag>
+                        <Space>
+                          <Tag color={STATUS_COLORS[selectedTask.status]}>
+                            {selectedTask.status === 'enabled' ? '已启用' : selectedTask.status === 'disabled' ? '已禁用' : '已删除'}
+                          </Tag>
+                          {isEmailSyncTask && (
+                            <Tag color="blue">内置邮件同步任务</Tag>
+                          )}
+                        </Space>
                       </Col>
                       
                       <Col span={12}>
@@ -1431,6 +1378,7 @@ const TaskManage: React.FC = () => {
         width={800}
         confirmLoading={loading}
         styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
+        destroyOnClose={true}
       >
         {renderTaskForm()}
       </Modal>
