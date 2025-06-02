@@ -497,14 +497,12 @@ const BatchTransfer = () => {
         }
       }
       
-      // 构建API请求数据
+      // 构建API请求数据 - 完全移除所有contactType相关字段
       const data = {
         name: batchName,
         type: transferMode,
         sourceAccountId: transferMode === 'one_to_many' ? sourceAccount?.id : undefined,
         targetAccountId: transferMode === 'many_to_one' ? targetAccountIdValue : undefined,
-        // 添加顶层contactType字段，以便后端可能能够正确处理
-        contactType: transferMode === 'many_to_one' ? targetContactType : undefined,
         relations,
         remarks: remarks || batchName
       };
