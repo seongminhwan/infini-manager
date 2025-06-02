@@ -14,10 +14,12 @@ import {
   Typography, 
   message, 
   Spin,
-  Alert
+  Alert,
+  Divider
 } from 'antd';
-import { ArrowLeftOutlined, SaveOutlined, MailOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, SaveOutlined, MailOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { emailAccountApi, taskApi } from '../../services/api';
+import CronExpressionBuilder from '../../components/CronExpressionBuilder';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -55,6 +57,7 @@ const EditEmailSyncTask: React.FC = () => {
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
   const [taskDetail, setTaskDetail] = useState<Task | null>(null);
+  const [cronExpression, setCronExpression] = useState<string>('');
   
   // 邮箱账户数据加载
   const fetchEmailAccounts = useCallback(async () => {
@@ -103,6 +106,9 @@ const EditEmailSyncTask: React.FC = () => {
             // 提取accountIds
             const accountIds = handler?.params?.accountIds || [];
             setSelectedAccountIds(accountIds);
+            
+            // 设置cron表达式
+            setCronExpression(task.cron_expression);
           } catch (e) {
             console.error('解析任务handler失败:', e);
             message.error('解析任务配置失败');
@@ -146,25 +152,26 @@ const EditEmailSyncTask: React.FC = () => {
     try {
       setSaving(true);
       
-      // 使用专门的API方法更新邮箱配置
+      // 使用API方法更新邮箱配置和cron表达式
       const response = await taskApi.updateEmailSyncTaskConfig(
         taskId,
-        selectedAccountIds
+        selectedAccountIds,
+        cronExpression
       );
       
       if (response.success) {
-        message.success('邮箱配置更新成功');
+        message.success('任务配置更新成功');
         // 返回到任务列表页
         navigate('/task-manage');
       } else {
-        message.error(response.message || '更新邮箱配置失败');
+        message.error(response.message || '更新任务配置失败');
       }
     } catch (error: any) {
-      message.error(error.message || '更新邮箱配置失败');
+      message.error(error.message || '更新任务配置失败');
     } finally {
       setSaving(false);
     }
-  }, [taskId, selectedAccountIds, navigate]);
+  }, [taskId, selectedAccountIds, cronExpression, navigate]);
 
   // 返回任务列表页
   const handleGoBack = useCallback(() => {
@@ -210,9 +217,22 @@ const EditEmailSyncTask: React.FC = () => {
                   <Input value={taskDetail.task_key} disabled />
                 </Form.Item>
                 
-                <Form.Item label="Cron表达式">
-                  <Input value={taskDetail.cron_expression} disabled />
+                <Form.Item 
+                  label={
+                    <Space>
+                      <ClockCircleOutlined />
+                      <Text>Cron表达式</Text>
+                      <Text type="secondary">（定时任务的执行周期）</Text>
+                    </Space>
+                  }
+                >
+                  <CronExpressionBuilder
+                    value={cronExpression}
+                    onChange={(value) => setCronExpression(value)}
+                  />
                 </Form.Item>
+                
+                <Divider />
                 
                 <Form.Item 
                   label={
