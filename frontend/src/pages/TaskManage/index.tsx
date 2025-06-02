@@ -46,7 +46,8 @@ import {
   CodeOutlined,
   ApiOutlined,
   RobotOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  MailOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import { taskApi } from '../../services/api';
