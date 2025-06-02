@@ -56,22 +56,11 @@ const EditEmailSyncTask: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
+  // 只使用selectedAccountIds作为单一数据源，避免状态同步问题
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
   const [taskDetail, setTaskDetail] = useState<Task | null>(null);
   const [cronExpression, setCronExpression] = useState<string>('');
   const [transferData, setTransferData] = useState<any[]>([]);
-  const [targetKeys, setTargetKeys] = useState<string[]>([]);
-  
-  // 邮箱账户数据加载后，设置穿梭框数据源，但不触发依赖更新
-  const updateTransferData = useCallback((accounts: EmailAccount[]) => {
-    const items = accounts.map((account) => ({
-      key: account.id.toString(),
-      title: `${account.name} (${account.email})`,
-      description: account.email,
-      disabled: false
-    }));
-    setTransferData(items);
-  }, []);
   
   // 邮箱账户数据加载
   const fetchEmailAccounts = useCallback(async () => {
@@ -85,8 +74,14 @@ const EditEmailSyncTask: React.FC = () => {
         );
         setEmailAccounts(activeAccounts);
         
-        // 使用回调函数更新Transfer数据，避免依赖循环
-        updateTransferData(activeAccounts);
+        // 直接设置Transfer数据源
+        const items = activeAccounts.map((account) => ({
+          key: account.id.toString(),
+          title: `${account.name} (${account.email})`,
+          description: account.email,
+          disabled: false
+        }));
+        setTransferData(items);
       } else {
         message.error(response.message || '获取邮箱账户失败');
       }
@@ -124,8 +119,8 @@ const EditEmailSyncTask: React.FC = () => {
             const accountIds = handler?.params?.accountIds || [];
             setSelectedAccountIds(accountIds);
             
-            // 设置已选择的项目，使用函数式更新避免依赖循环
-            setTargetKeys(accountIds.map((id: number) => id.toString()));
+            // 只设置selectedAccountIds，不再同时维护targetKeys
+            setSelectedAccountIds(accountIds);
             
             // 设置cron表达式
             setCronExpression(task.cron_expression);
@@ -154,24 +149,18 @@ const EditEmailSyncTask: React.FC = () => {
   // 处理选择全部邮箱
   const handleSelectAllAccounts = useCallback(() => {
     const allAccountIds = emailAccounts.map(account => account.id);
-    const allKeys = emailAccounts.map((account) => account.id.toString());
     setSelectedAccountIds(allAccountIds);
-    setTargetKeys(allKeys);
   }, [emailAccounts]);
 
   // 处理清除所有选择
   const handleClearAllAccounts = useCallback(() => {
     setSelectedAccountIds([]);
-    setTargetKeys([]);
   }, []);
   
-  // 处理穿梭框选择变化
-  const handleTransferChange = useCallback((nextTargetKeys: any, direction: any, moveKeys: any) => {
-    // 将nextTargetKeys转换为string[]类型
-    const stringKeys = nextTargetKeys.map((key: any) => key.toString());
-    setTargetKeys(stringKeys);
-    // 使用转换后的键更新accountIds
-    const accountIds = stringKeys.map((key: string) => parseInt(key, 10));
+  // 处理穿梭框选择变化 - 使用简化的逻辑
+  const handleTransferChange = useCallback((nextTargetKeys: any) => {
+    // 直接转换为数字ID数组
+    const accountIds = nextTargetKeys.map((key: any) => parseInt(key.toString(), 10));
     setSelectedAccountIds(accountIds);
   }, []);
 
@@ -283,7 +272,7 @@ const EditEmailSyncTask: React.FC = () => {
                     <Transfer
                       dataSource={transferData}
                       titles={['可用邮箱账户', '已选择邮箱账户']}
-                      targetKeys={targetKeys}
+                      targetKeys={selectedAccountIds.map(id => id.toString())}
                       onChange={handleTransferChange}
                       render={item => item.title}
                       listStyle={{
@@ -296,8 +285,8 @@ const EditEmailSyncTask: React.FC = () => {
                       }
                     />
                     <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-                      {targetKeys.length > 0 ? 
-                        `已选择 ${targetKeys.length} 个邮箱账户` : 
+                      {selectedAccountIds.length > 0 ? 
+                        `已选择 ${selectedAccountIds.length} 个邮箱账户` :
                         '未选择任何邮箱账户，将同步所有有效的邮箱账户'
                       }
                     </div>
