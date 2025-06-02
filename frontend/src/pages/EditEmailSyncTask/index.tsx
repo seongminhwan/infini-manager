@@ -62,6 +62,17 @@ const EditEmailSyncTask: React.FC = () => {
   const [transferData, setTransferData] = useState<any[]>([]);
   const [targetKeys, setTargetKeys] = useState<string[]>([]);
   
+  // 邮箱账户数据加载后，设置穿梭框数据源，但不触发依赖更新
+  const updateTransferData = useCallback((accounts: EmailAccount[]) => {
+    const items = accounts.map((account) => ({
+      key: account.id.toString(),
+      title: `${account.name} (${account.email})`,
+      description: account.email,
+      disabled: false
+    }));
+    setTransferData(items);
+  }, []);
+  
   // 邮箱账户数据加载
   const fetchEmailAccounts = useCallback(async () => {
     try {
@@ -74,14 +85,8 @@ const EditEmailSyncTask: React.FC = () => {
         );
         setEmailAccounts(activeAccounts);
         
-        // 转换为Transfer数据格式
-        const transferItems = activeAccounts.map((account: EmailAccount) => ({
-          key: account.id.toString(),
-          title: `${account.name} (${account.email})`,
-          description: account.email,
-          disabled: false
-        }));
-        setTransferData(transferItems);
+        // 使用回调函数更新Transfer数据，避免依赖循环
+        updateTransferData(activeAccounts);
       } else {
         message.error(response.message || '获取邮箱账户失败');
       }
@@ -119,7 +124,7 @@ const EditEmailSyncTask: React.FC = () => {
             const accountIds = handler?.params?.accountIds || [];
             setSelectedAccountIds(accountIds);
             
-            // 设置已选择的项目
+            // 设置已选择的项目，使用函数式更新避免依赖循环
             setTargetKeys(accountIds.map((id: number) => id.toString()));
             
             // 设置cron表达式
@@ -160,12 +165,13 @@ const EditEmailSyncTask: React.FC = () => {
     setTargetKeys([]);
   }, []);
   
-  // 处理穿梭框选择变化
-  const handleTransferChange = (nextTargetKeys: any[], direction: string, moveKeys: any[]) => {
+  // 处理穿梭框选择变化 - 将两个状态更新合并为一个操作
+  const handleTransferChange = useCallback((nextTargetKeys: string[]) => {
     setTargetKeys(nextTargetKeys);
+    // 使用转换后的键更新accountIds
     const accountIds = nextTargetKeys.map(key => parseInt(key, 10));
     setSelectedAccountIds(accountIds);
-  };
+  }, []);
 
   // 保存配置
   const handleSubmit = useCallback(async () => {
