@@ -54,6 +54,7 @@ export async function getAllEmailAccounts(req: Request, res: Response): Promise<
       domainName: account.domain_name, // 返回域名邮箱字段
       useIdleConnection: account.use_idle_connection, // 添加IDLE连接字段
       idleConnectionStatus: account.idle_connection_status, // 添加IDLE连接状态
+      supportsIdle: account.supports_idle, // 添加IDLE支持状态
       extraConfig: account.extra_config ? JSON.parse(account.extra_config) : undefined
     }));
     
@@ -125,6 +126,7 @@ export async function getEmailAccountById(req: Request, res: Response): Promise<
       domainName: account.domain_name, // 返回域名邮箱字段
       useIdleConnection: account.use_idle_connection, // 添加IDLE连接字段
       idleConnectionStatus: account.idle_connection_status, // 添加IDLE连接状态
+      supportsIdle: account.supports_idle, // 添加IDLE支持状态
       extraConfig: account.extra_config ? JSON.parse(account.extra_config) : undefined
     };
     const response: ApiResponse = {
@@ -180,7 +182,7 @@ export async function createEmailAccount(req: Request, res: Response): Promise<v
   
   // 是否使用IDLE长连接
   const useIdleConnection = accountData.useIdleConnection !== undefined ? 
-    accountData.useIdleConnection : true; // 默认启用
+    accountData.useIdleConnection : false; // 默认关闭
   
   // 代理模式
   if (accountData.proxyMode !== undefined) {
@@ -348,6 +350,7 @@ export async function createEmailAccount(req: Request, res: Response): Promise<v
       domainName: newAccount.domain_name, // 返回域名邮箱字段
       useIdleConnection: newAccount.use_idle_connection, // 添加IDLE连接字段
       idleConnectionStatus: newAccount.idle_connection_status, // 添加IDLE连接状态
+      supportsIdle: newAccount.supports_idle, // 添加IDLE支持状态
       extraConfig: newAccount.extra_config ? JSON.parse(newAccount.extra_config) : undefined
     };
     
@@ -469,6 +472,7 @@ export async function updateEmailAccount(req: Request, res: Response): Promise<v
       domainName: updatedAccount.domain_name, // 返回域名邮箱字段
       useIdleConnection: updatedAccount.use_idle_connection, // 添加IDLE连接字段
       idleConnectionStatus: updatedAccount.idle_connection_status, // 添加IDLE连接状态
+      supportsIdle: updatedAccount.supports_idle, // 添加IDLE支持状态
       extraConfig: updatedAccount.extra_config ? JSON.parse(updatedAccount.extra_config) : undefined
     };
     
