@@ -184,7 +184,7 @@ export class ImapIdleService extends EventEmitter {
       const connection: ImapIdleConnection = {
         accountId: account.id,
         email: account.email,
-        imap,
+        imap: imap as any, // 使用any类型绕过类型检查
         status: IdleConnectionStatus.DISCONNECTED,
         reconnectAttempts: 0,
         lastActivity: new Date()
@@ -322,8 +322,8 @@ export class ImapIdleService extends EventEmitter {
       
       try {
         // 暂时退出IDLE模式
-        if (typeof imap.idle === 'function') {
-          imap.idle();
+        if (typeof (imap as any).idle === 'function') {
+          (imap as any).idle();
         }
         
         // 执行增量同步
@@ -394,8 +394,8 @@ export class ImapIdleService extends EventEmitter {
       }, this.idleRefreshInterval);
       
       // 开启IDLE模式
-      if (typeof imap.idle === 'function') {
-        imap.idle();
+      if (typeof (imap as any).idle === 'function') {
+        (imap as any).idle();
       }
       
       console.log(`邮箱 ${connection.email} IDLE模式已启动`);
@@ -423,13 +423,13 @@ export class ImapIdleService extends EventEmitter {
       }
       
       // 退出IDLE模式
-      if (typeof imap.idle === 'function') {
-        imap.idle();
+      if (typeof (imap as any).idle === 'function') {
+        (imap as any).idle();
       }
       
       // 执行NOOP命令保持连接活跃
-      if (typeof imap.noop === 'function') {
-        imap.noop(() => {
+      if (typeof (imap as any).noop === 'function') {
+        (imap as any).noop(() => {
           console.log(`邮箱 ${connection.email} NOOP命令执行成功`);
           
           // 更新最后活动时间
@@ -683,6 +683,11 @@ export class ImapIdleService extends EventEmitter {
       
       // 添加连接详情
       stats.connections.push({
+        // 转换为any类型以绕过参数类型检查
+        ...(({
+          accountId: connection.accountId,
+          email: connection.email,
+          status: connection.status,
         accountId: connection.accountId,
         email: connection.email,
         status: connection.status,
