@@ -101,37 +101,34 @@ const EditEmailSyncTask: React.FC = () => {
     
     try {
       setLoading(true);
-      // 使用getScheduledTaskById方法直接获取指定ID的任务
-      const response = await taskApi.getScheduledTaskById(taskId);
       
-      if (response.success) {
-        // 直接使用response.data获取任务详情
-        const task = response.data;
-        
-        if (task) {
-          setTaskDetail(task);
-          
-          // 解析handler参数
-          try {
-            const handler = typeof task.handler === 'string' 
-              ? JSON.parse(task.handler) 
-              : task.handler;
-            
-            // 提取accountIds并转换为字符串数组
-            const accountIds = handler?.params?.accountIds || [];
-            setSelectedAccountIds(accountIds.map((id: number) => id.toString()));
-            
-            // 设置cron表达式
-            setCronExpression(task.cron_expression);
-          } catch (e) {
-            console.error('解析任务handler失败:', e);
-            message.error('解析任务配置失败');
-          }
-        } else {
-          message.error('未找到指定任务');
-        }
+      // 获取任务基本信息
+      const taskResponse = await taskApi.getScheduledTaskById(taskId);
+      
+      if (!taskResponse.success) {
+        message.error(taskResponse.message || '获取任务详情失败');
+        return;
+      }
+      
+      // 设置任务基本信息
+      const task = taskResponse.data;
+      if (!task) {
+        message.error('未找到指定任务');
+        return;
+      }
+      
+      setTaskDetail(task);
+      setCronExpression(task.cron_expression);
+      
+      // 获取任务配置（邮箱账户列表）
+      const configResponse = await taskApi.getEmailSyncTaskConfig(taskId);
+      if (configResponse.success) {
+        // 将数字ID转换为字符串ID
+        const accountIds = configResponse.data.accountIds || [];
+        setSelectedAccountIds(accountIds.map((id: number) => id.toString()));
       } else {
-        message.error(response.message || '获取任务详情失败');
+        console.error('获取邮箱配置失败:', configResponse.message);
+        message.error('获取邮箱配置失败');
       }
     } catch (error: any) {
       console.error('获取任务详情出错:', error);
