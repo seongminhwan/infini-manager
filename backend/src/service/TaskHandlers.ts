@@ -178,13 +178,17 @@ export const syncAllEmailsIncrementally = async (params: any): Promise<{ success
       
       console.log(`在指定的账户中找到 ${accountsToSync.length} 个活动账户`);
     } else {
-      // 没有指定账户ID，获取所有活动账户
-      console.log('未指定账户列表，将同步所有活动账户');
+      // 没有指定账户ID，获取所有活动账户,但跳过启用了IDLE连接的账户
+      console.log('未指定账户列表，将同步所有活动且未启用IDLE连接的邮箱账户');
       accountsToSync = await db('email_accounts')
         .where({ status: 'active' })
+        .where(function() {
+          this.where('use_idle_connection', false)
+            .orWhereNull('use_idle_connection');
+        })
         .select('id');
       
-      console.log(`找到 ${accountsToSync.length} 个活动邮箱账户`);
+      console.log(`找到 ${accountsToSync.length} 个需要同步的活动邮箱账户(已排除使用IDLE连接的账户)`);
     }
 
     results.totalAccounts = accountsToSync.length;
@@ -199,15 +203,25 @@ export const syncAllEmailsIncrementally = async (params: any): Promise<{ success
 
     console.log(`开始同步 ${results.totalAccounts} 个邮箱账户...`);
 
-    // 遍历这些账户，并为每个账户调用增量同步
-    for (const account of accountsToSync) {
-      const accountId = account.id;
-      try {
-        console.log(`开始为账户 ID: ${accountId} 执行增量邮件同步`);
-        // 默认同步 INBOX，不指定日期范围，由 EmailSyncService 内部逻辑处理增量
-        const syncLogId = await emailSyncService.syncEmails(accountId, 'incremental');
-        console.log(`账户 ID: ${accountId} 的增量同步任务已启动，同步日志 ID: ${syncLogId}`);
-        results.syncedAccounts++;
+      // 遍历这些账户，并为每个账户调用增量同步
+      for (const account of accountsToSync) {
+        const accountId = account.id;
+        try {
+          // 再次检查账户是否启用了IDLE连接(以防在此期间被修改)
+          const accountDetail = await db('email_accounts')
+            .where({ id: accountId })
+            .first('use_idle_connection');
+            
+          if (accountDetail && accountDetail.use_idle_connection === true) {
+            console.log(`账户 ID: ${accountId} 已启用IDLE连接,跳过定时同步`);
+            continue;
+          }
+          
+          console.log(`开始为账户 ID: ${accountId} 执行增量邮件同步`);
+          // 默认同步 INBOX，不指定日期范围，由 EmailSyncService 内部逻辑处理增量
+          const syncLogId = await emailSyncService.syncEmails(accountId, 'incremental');
+          console.log(`账户 ID: ${accountId} 的增量同步任务已启动，同步日志 ID: ${syncLogId}`);
+          results.syncedAccounts++;
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
         console.error(`为账户 ID: ${accountId} 执行增量邮件同步失败:`, errMsg);
