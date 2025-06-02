@@ -55,7 +55,8 @@ import {
   CalendarOutlined,
   InfoCircleOutlined,
   CloseOutlined,
-  CodeOutlined
+  CodeOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import { AxiosResponse, AxiosError } from 'axios';
@@ -143,6 +144,20 @@ const SourceCodeView = styled.div`
   border: 1px solid #d9d9d9;
   border-radius: 4px;
   background: #f5f5f5;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  max-height: 500px;
+  overflow: auto;
+`;
+
+const RawEmailView = styled.div`
+  white-space: pre-wrap;
+  padding: 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #2b2b2b;
+  color: #f8f8f2;
   font-family: monospace;
   font-size: 14px;
   line-height: 1.5;
@@ -287,7 +302,7 @@ const EmailViewer: React.FC = () => {
   const [emailDetail, setEmailDetail] = useState<EmailDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState<boolean>(false);
   const [detailDrawerVisible, setDetailDrawerVisible] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<'rendered' | 'source'>('rendered');
+  const [viewMode, setViewMode] = useState<'rendered' | 'source' | 'raw'>('rendered');
   
   // 同步相关状态
   const [syncModalVisible, setSyncModalVisible] = useState<boolean>(false);
@@ -1258,6 +1273,9 @@ const EmailViewer: React.FC = () => {
                   <Radio.Button value="source">
                     <CodeOutlined /> 源码模式
                   </Radio.Button>
+                  <Radio.Button value="raw">
+                    <FileTextOutlined /> 原始模式
+                  </Radio.Button>
                 </Radio.Group>
               </div>
               
@@ -1373,11 +1391,100 @@ const EmailViewer: React.FC = () => {
                       {emailDetail.content.text || '(无内容)'}
                     </div>
                   )
-                ) : (
+                ) : viewMode === 'source' ? (
                   // 源码模式：显示原始HTML/MIME源码
                   <SourceCodeView>
                     {emailDetail.content.html || emailDetail.content.text || '(无内容)'}
                   </SourceCodeView>
+                ) : (
+                  // 原始模式：显示完整的邮件原始内容（头部+正文）
+                  <RawEmailView>
+                    {(() => {
+                      // 构建邮件头部
+                      const headers = emailDetail.content.headers || [];
+                      const headersText = Array.isArray(headers) 
+                        ? headers.map(header => {
+                            if (typeof header === 'string') return header;
+                            // 处理可能的头部对象格式
+                            if (header && typeof header === 'object') {
+                              const key = Object.keys(header)[0];
+                              return key ? `${key}: ${header[key]}` : '';
+                            }
+                            return '';
+                          }).filter(line => line).join('\n')
+                        : '';
+                      
+                      // 构建邮件完整内容
+                      let rawEmail = '';
+                      
+                      // 添加基本头信息（如果headers中没有）
+                      if (!headersText.includes('From:')) {
+                        rawEmail += `From: ${emailDetail.fromName ? `"${emailDetail.fromName}" <${emailDetail.fromAddress}>` : emailDetail.fromAddress}\n`;
+                      }
+                      if (!headersText.includes('To:')) {
+                        rawEmail += `To: ${emailDetail.toAddress}\n`;
+                      }
+                      if (emailDetail.ccAddress && !headersText.includes('Cc:')) {
+                        rawEmail += `Cc: ${emailDetail.ccAddress}\n`;
+                      }
+                      if (!headersText.includes('Subject:')) {
+                        rawEmail += `Subject: ${emailDetail.subject}\n`;
+                      }
+                      if (!headersText.includes('Date:')) {
+                        rawEmail += `Date: ${new Date(emailDetail.date).toUTCString()}\n`;
+                      }
+                      if (!headersText.includes('Message-ID:')) {
+                        rawEmail += `Message-ID: ${emailDetail.messageId}\n`;
+                      }
+                      
+                      // 添加解析到的头信息
+                      rawEmail += headersText ? headersText + '\n' : '';
+                      
+                      // 添加分隔空行
+                      rawEmail += '\n';
+                      
+                      // 添加邮件内容
+                      if (emailDetail.content.html && emailDetail.content.text) {
+                        rawEmail += 'Content-Type: multipart/alternative; boundary="boundary_0"\n\n';
+                        rawEmail += '--boundary_0\n';
+                        rawEmail += 'Content-Type: text/plain; charset="utf-8"\n';
+                        rawEmail += 'Content-Transfer-Encoding: quoted-printable\n\n';
+                        rawEmail += emailDetail.content.text + '\n\n';
+                        rawEmail += '--boundary_0\n';
+                        rawEmail += 'Content-Type: text/html; charset="utf-8"\n';
+                        rawEmail += 'Content-Transfer-Encoding: quoted-printable\n\n';
+                        rawEmail += emailDetail.content.html + '\n\n';
+                        rawEmail += '--boundary_0--\n';
+                      } else if (emailDetail.content.html) {
+                        rawEmail += 'Content-Type: text/html; charset="utf-8"\n';
+                        rawEmail += 'Content-Transfer-Encoding: quoted-printable\n\n';
+                        rawEmail += emailDetail.content.html;
+                      } else {
+                        rawEmail += 'Content-Type: text/plain; charset="utf-8"\n';
+                        rawEmail += 'Content-Transfer-Encoding: quoted-printable\n\n';
+                        rawEmail += emailDetail.content.text || '(无内容)';
+                      }
+                      
+                      // 如果有附件，添加附件信息
+                      if (emailDetail.attachments && emailDetail.attachments.length > 0) {
+                        rawEmail += '\n\n';
+                        emailDetail.attachments.forEach((attachment, index) => {
+                          rawEmail += `--attachment_boundary_${index}\n`;
+                          rawEmail += `Content-Type: ${attachment.contentType}; name="${attachment.filename}"\n`;
+                          rawEmail += `Content-Disposition: ${attachment.contentDisposition || 'attachment'}; filename="${attachment.filename}"\n`;
+                          rawEmail += 'Content-Transfer-Encoding: base64\n';
+                          if (attachment.contentId) {
+                            rawEmail += `Content-ID: <${attachment.contentId}>\n`;
+                          }
+                          rawEmail += '\n';
+                          rawEmail += '[二进制附件内容]\n';
+                        });
+                        rawEmail += `--attachment_boundary_final--\n`;
+                      }
+                      
+                      return rawEmail;
+                    })()}
+                  </RawEmailView>
                 )}
               </DetailContent>
             </>
