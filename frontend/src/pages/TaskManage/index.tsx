@@ -3,6 +3,7 @@
  * 用于查看、创建、编辑和管理定时任务
  */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Button,
@@ -163,6 +164,8 @@ const BUILTIN_EMAIL_SYNC_KEY = 'BUILTIN_INCREMENTAL_EMAIL_SYNC';
 
 // 主组件
 const TaskManage: React.FC = () => {
+  // 用于导航的hook
+  const navigate = useNavigate();
   // 状态
   const [loading, setLoading] = useState<boolean>(false);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -322,12 +325,11 @@ const TaskManage: React.FC = () => {
     // 检查是否为内置邮件同步任务
     const isEmailSyncTask = task.task_key === BUILTIN_EMAIL_SYNC_KEY;
     
-    // 对于内置邮件同步任务，使用专用的编辑模态框
+    // 对于内置邮件同步任务，导航到专用的编辑页面
     if (isEmailSyncTask) {
-      // 只设置必要的状态，避免触发其他组件的更新
-      setEditingEmailSyncTask(task);
-      setEmailSyncModalVisible(true);
-      // 立即返回，不执行后续代码，避免通用表单的状态更新
+      // 使用路由导航而非模态框，避免状态循环依赖
+      navigate(`/edit-email-sync-task/${task.id}`);
+      // 立即返回，不执行后续代码
       return;
     }
     
@@ -369,15 +371,12 @@ const TaskManage: React.FC = () => {
   const handleTemplateChange = (templateKey: string) => {
     setTaskTemplate(templateKey);
     
-    // 如果选择邮件同步任务模板，则打开专用模态框
+    // 如果选择邮件同步任务模板，则导航到专用页面
     if (templateKey === 'email_sync') {
       // 关闭通用模态框
       setTaskModalVisible(false);
-      // 延迟打开专用模态框，避免界面闪烁
-      setTimeout(() => {
-        setEditingEmailSyncTask(null); // null表示创建模式
-        setEmailSyncModalVisible(true);
-      }, 100);
+      // 导航到专用编辑页面（不传ID表示创建模式）
+      navigate('/edit-email-sync-task');
       return;
     }
     
@@ -1458,13 +1457,7 @@ const TaskManage: React.FC = () => {
         )}
       </Drawer>
       
-      {/* 邮件同步任务专用模态框 - 只传递ID而不是完整对象，避免循环渲染 */}
-      <EmailSyncTaskModal
-        visible={emailSyncModalVisible}
-        taskId={editingEmailSyncTask?.id}
-        onClose={() => setEmailSyncModalVisible(false)}
-        onSuccess={handleEmailSyncTaskSuccess}
-      />
+      {/* 已移除邮件同步任务专用模态框，改用独立页面 */}
     </PageContainer>
   );
 };
