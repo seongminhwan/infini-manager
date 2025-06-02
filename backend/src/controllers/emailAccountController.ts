@@ -485,11 +485,11 @@ export async function updateEmailAccount(req: Request, res: Response): Promise<v
     if (idleConnectionChanged || statusChanged) {
       try {
         if (updatedAccount.use_idle_connection && updatedAccount.status === 'active') {
-          // 添加或更新IDLE连接
+          // 添加或更新IDLE连接(使用静态方法)
           await ImapIdleService.addOrUpdateConnection(id);
           console.log(`已为邮箱账户 ${updatedAccount.email} 更新IDLE连接 (启用)`);
         } else {
-          // 移除IDLE连接
+          // 移除IDLE连接(使用静态方法)
           await ImapIdleService.removeConnection(id);
           console.log(`已为邮箱账户 ${updatedAccount.email} 移除IDLE连接 (禁用)`);
         }
@@ -632,11 +632,11 @@ export async function setEmailAccountStatus(req: Request, res: Response): Promis
     if (existingAccount.status !== status) {
       try {
         if (status === 'active' && updatedAccount.use_idle_connection) {
-          // 如果账户激活且启用了IDLE连接，添加或更新IDLE连接
+          // 如果账户激活且启用了IDLE连接，添加或更新IDLE连接(使用静态方法)
           await ImapIdleService.addOrUpdateConnection(id);
           console.log(`已为邮箱账户 ${updatedAccount.email} 更新IDLE连接 (已激活)`);
         } else if (status === 'disabled' && existingAccount.status === 'active') {
-          // 如果账户被禁用，移除IDLE连接
+          // 如果账户被禁用，移除IDLE连接(使用静态方法)
           await ImapIdleService.removeConnection(id);
           console.log(`已为邮箱账户 ${updatedAccount.email} 移除IDLE连接 (已禁用)`);
         }
