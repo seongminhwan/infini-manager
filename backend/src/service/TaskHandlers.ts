@@ -163,22 +163,44 @@ export const syncAllEmailsIncrementally = async (params: any): Promise<{ success
       errors: [] as { accountId: number; error: string }[]
     };
 
-    // 1. 获取所有状态为 'active' 的邮箱账户
-    const activeAccounts = await db('email_accounts').where({ status: 'active' }).select('id');
-    results.totalAccounts = activeAccounts.length;
+    let accountsToSync = [];
+
+    // 检查是否有指定的账户ID列表
+    if (params && params.accountIds && Array.isArray(params.accountIds) && params.accountIds.length > 0) {
+      // 使用配置中指定的账户ID
+      console.log(`使用配置中指定的账户列表进行同步，账户数量: ${params.accountIds.length}`);
+      
+      // 获取这些ID对应的活动账户
+      accountsToSync = await db('email_accounts')
+        .whereIn('id', params.accountIds)
+        .where({ status: 'active' })
+        .select('id');
+      
+      console.log(`在指定的账户中找到 ${accountsToSync.length} 个活动账户`);
+    } else {
+      // 没有指定账户ID，获取所有活动账户
+      console.log('未指定账户列表，将同步所有活动账户');
+      accountsToSync = await db('email_accounts')
+        .where({ status: 'active' })
+        .select('id');
+      
+      console.log(`找到 ${accountsToSync.length} 个活动邮箱账户`);
+    }
+
+    results.totalAccounts = accountsToSync.length;
 
     if (results.totalAccounts === 0) {
       return {
         success: true,
-        message: '没有找到活动的邮箱账户进行同步',
+        message: '没有找到需要同步的活动邮箱账户',
         data: results
       };
     }
 
-    console.log(`找到 ${results.totalAccounts} 个活动邮箱账户，开始同步...`);
+    console.log(`开始同步 ${results.totalAccounts} 个邮箱账户...`);
 
-    // 2. 遍历这些账户，并为每个账户调用增量同步
-    for (const account of activeAccounts) {
+    // 遍历这些账户，并为每个账户调用增量同步
+    for (const account of accountsToSync) {
       const accountId = account.id;
       try {
         console.log(`开始为账户 ID: ${accountId} 执行增量邮件同步`);
