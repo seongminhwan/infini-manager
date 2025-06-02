@@ -52,7 +52,7 @@ import {
 import styled from 'styled-components';
 import { TransferDirection } from 'antd/lib/transfer';
 import { Key as TransferKey } from 'rc-table/lib/interface';
-import { infiniAccountApi, batchTransferApi } from '../../services/api';
+import { infiniAccountApi, batchTransferApi, transferApi } from '../../services/api';
 
 const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
@@ -506,7 +506,16 @@ const BatchTransfer = () => {
             };
         
         // 使用单笔转账API
-        const response = await infiniAccountApi.transferFunds(requestData);
+        const response = await transferApi.executeInternalTransfer(
+          transfer.sourceAccountId.toString(),
+          transferMode === 'one_to_many' ? 'inner' : targetContactType,
+          transfer.targetIdentifier,
+          transfer.amount,
+          'batch',          // 来源: 批量转账
+          false,            // isForced
+          remarks || `批量转账 ${i+1}/${transfers.length}`,
+          auto2FA           // 是否自动处理2FA
+        );
         
         // 处理结果
         const result = {
