@@ -1915,25 +1915,25 @@ export const taskApi = {
   getEmailSyncTaskConfig: async (id: string) => {
     try {
       console.log(`获取邮件同步任务配置，任务ID: ${id}`);
-      // 获取任务列表，然后查找指定ID的任务
-      const response = await api.get(`${apiBaseUrl}/api/tasks`);
-      if (response.data.success) {
-        // 查找指定任务
-        const tasks = response.data.data.tasks || response.data.data;
-        const task = Array.isArray(tasks) ? tasks.find((t: any) => t.id === parseInt(id, 10)) : null;
+      // 直接获取单个任务的详细信息
+      const response = await api.get(`${apiBaseUrl}/api/tasks/${id}`);
+      if (response.data.success && response.data.data) {
+        const task = response.data.data;
         
-        if (task && task.handler) {
-          // 解析handler字段
-          const handler = typeof task.handler === 'string' ? JSON.parse(task.handler) : task.handler;
-          // 返回accountIds配置
-          return {
-            success: true,
-            data: {
-              accountIds: handler.params?.accountIds || []
-            }
-          };
-        }
+        // 解析handler字段
+        const handler = typeof task.handler === 'string' 
+          ? JSON.parse(task.handler) 
+          : task.handler;
+        
+        // 返回accountIds配置
+        return {
+          success: true,
+          data: {
+            accountIds: handler.params?.accountIds || []
+          }
+        };
       }
+      
       // 如果找不到任务或配置为空，返回空数组
       return {
         success: true,
