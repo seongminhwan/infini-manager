@@ -22,6 +22,27 @@ import { emailAccountApi, taskApi } from '../../services/api';
 const { Title, Text } = Typography;
 const { Option } = Select;
 
+// 定义任务类型接口
+interface Task {
+  id: number;
+  task_name: string;
+  task_key: string;
+  cron_expression: string;
+  description: string;
+  handler: any;
+  status: 'enabled' | 'disabled';
+  retry_count: number;
+  retry_interval: number;
+}
+
+// 定义邮箱账户接口
+interface EmailAccount {
+  id: number;
+  name: string;
+  email: string;
+  status: string;
+}
+
 // 邮件同步任务编辑页面
 const EditEmailSyncTask: React.FC = () => {
   // 获取路由参数
@@ -31,9 +52,9 @@ const EditEmailSyncTask: React.FC = () => {
   // 状态
   const [loading, setLoading] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
-  const [emailAccounts, setEmailAccounts] = useState<any[]>([]);
+  const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
-  const [taskDetail, setTaskDetail] = useState<any>(null);
+  const [taskDetail, setTaskDetail] = useState<Task | null>(null);
   
   // 邮箱账户数据加载
   const fetchEmailAccounts = useCallback(async () => {
@@ -43,7 +64,7 @@ const EditEmailSyncTask: React.FC = () => {
       if (response.success && response.data) {
         // 过滤出激活状态的邮箱账户
         const activeAccounts = response.data.filter(
-          (account: any) => account.status === 'active'
+          (account: EmailAccount) => account.status === 'active'
         );
         setEmailAccounts(activeAccounts);
       } else {
@@ -67,8 +88,8 @@ const EditEmailSyncTask: React.FC = () => {
       if (response.success) {
         // 查找指定ID的任务
         const task = Array.isArray(response.data) 
-          ? response.data.find(t => t.id === parseInt(taskId, 10))
-          : (response.data?.tasks?.find(t => t.id === parseInt(taskId, 10)) || null);
+          ? response.data.find((t: Task) => t.id === parseInt(taskId, 10))
+          : (response.data?.tasks?.find((t: Task) => t.id === parseInt(taskId, 10)) || null);
         
         if (task) {
           setTaskDetail(task);
