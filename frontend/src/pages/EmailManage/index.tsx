@@ -26,7 +26,9 @@ import {
   Typography,
   Badge,
   Spin,
-  Tag
+  Tag,
+  Dropdown,
+  Menu
 } from 'antd';
 import {
   PlusOutlined,
@@ -40,11 +42,13 @@ import {
   MailOutlined,
   ClockCircleOutlined,
   PaperClipOutlined,
-  CloseOutlined
+  CloseOutlined,
+  DownOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import { AxiosResponse, AxiosError } from 'axios';
 import api, { apiBaseUrl } from '../../services/api';
+import BatchAddEmailModal from '../../components/BatchAddEmailModal';
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
@@ -132,7 +136,7 @@ interface EmailAccount {
   created_at: string;
   updated_at: string;
   extra_config: any | null;
-  
+
   // 前端表单使用的字段，可选
   username?: string;
   secure_imap?: boolean | number;
@@ -179,7 +183,7 @@ const EmailManage: React.FC = () => {
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle');
   const [testProgress, setTestProgress] = useState<number>(0);
   const testTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   /**
    * 获取代理服务器列表
    */
@@ -189,12 +193,12 @@ const EmailManage: React.FC = () => {
     try {
       const response = await api.get(`${apiBaseUrl}/api/proxy-pools/servers`);
       console.log('代理服务器列表API响应:', response.data);
-      
+
       if (response.data.success) {
         const servers = response.data.data || [];
         console.log(`成功获取${servers.length}个代理服务器:`, servers);
         setProxyServers(servers);
-        
+
         if (servers.length === 0) {
           message.warning('没有可用的代理服务器');
         }
@@ -226,12 +230,12 @@ const EmailManage: React.FC = () => {
     try {
       const response = await api.get(`${apiBaseUrl}/api/proxy-pools/tags`);
       console.log('代理标签列表API响应:', response.data);
-      
+
       if (response.data.success) {
         const tags = response.data.data || [];
         console.log(`成功获取${tags.length}个代理标签:`, tags);
         setProxyTags(tags);
-        
+
         if (tags.length === 0) {
           message.warning('没有可用的代理标签');
         }
@@ -307,6 +311,7 @@ const EmailManage: React.FC = () => {
 
   // 错误状态
   const [apiError, setApiError] = useState<string | null>(null);
+  const [batchAddModalVisible, setBatchAddModalVisible] = useState<boolean>(false);
 
   // 加载邮箱账户数据
   /**
@@ -324,41 +329,41 @@ const EmailManage: React.FC = () => {
     setApiError(null);
     try {
       const response = await api.get(`${apiBaseUrl}/api/email-accounts`);
-      
-    // 将驼峰式命名字段映射为下划线命名字段，确保表格正确显示数据
-    const convertedAccounts = response.data.data.map((account: any) => {
-      return {
-        id: account.id,
-        name: account.name,
-        email: account.email,
-        imap_host: account.imapHost, // 驼峰转下划线
-        imap_port: account.imapPort,
-        imap_secure: account.imapSecure,
-        smtp_host: account.smtpHost, // 驼峰转下划线
-        smtp_port: account.smtpPort,
-        smtp_secure: account.smtpSecure,
-        password: account.password, // 密码不进行任何处理
-        is_default: account.isDefault,
-        status: account.status,
-        created_at: account.createdAt,
-        updated_at: account.updatedAt,
-        extra_config: account.extraConfig,
-        
-        // 前端使用的额外字段
-        host_imap: account.imapHost,
-        port_imap: account.imapPort,
-        secure_imap: !!account.imapSecure,
-        host_smtp: account.smtpHost,
-        port_smtp: account.smtpPort,
-        secure_smtp: !!account.smtpSecure,
-        username: account.email,
-        is_active: account.status === 'active',
-        domain_name: account.domainName
-      };
-    });
-      
+
+      // 将驼峰式命名字段映射为下划线命名字段，确保表格正确显示数据
+      const convertedAccounts = response.data.data.map((account: any) => {
+        return {
+          id: account.id,
+          name: account.name,
+          email: account.email,
+          imap_host: account.imapHost, // 驼峰转下划线
+          imap_port: account.imapPort,
+          imap_secure: account.imapSecure,
+          smtp_host: account.smtpHost, // 驼峰转下划线
+          smtp_port: account.smtpPort,
+          smtp_secure: account.smtpSecure,
+          password: account.password, // 密码不进行任何处理
+          is_default: account.isDefault,
+          status: account.status,
+          created_at: account.createdAt,
+          updated_at: account.updatedAt,
+          extra_config: account.extraConfig,
+
+          // 前端使用的额外字段
+          host_imap: account.imapHost,
+          port_imap: account.imapPort,
+          secure_imap: !!account.imapSecure,
+          host_smtp: account.smtpHost,
+          port_smtp: account.smtpPort,
+          secure_smtp: !!account.smtpSecure,
+          username: account.email,
+          is_active: account.status === 'active',
+          domain_name: account.domainName
+        };
+      });
+
       setEmailAccounts(convertedAccounts);
-      
+
       // 如果有默认邮箱，自动选中
       const defaultAccount = convertedAccounts.find((acc: EmailAccount) => acc.is_default === 1);
       if (defaultAccount && defaultAccount.id) {
@@ -372,17 +377,17 @@ const EmailManage: React.FC = () => {
       }
     } catch (error) {
       const axiosError = error as AxiosError;
-      const errorMessage = axiosError.response 
+      const errorMessage = axiosError.response
         ? `服务器错误 (${axiosError.response.status}): ${JSON.stringify(axiosError.response.data)}`
         : axiosError.message || '连接服务器失败';
-      
+
       setApiError(errorMessage);
       console.error('Failed to fetch email accounts:', error);
-      
+
       // 当API不可用时使用模拟数据
       message.warning('无法连接到服务器，显示示例数据');
       setEmailAccounts(mockEmailAccounts);
-      
+
       // 自动选中模拟数据中的第一个邮箱
       if (mockEmailAccounts.length > 0) {
         setSelectedAccountId(mockEmailAccounts[0].id);
@@ -391,28 +396,28 @@ const EmailManage: React.FC = () => {
       setLoading(false);
     }
   };
-  
+
   /**
    * 获取邮件列表
    */
   const fetchEmails = async (accountId: number) => {
     if (!accountId) return;
-    
+
     setEmailLoading(true);
     setEmailError(null);
     setEmails([]);
-    
+
     try {
       const response = await api.get(
         `${apiBaseUrl}/api/email-accounts/${accountId}/messages`, {
-          params: {
-            mailbox,
-            limit: emailPagination.pageSize,
-            markSeen: false
-          }
+        params: {
+          mailbox,
+          limit: emailPagination.pageSize,
+          markSeen: false
         }
+      }
       );
-      
+
       if (response.data.success) {
         setEmails(response.data.data || []);
       } else {
@@ -421,14 +426,14 @@ const EmailManage: React.FC = () => {
       }
     } catch (error) {
       const axiosError = error as AxiosError;
-      const errorMessage = axiosError.response 
+      const errorMessage = axiosError.response
         ? `服务器错误 (${axiosError.response.status}): ${JSON.stringify(axiosError.response.data)}`
         : axiosError.message || '连接服务器失败';
-      
+
       setEmailError(errorMessage);
       console.error('获取邮件列表失败:', error);
       message.error('获取邮件列表失败: ' + errorMessage);
-      
+
       // 生成模拟数据进行展示
       const mockEmails: EmailMessage[] = Array(5).fill(0).map((_, index) => ({
         uid: index + 1,
@@ -442,29 +447,29 @@ const EmailManage: React.FC = () => {
         flags: ['\\Seen'],
         snippet: `这是一封示例邮件的内容摘要... (#${index + 1})`
       }));
-      
+
       setEmails(mockEmails);
       message.warning('显示示例邮件数据');
     } finally {
       setEmailLoading(false);
     }
   };
-  
+
   /**
    * 获取邮件详情
    */
   const fetchEmailDetail = async (accountId: number, uid: number) => {
     if (!accountId || !uid) return;
-    
+
     setEmailDetailLoading(true);
-    
+
     try {
       const response = await api.get(
         `${apiBaseUrl}/api/email-accounts/${accountId}/messages/${uid}`, {
-          params: { mailbox }
-        }
+        params: { mailbox }
+      }
       );
-      
+
       if (response.data.success) {
         setSelectedEmail(response.data.data);
       } else {
@@ -474,7 +479,7 @@ const EmailManage: React.FC = () => {
       const axiosError = error as AxiosError;
       console.error('获取邮件详情失败:', error);
       message.error('获取邮件详情失败');
-      
+
       // 生成模拟数据
       const mockDetail: EmailMessageDetail = {
         uid,
@@ -497,34 +502,34 @@ const EmailManage: React.FC = () => {
         attachmentsCount: 0,
         flags: ['\\Seen']
       };
-      
+
       setSelectedEmail(mockDetail);
       message.warning('显示示例邮件详情');
     } finally {
       setEmailDetailLoading(false);
     }
   };
-  
+
   /**
    * 邮箱账户变更处理
    */
   const handleAccountChange = (accountId: number) => {
     setSelectedAccountId(accountId);
     setSelectedEmail(null);
-    
+
     if (accountId) {
       fetchEmails(accountId);
     } else {
       setEmails([]);
     }
   };
-  
+
   /**
    * Tab切换处理
    */
   const handleTabChange = (key: string) => {
     setActiveTab(key);
-    
+
     if (key === 'emails' && selectedAccountId) {
       fetchEmails(selectedAccountId);
     }
@@ -548,15 +553,15 @@ const EmailManage: React.FC = () => {
       // 预加载代理服务器和标签数据
       fetchProxyServers();
       fetchProxyTags();
-      
+
       // 确保表单中的代理配置正确显示
       const currentFormValues = form.getFieldsValue();
       console.log('当前表单值:', currentFormValues);
-      
+
       if (currentFormValues.useProxy) {
         const proxyMode = currentFormValues.proxyMode || 'direct';
         console.log('使用代理模式:', proxyMode);
-        
+
         // 确保proxyMode有值
         if (!proxyMode) {
           form.setFieldsValue({ proxyMode: 'direct' });
@@ -564,7 +569,7 @@ const EmailManage: React.FC = () => {
       }
     }
   }, [modalVisible, fetchProxyServers, fetchProxyTags, form]);
-  
+
   // 添加全局样式以确保下拉菜单在最上层
   useEffect(() => {
     // 添加自定义样式到head，确保下拉菜单正确显示
@@ -578,7 +583,7 @@ const EmailManage: React.FC = () => {
       }
     `;
     document.head.appendChild(styleElement);
-    
+
     return () => {
       // 清理添加的样式
       document.head.removeChild(styleElement);
@@ -602,12 +607,12 @@ const EmailManage: React.FC = () => {
       // 1. 将snake_case转为camelCase
       // 2. 将布尔值转为数字(0/1)
       // 3. 映射状态值
-      const statusMap: {[key: string]: string} = {
+      const statusMap: { [key: string]: string } = {
         'verified': 'active',
-        'pending': 'pending', 
+        'pending': 'pending',
         'failed': 'disabled'
       };
-      
+
       // 构建基本邮箱数据
       const camelCaseData: Record<string, any> = {
         name: values.name,
@@ -625,12 +630,12 @@ const EmailManage: React.FC = () => {
         status: statusMap[values.status] || 'pending', // 映射状态值
         domainName: values.domain_name // 添加域名邮箱字段
       };
-      
+
       // 如果是编辑现有邮箱，确保包含ID
       if (currentAccount && currentAccount.id) {
         camelCaseData.id = currentAccount.id;
       }
-    
+
       console.log("提交的数据 (camelCase格式):", camelCaseData);
       // 添加代理配置 - 修正代理配置的存储路径和命名映射
       if (values.useProxy) {
@@ -638,7 +643,7 @@ const EmailManage: React.FC = () => {
         const proxyConfig: Record<string, any> = {
           useProxy: values.useProxy ? 1 : 0
         };
-        
+
         // 映射前端UI值到后端期望值
         if (values.proxyMode === 'direct') {
           proxyConfig.proxyMode = 'direct';
@@ -651,9 +656,9 @@ const EmailManage: React.FC = () => {
           proxyConfig.proxyMode = 'tag_random';
           proxyConfig.proxyTag = values.proxyTag;
         }
-        
+
         console.log('保存代理配置:', proxyConfig);
-        
+
         // 将代理配置添加到extra_config字段的proxy属性 (与后端一致)
         camelCaseData.extraConfig = {
           ...(camelCaseData.extraConfig || {}),
@@ -690,23 +695,23 @@ const EmailManage: React.FC = () => {
     try {
       setTestStatus('testing');
       setTestProgress(0);
-      
+
       // 先验证表单并保存邮箱配置
       const values = await form.validateFields();
       console.log("测试邮箱配置, 表单数据:", values);
-      
+
       // 确保IMAP和SMTP配置都已填写
       if (!values.host_imap || !values.port_imap || !values.host_smtp || !values.port_smtp) {
         message.error('请完整填写IMAP和SMTP服务器配置');
         setTestStatus('idle');
         return;
       }
-      
+
       // 转换表单数据为驼峰命名 (snake_case -> camelCase)
       // 同时将布尔值转换为数字(0/1)
-      const statusMap: {[key: string]: string} = {
+      const statusMap: { [key: string]: string } = {
         'verified': 'active',
-        'pending': 'pending', 
+        'pending': 'pending',
         'failed': 'disabled'
       };
 
@@ -726,17 +731,17 @@ const EmailManage: React.FC = () => {
         status: 'pending', // 初始状态为pending
         domainName: values.domain_name // 添加域名邮箱字段
       };
-      
+
       // 重要：记录发送给后端的确切数据
       console.log("发送给后端的数据:", JSON.stringify(camelCaseValues, null, 2));
-      
+
       let accountId: number;
-      
+
       // 对于新邮箱，必须先创建
       if (!currentAccount || !currentAccount.id) {
         message.loading("正在创建邮箱账户...");
         console.log("步骤1: 创建新邮箱账户");
-        
+
         try {
           const createResponse = await api.post(
             `${apiBaseUrl}/api/email-accounts`,
@@ -747,13 +752,13 @@ const EmailManage: React.FC = () => {
               }
             }
           );
-          
+
           console.log("创建邮箱响应:", JSON.stringify(createResponse.data, null, 2));
-          
+
           if (createResponse.data.success && createResponse.data.data && createResponse.data.data.id) {
             accountId = createResponse.data.data.id;
             message.success(`成功创建邮箱账户，ID: ${accountId}`);
-            
+
             // 更新当前邮箱 - 确保映射正确的字段并包含所有必需字段
             const newAccount: EmailAccount = {
               id: accountId,
@@ -779,9 +784,9 @@ const EmailManage: React.FC = () => {
               secure_smtp: values.secure_smtp,
               is_active: values.is_active
             };
-            
+
             setCurrentAccount(newAccount);
-            
+
             // 立即刷新邮箱列表
             fetchEmailAccounts();
           } else {
@@ -803,96 +808,96 @@ const EmailManage: React.FC = () => {
         accountId = currentAccount.id;
         console.log(`使用现有邮箱ID: ${accountId}`);
       }
-      
+
       // 确保有有效的accountId
       if (!accountId) {
         setTestStatus('failed');
         message.error("无法获取有效的邮箱ID");
         return;
       }
-      
+
       // 步骤2: 使用正确的邮箱ID发送测试请求
       console.log(`步骤2: 发送测试请求 - /api/email-accounts/${accountId}/test`);
       message.loading("开始测试邮箱配置...");
-      
+
       try {
         const testResponse = await api.post(`${apiBaseUrl}/api/email-accounts/${accountId}/test`);
         console.log("测试请求响应:", JSON.stringify(testResponse.data, null, 2));
-        
+
         // 获取testId
         const testId = testResponse.data.data?.testId;
         if (!testId) {
           throw new Error("测试响应中缺少testId");
         }
-        
+
         console.log(`获取到测试ID: ${testId}`);
         message.info("测试已开始，正在等待结果...");
-        
+
         // 步骤3: 轮询测试结果
         console.log("步骤3: 开始轮询测试结果");
         let progress = 0;
-        
+
         // 清除之前的计时器
         if (testTimerRef.current) {
           clearInterval(testTimerRef.current);
         }
-        
+
         testTimerRef.current = setInterval(() => {
           // 进度条增长速度放缓，更加匹配后端的实际测试进度
           // 每次只增长1.67%，确保60秒才会到达100%
           progress += 1.67;
           setTestProgress(Math.min(Math.round(progress), 100));
-          
+
           // 查询测试结果
           console.log(`轮询测试结果: ${apiBaseUrl}/api/email-accounts/test/${testId}`);
-          
+
           api.get(`${apiBaseUrl}/api/email-accounts/test/${testId}`)
             .then((response: AxiosResponse) => {
               console.log("测试结果响应:", JSON.stringify(response.data, null, 2));
-              
+
               const resultData = response.data.data;
-              
+
               console.log("收到测试结果:", resultData);
-              
+
               // 首先检查是否有结果数据
               if (resultData) {
                 // 关键判断: 测试是否真正完成 (不是进行中状态)
-                const isTestInProgress = resultData.message && 
-                  (resultData.message.includes('测试进行中') || 
-                   resultData.message.includes('开始测试') ||
-                   resultData.message.includes('正在测试'));
-                
+                const isTestInProgress = resultData.message &&
+                  (resultData.message.includes('测试进行中') ||
+                    resultData.message.includes('开始测试') ||
+                    resultData.message.includes('正在测试'));
+
                 console.log("测试状态:", isTestInProgress ? "进行中" : (resultData.success ? "成功" : "失败"));
-                
+
                 if (resultData.success === true) {
                   // 测试成功 - 立即更新UI，停止轮询
                   clearInterval(testTimerRef.current as NodeJS.Timeout);
                   testTimerRef.current = null;
-                  
+
                   // 强制设置进度为100%，表示测试已完成
                   setTestProgress(100);
                   setTestStatus('success');
-                  
+
                   // 测试成功后，更新表单字段状态并保存更新
-                  form.setFieldsValue({ 
+                  form.setFieldsValue({
                     status: 'verified',
                     is_active: true  // 确保账户处于激活状态
                   });
-                  
+
                   // 如果是现有账户，将更改保存到服务器
                   if (currentAccount && currentAccount.id) {
                     // 构建更新数据 - 确保数据类型正确
-                    const statusMap: {[key: string]: string} = {
+                    const statusMap: { [key: string]: string } = {
                       'verified': 'active',
                       'pending': 'pending',
                       'failed': 'disabled'
                     };
-                    
+
                     const updateValues = {
                       status: statusMap['verified'], // 'verified' -> 'active'
                       isActive: 1 // 布尔值转为数字(1)
                     };
-                    
+
                     // 更新账户状态
                     api.put(`${apiBaseUrl}/api/email-accounts/${currentAccount.id}`, updateValues)
                       .then((response) => {
@@ -906,18 +911,18 @@ const EmailManage: React.FC = () => {
                       .catch((e) => {
                         const axiosError = e as AxiosError;
                         let errorMsg = '更新账户状态失败';
-                        
+
                         if (axiosError.response?.data) {
                           errorMsg += `: ${JSON.stringify(axiosError.response.data)}`;
                         } else if (axiosError.message) {
                           errorMsg += `: ${axiosError.message}`;
                         }
-                        
+
                         console.error("更新账户状态失败:", errorMsg);
                         message.error(errorMsg);
                       });
                   }
-                  
+
                   // 使用 Modal.success 替代普通消息，确保用户能看到结果
                   Modal.success({
                     title: '邮箱配置测试成功！',
@@ -939,13 +944,13 @@ const EmailManage: React.FC = () => {
                   // 测试确实失败 (不是进行中) - 停止轮询
                   clearInterval(testTimerRef.current as NodeJS.Timeout);
                   testTimerRef.current = null;
-                  
+
                   setTestProgress(100);
                   setTestStatus('failed');
-                  
-                  const errorMessage = resultData.message || resultData.details?.sendError || 
+
+                  const errorMessage = resultData.message || resultData.details?.sendError ||
                     resultData.details?.receiveError || '未知错误';
-                  
+
                   // 使用 Modal.error 替代普通消息，确保用户能看到结果
                   Modal.error({
                     title: '邮箱配置测试失败',
@@ -956,9 +961,9 @@ const EmailManage: React.FC = () => {
                   // 测试进行中，继续轮询，更新状态信息
                   const statusMsg = resultData.message || "测试进行中...";
                   console.log("测试状态更新:", statusMsg);
-                  
+
                   // 避免频繁弹出消息，大约每10%显示一次
-                  if (progress % 10 < 1.67) { 
+                  if (progress % 10 < 1.67) {
                     message.info(statusMsg, 1);
                   }
                 }
@@ -973,7 +978,7 @@ const EmailManage: React.FC = () => {
               // 非致命错误，记录但不中断轮询
               // 避免因单次请求失败而影响整个测试过程
             });
-            
+
           // 90秒超时 (比后端的60秒长，确保能收到后端的结果)
           if (progress >= 150) {
             if (testTimerRef.current) {
@@ -1012,13 +1017,13 @@ const EmailManage: React.FC = () => {
       // 修改请求格式以符合后端API预期
       // API端点需要status字段，值为"active"或"disabled"
       await api.patch(`${apiBaseUrl}/api/email-accounts/${id}/status`, {
-        status: isActive ? 'disabled' : 'active' 
+        status: isActive ? 'disabled' : 'active'
       });
       message.success(isActive ? '邮箱已禁用' : '邮箱已启用');
       fetchEmailAccounts();
     } catch (error) {
       const axiosError = error as AxiosError;
-      const errorMessage = axiosError.response?.status === 400 ? 
+      const errorMessage = axiosError.response?.status === 400 ?
         '操作失败: 请求格式错误' : '操作失败';
       message.error(errorMessage);
       console.error('切换邮箱状态失败:', error);
@@ -1034,7 +1039,7 @@ const EmailManage: React.FC = () => {
     } catch (error) {
       const axiosError = error as AxiosError;
       let errorMessage = '设置默认邮箱失败';
-      
+
       if (axiosError.response) {
         if (axiosError.response.status === 404) {
           errorMessage = '邮箱账户不存在';
@@ -1042,7 +1047,7 @@ const EmailManage: React.FC = () => {
           errorMessage = '禁用的邮箱不能设为默认';
         }
       }
-      
+
       message.error(errorMessage);
       console.error('设置默认邮箱失败:', error);
     }
@@ -1052,7 +1057,7 @@ const EmailManage: React.FC = () => {
   const deleteEmailAccount = async (id: number) => {
     // 添加调试日志，帮助排查问题
     console.log(`开始删除邮箱账户，ID: ${id}`);
-    
+
     try {
       // 检查是否为默认邮箱，使用数字比较
       const account = emailAccounts.find(acc => acc.id === id);
@@ -1061,21 +1066,21 @@ const EmailManage: React.FC = () => {
         console.error(`无法找到ID为${id}的邮箱账户`);
         return;
       }
-      
+
       if (account.is_default === 1) {
         message.error('默认邮箱不能删除，请先设置其他邮箱为默认');
         console.log(`尝试删除默认邮箱被阻止，ID: ${id}`);
         return;
       }
-      
+
       // 显示加载提示
       message.loading('正在删除邮箱账户...', 0.5);
-      
+
       console.log(`发送删除请求，URL: ${apiBaseUrl}/api/email-accounts/${id}`);
       const response = await api.delete(`${apiBaseUrl}/api/email-accounts/${id}`);
-      
+
       console.log('删除响应:', response.data);
-      
+
       if (response.data && response.data.success) {
         message.success('邮箱账户已成功删除');
       } else {
@@ -1083,20 +1088,20 @@ const EmailManage: React.FC = () => {
         const msg = response.data?.message || '删除操作未完成';
         message.warning(`删除结果: ${msg}`);
       }
-      
+
       // 刷新列表
       fetchEmailAccounts();
     } catch (error) {
       const axiosError = error as AxiosError;
       let errorMessage = '删除邮箱账户失败';
-      
+
       console.error('删除邮箱时发生错误:', error);
-      
+
       // 处理特定错误情况
       if (axiosError.response) {
         console.error('错误响应状态:', axiosError.response.status);
         console.error('错误响应数据:', axiosError.response.data);
-        
+
         if (axiosError.response.status === 400) {
           // 可能是尝试删除默认邮箱
           const responseData = axiosError.response.data as any;
@@ -1113,7 +1118,7 @@ const EmailManage: React.FC = () => {
         // 请求发送但未收到响应
         errorMessage = '服务器无响应，请检查网络连接';
       }
-      
+
       message.error(errorMessage);
     }
   };
@@ -1122,23 +1127,23 @@ const EmailManage: React.FC = () => {
   const openEditModal = (record?: EmailAccount) => {
     setTestStatus('idle');
     setTestProgress(0);
-    
+
     if (record) {
       // 编辑现有邮箱
       setCurrentAccount(record);
-      
+
       // 基本字段设置
-      const formData: Record<string, any> = {...record};
-      
+      const formData: Record<string, any> = { ...record };
+
       // 处理代理配置 - 兼容两种存储路径
       const proxyConfig = record.extra_config?.proxy || record.extra_config?.proxyConfig;
-      
+
       if (proxyConfig) {
         console.log('加载现有代理配置:', proxyConfig);
-        
+
         // 设置代理使用状态
         formData.useProxy = !!proxyConfig.useProxy;
-        
+
         // 映射后端代理模式到前端UI值
         if (proxyConfig.proxyMode === 'specific') {
           // 后端specific对应前端的specified
@@ -1163,10 +1168,10 @@ const EmailManage: React.FC = () => {
         formData.useProxy = false;
         formData.proxyMode = 'direct';
       }
-      
+
       // 添加一个用于强制更新的字段
       formData._forceUpdate = Date.now();
-      
+
       console.log('设置表单值:', formData);
       form.setFieldsValue(formData);
     } else {
@@ -1187,12 +1192,12 @@ const EmailManage: React.FC = () => {
         proxyMode: 'direct'
       });
     }
-    
+
     setModalVisible(true);
   };
   // 前端和后端状态值的映射
   const getStatusDisplay = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'active':
         return { color: 'green', text: '验证成功' };
       case 'pending':
@@ -1275,48 +1280,48 @@ const EmailManage: React.FC = () => {
       fixed: 'right' as const,
       render: (_: any, record: EmailAccount) => (
         <Space size="small">
-          <Button 
-            type="text" 
-            icon={<EditOutlined />} 
+          <Button
+            type="text"
+            icon={<EditOutlined />}
             onClick={() => openEditModal(record)}
           />
-          
+
           {record.is_default !== 1 && (
             <Tooltip title="设为默认">
-              <Button 
-                type="text" 
-                icon={<CheckCircleOutlined />} 
+              <Button
+                type="text"
+                icon={<CheckCircleOutlined />}
                 style={{ color: '#1890ff' }}
                 onClick={() => setAsDefault(record.id)}
               />
             </Tooltip>
           )}
-          
+
           <Tooltip title={record.status === 'active' ? "禁用" : "启用"}>
-            <Button 
-              type="text" 
-              icon={record.status === 'active' ? <ExclamationCircleOutlined /> : <CheckCircleOutlined />} 
-              style={{ 
+            <Button
+              type="text"
+              icon={record.status === 'active' ? <ExclamationCircleOutlined /> : <CheckCircleOutlined />}
+              style={{
                 color: record.status === 'active' ? '#faad14' : '#52c41a'
               }}
               onClick={() => toggleEmailActive(record.id, record.status === 'active')}
             />
           </Tooltip>
-          
+
           {/* 删除按钮 - 对所有账户显示，但默认账户会有提示 */}
-          <Button 
-            type="text" 
-            danger 
+          <Button
+            type="text"
+            danger
             icon={<DeleteOutlined />}
             onClick={() => {
               console.log(`准备删除邮箱账户，ID: ${record.id}, 是否默认: ${record.is_default === 1 ? '是' : '否'}`);
-              
+
               // 对于默认邮箱，显示错误提示而不是确认对话框
               if (record.is_default === 1) {
                 message.error('默认邮箱不能删除，请先设置其他邮箱为默认');
                 return;
               }
-              
+
               Modal.confirm({
                 title: '确认删除',
                 icon: <ExclamationCircleOutlined />,
@@ -1340,7 +1345,7 @@ const EmailManage: React.FC = () => {
   const HelpContent = () => (
     <HelpPanel>
       <HelpTitle level={4}>Gmail邮箱配置帮助</HelpTitle>
-      
+
       <Alert
         message="配置前准备"
         description="使用Gmail邮箱需要开启IMAP访问并创建应用专用密码"
@@ -1348,51 +1353,51 @@ const EmailManage: React.FC = () => {
         showIcon
         style={{ marginBottom: 20 }}
       />
-      
+
       <HelpSection>
         <Title level={5}>步骤1: 开启IMAP访问</Title>
         <Paragraph>
-          1. 登录您的Gmail账户<br/>
-          2. 点击右上角的设置图标，选择"查看所有设置"<br/>
-          3. 切换到"转发和POP/IMAP"选项卡<br/>
-          4. 在"IMAP访问"部分，选择"启用IMAP"<br/>
+          1. 登录您的Gmail账户<br />
+          2. 点击右上角的设置图标，选择"查看所有设置"<br />
+          3. 切换到"转发和POP/IMAP"选项卡<br />
+          4. 在"IMAP访问"部分，选择"启用IMAP"<br />
           5. 点击页面底部的"保存更改"按钮
         </Paragraph>
       </HelpSection>
-      
+
       <HelpSection>
         <Title level={5}>步骤2: 创建应用专用密码</Title>
         <Paragraph>
-          1. 访问您的Google账户安全设置: <a href="https://myaccount.google.com/security" target="_blank">https://myaccount.google.com/security</a><br/>
-          2. 在"登录Google"部分，确认您已启用两步验证<br/>
-          3. 点击"应用专用密码"<br/>
-          4. 选择应用名称如"InfiniManager"并点击"创建"<br/>
+          1. 访问您的Google账户安全设置: <a href="https://myaccount.google.com/security" target="_blank">https://myaccount.google.com/security</a><br />
+          2. 在"登录Google"部分，确认您已启用两步验证<br />
+          3. 点击"应用专用密码"<br />
+          4. 选择应用名称如"InfiniManager"并点击"创建"<br />
           5. 复制生成的16位密码，这将用作您的邮箱密码
         </Paragraph>
       </HelpSection>
-      
+
       <HelpSection>
         <Title level={5}>Gmail服务器信息</Title>
         <Paragraph>
-          <strong>IMAP服务器:</strong> imap.gmail.com<br/>
-          <strong>IMAP端口:</strong> 993<br/>
-          <strong>IMAP安全连接:</strong> 是 (SSL/TLS)<br/>
-          <br/>
-          <strong>SMTP服务器:</strong> smtp.gmail.com<br/>
-          <strong>SMTP端口:</strong> 465<br/>
+          <strong>IMAP服务器:</strong> imap.gmail.com<br />
+          <strong>IMAP端口:</strong> 993<br />
+          <strong>IMAP安全连接:</strong> 是 (SSL/TLS)<br />
+          <br />
+          <strong>SMTP服务器:</strong> smtp.gmail.com<br />
+          <strong>SMTP端口:</strong> 465<br />
           <strong>SMTP安全连接:</strong> 是 (SSL/TLS)
         </Paragraph>
       </HelpSection>
-      
+
       <Divider />
-      
+
       <HelpSection>
         <Title level={5}>测试过程说明</Title>
         <Paragraph>
-          点击"测试"按钮后，系统将：<br/>
-          1. 使用您提供的配置发送一封测试邮件到您自己的邮箱<br/>
-          2. 尝试通过IMAP连接查找并接收这封测试邮件<br/>
-          3. 如果60秒内成功接收到测试邮件，则验证成功<br/>
+          点击"测试"按钮后，系统将：<br />
+          1. 使用您提供的配置发送一封测试邮件到您自己的邮箱<br />
+          2. 尝试通过IMAP连接查找并接收这封测试邮件<br />
+          3. 如果60秒内成功接收到测试邮件，则验证成功<br />
           4. 如未成功，请检查您的配置和网络连接
         </Paragraph>
       </HelpSection>
@@ -1401,8 +1406,8 @@ const EmailManage: React.FC = () => {
 
   return (
     <div>
-      <Tabs 
-        activeKey={activeTab} 
+      <Tabs
+        activeKey={activeTab}
         onChange={handleTabChange}
         tabBarExtraContent={
           <Space>
@@ -1412,13 +1417,23 @@ const EmailManage: React.FC = () => {
             >
               刷新
             </Button>
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />} 
-              onClick={() => openEditModal()}
+            <Dropdown
+              overlay={
+                <Menu>
+                  <Menu.Item key="add" onClick={() => openEditModal()}>
+                    添加单个邮箱
+                  </Menu.Item>
+                  <Menu.Item key="batchAdd" onClick={() => setBatchAddModalVisible(true)}>
+                    批量添加邮箱
+                  </Menu.Item>
+                </Menu>
+              }
+              trigger={['click']}
             >
-              新增主邮箱
-            </Button>
+              <Button type="primary" icon={<PlusOutlined />}>
+                新增主邮箱 <DownOutlined />
+              </Button>
+            </Dropdown>
           </Space>
         }
       >
@@ -1442,7 +1457,7 @@ const EmailManage: React.FC = () => {
                 style={{ marginBottom: 16 }}
               />
             )}
-            
+
             <TableContainer>
               <Table
                 columns={columns}
@@ -1463,7 +1478,7 @@ const EmailManage: React.FC = () => {
             </TableContainer>
           </StyledCard>
         </TabPane>
-        
+
         <TabPane tab="邮件列表" key="emails">
           <Row gutter={16}>
             <Col span={24}>
@@ -1488,7 +1503,7 @@ const EmailManage: React.FC = () => {
                         ))
                       }
                     </Select>
-                    
+
                     <Select
                       value={mailbox}
                       onChange={(value) => {
@@ -1503,7 +1518,7 @@ const EmailManage: React.FC = () => {
                       <Option value="Drafts">草稿箱</Option>
                       <Option value="Trash">垃圾箱</Option>
                     </Select>
-                    
+
                     <Button
                       icon={<InfoCircleOutlined />}
                       onClick={() => selectedAccountId && fetchEmails(selectedAccountId)}
@@ -1521,9 +1536,9 @@ const EmailManage: React.FC = () => {
                       <div>
                         <p>{emailError}</p>
                         <p>显示的是模拟数据，仅用于演示界面。</p>
-                        <Button 
-                          type="primary" 
-                          size="small" 
+                        <Button
+                          type="primary"
+                          size="small"
                           onClick={() => selectedAccountId && fetchEmails(selectedAccountId)}
                         >
                           重试
@@ -1535,7 +1550,7 @@ const EmailManage: React.FC = () => {
                     style={{ marginBottom: 16 }}
                   />
                 )}
-                
+
                 {!selectedAccountId && (
                   <Alert
                     message="请选择邮箱账户"
@@ -1544,7 +1559,7 @@ const EmailManage: React.FC = () => {
                     showIcon
                   />
                 )}
-                
+
                 <Table
                   dataSource={emails}
                   rowKey="uid"
@@ -1612,17 +1627,17 @@ const EmailManage: React.FC = () => {
                     }
                   ]}
                   locale={{
-                    emptyText: emailLoading 
-                      ? '加载中...' 
-                      : selectedAccountId 
-                        ? '没有邮件' 
+                    emptyText: emailLoading
+                      ? '加载中...'
+                      : selectedAccountId
+                        ? '没有邮件'
                         : '请选择邮箱账户'
                   }}
                 />
               </StyledCard>
             </Col>
           </Row>
-          
+
           {selectedEmail && (
             <Row gutter={16} style={{ marginTop: 16 }}>
               <Col span={24}>
@@ -1658,11 +1673,11 @@ const EmailManage: React.FC = () => {
                         <PaperClipOutlined /> 包含 {selectedEmail.attachmentsCount} 个附件
                       </div>
                     )}
-                    
+
                     <div style={{ padding: '16px', background: '#fff', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
                       {selectedEmail.html ? (
-                        <iframe 
-                          srcDoc={selectedEmail.html} 
+                        <iframe
+                          srcDoc={selectedEmail.html}
                           style={{ width: '100%', height: '500px', border: 'none' }}
                           title="邮件内容"
                         />
@@ -1747,7 +1762,7 @@ const EmailManage: React.FC = () => {
                     </Form.Item>
                   </Col>
                 </Row>
-                
+
                 <Row gutter={16}>
                   <Col span={24}>
                     <Form.Item
@@ -1762,7 +1777,7 @@ const EmailManage: React.FC = () => {
                 </Row>
 
                 <Divider orientation="left">代理配置 (网络连接)</Divider>
-                
+
                 <Row gutter={16}>
                   <Col span={6}>
                     <Form.Item
@@ -1770,8 +1785,8 @@ const EmailManage: React.FC = () => {
                       label="使用代理"
                       valuePropName="checked"
                     >
-                      <Switch 
-                        checkedChildren="是" 
+                      <Switch
+                        checkedChildren="是"
                         unCheckedChildren="否"
                         onChange={(checked) => {
                           console.log('使用代理开关已切换为:', checked);
@@ -1789,8 +1804,8 @@ const EmailManage: React.FC = () => {
                       label="代理模式"
                       dependencies={['useProxy']}
                     >
-                      <Select 
-                        placeholder="选择代理模式" 
+                      <Select
+                        placeholder="选择代理模式"
                         disabled={!form.getFieldValue('useProxy')}
                         onChange={(value) => {
                           console.log('代理模式已切换为:', value);
@@ -1807,7 +1822,7 @@ const EmailManage: React.FC = () => {
                             form.setFieldsValue({ proxyServerId: undefined });
                           } else {
                             // 直连模式，清除服务器和标签
-                            form.setFieldsValue({ 
+                            form.setFieldsValue({
                               proxyServerId: undefined,
                               proxyTag: undefined
                             });
@@ -1821,7 +1836,7 @@ const EmailManage: React.FC = () => {
                                 console.log('触发代理字段验证');
                               });
                           }, 100);
-                          
+
                           // 添加一个隐藏字段，强制更新表单
                           form.setFieldValue('_forceUpdate', Date.now());
                         }}
@@ -1840,11 +1855,11 @@ const EmailManage: React.FC = () => {
                     </Form.Item>
                   </Col>
                 </Row>
-                
+
                 <Form.Item
                   noStyle
-                  shouldUpdate={(prevValues, currentValues) => 
-                    prevValues.useProxy !== currentValues.useProxy || 
+                  shouldUpdate={(prevValues, currentValues) =>
+                    prevValues.useProxy !== currentValues.useProxy ||
                     prevValues.proxyMode !== currentValues.proxyMode ||
                     prevValues._forceUpdate !== currentValues._forceUpdate
                   }
@@ -1852,18 +1867,18 @@ const EmailManage: React.FC = () => {
                   {({ getFieldValue }) => {
                     const useProxy = getFieldValue('useProxy');
                     const proxyMode = getFieldValue('proxyMode');
-                    
+
                     console.log('代理表单状态更新 - useProxy:', useProxy, 'proxyMode:', proxyMode);
-                    
+
                     if (!useProxy) return null;
-                    
+
                     if (proxyMode === 'specified') {
                       // 确保代理服务器列表已加载
                       if (proxyServers.length === 0 && !proxyLoading) {
                         console.log('代理服务器列表为空，自动加载');
                         fetchProxyServers();
                       }
-                      
+
                       return (
                         <Row gutter={16}>
                           <Col span={24}>
@@ -1872,7 +1887,7 @@ const EmailManage: React.FC = () => {
                               label="选择代理服务器"
                               rules={[{ required: true, message: '请选择代理服务器' }]}
                             >
-                              <Select 
+                              <Select
                                 placeholder="选择代理服务器"
                                 loading={proxyLoading}
                                 showSearch
@@ -1915,7 +1930,7 @@ const EmailManage: React.FC = () => {
                         console.log('代理标签列表为空，自动加载');
                         fetchProxyTags();
                       }
-                      
+
                       return (
                         <Row gutter={16}>
                           <Col span={24}>
@@ -1924,7 +1939,7 @@ const EmailManage: React.FC = () => {
                               label="选择代理标签"
                               rules={[{ required: true, message: '请选择代理标签' }]}
                             >
-                              <Select 
+                              <Select
                                 placeholder="选择代理标签"
                                 loading={proxyLoading}
                                 showSearch
@@ -1982,13 +1997,13 @@ const EmailManage: React.FC = () => {
                         />
                       );
                     }
-                    
+
                     return null;
                   }}
                 </Form.Item>
-                
+
                 <Divider orientation="left">IMAP配置 (接收邮件)</Divider>
-                
+
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
@@ -2020,7 +2035,7 @@ const EmailManage: React.FC = () => {
                 </Row>
 
                 <Divider orientation="left">SMTP配置 (发送邮件)</Divider>
-                
+
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
@@ -2088,33 +2103,33 @@ const EmailManage: React.FC = () => {
                     <Button type="primary" htmlType="submit">
                       仅保存
                     </Button>
-                    
-                    <TestButton 
+
+                    <TestButton
                       type={testStatus === 'success' ? "primary" : "default"}
-                      icon={testStatus === 'failed' ? <SendOutlined /> : (testStatus === 'success' ? <CheckCircleOutlined /> : <SendOutlined />)} 
+                      icon={testStatus === 'failed' ? <SendOutlined /> : (testStatus === 'success' ? <CheckCircleOutlined /> : <SendOutlined />)}
                       onClick={
-                        testStatus === 'success' 
-                          ? () => setModalVisible(false) 
+                        testStatus === 'success'
+                          ? () => setModalVisible(false)
                           : handleTestEmailConfig
                       }
                       loading={testStatus === 'testing'}
                       disabled={testStatus === 'testing'}
                     >
-                      {testStatus === 'success' 
-                        ? '关闭' 
-                        : (testStatus === 'failed' 
-                            ? '重新测试' 
-                            : '保存并测试'
-                          )
+                      {testStatus === 'success'
+                        ? '关闭'
+                        : (testStatus === 'failed'
+                          ? '重新测试'
+                          : '保存并测试'
+                        )
                       }
                     </TestButton>
-                    
+
                     <Button onClick={() => setModalVisible(false)}>
                       取消
                     </Button>
                   </Space>
                 </Form.Item>
-                
+
                 {testStatus === 'testing' && (
                   <Alert
                     message={
@@ -2130,7 +2145,7 @@ const EmailManage: React.FC = () => {
                     showIcon={false}
                   />
                 )}
-                
+
                 {testStatus === 'success' && (
                   <Alert
                     message="邮箱配置测试成功!"
@@ -2139,7 +2154,7 @@ const EmailManage: React.FC = () => {
                     showIcon
                   />
                 )}
-                
+
                 {testStatus === 'failed' && (
                   <Alert
                     message="邮箱配置测试失败"
@@ -2151,13 +2166,22 @@ const EmailManage: React.FC = () => {
               </Form>
             </FormContainer>
           </Col>
-          
+
           {/* 右侧帮助说明 */}
           <Col span={10}>
             <HelpContent />
           </Col>
         </Row>
       </Modal>
+      {/* 批量添加邮箱模态窗 */}
+      <BatchAddEmailModal
+        visible={batchAddModalVisible}
+        onCancel={() => setBatchAddModalVisible(false)}
+        onSuccess={() => {
+          setBatchAddModalVisible(false);
+          fetchEmailAccounts();
+        }}
+      />
     </div>
   );
 };
