@@ -147,14 +147,14 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
       setLoading(true);
       addLog('获取邮箱账户列表...');
 
-      const response = await api.get(`${api.apiBaseUrl}/api/email-accounts`);
-      
+      const response = await api.get(`${apiBaseUrl}/api/email-accounts`);
+
       if (response.data.success) {
         // 只选择状态为active的邮箱
-        const activeAccounts = response.data.data.filter((account: EmailAccount) => 
+        const activeAccounts = response.data.data.filter((account: EmailAccount) =>
           account.status === 'active'
         );
-        
+
         setEmailAccounts(activeAccounts);
         addLog(`成功获取 ${activeAccounts.length} 个活跃邮箱账户`);
       } else {
@@ -171,19 +171,19 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
   // 添加日志
   const addLog = (text: string, type: 'info' | 'success' | 'error' = 'info') => {
     const timestamp = new Date().toLocaleTimeString();
-    const prefix = type === 'error' 
-      ? '❌ ' 
-      : type === 'success' 
-        ? '✅ ' 
+    const prefix = type === 'error'
+      ? '❌ '
+      : type === 'success'
+        ? '✅ '
         : '📝 ';
-    
+
     setLogs(prevLogs => [...prevLogs, `${prefix}[${timestamp}] ${text}`]);
   };
 
   // 处理Transfer变化
   const handleChange = (nextTargetKeys: TransferKey[]) => {
     setTargetKeys(nextTargetKeys);
-    const selected = emailAccounts.filter(account => 
+    const selected = emailAccounts.filter(account =>
       nextTargetKeys.includes(account.id.toString() as TransferKey)
     );
     setSelectedEmails(selected);
@@ -202,51 +202,51 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
       setProgressPercent(0);
       setSuccessCount(0);
       setFailedCount(0);
-      
+
       addLog(`开始为 ${selectedEmails.length} 个邮箱注册同名账户...`);
-      
+
       // 遍历选中的邮箱进行注册
       for (let i = 0; i < selectedEmails.length; i++) {
         const email = selectedEmails[i];
         setCurrentEmailIndex(i);
         setProgressPercent(Math.floor((i / selectedEmails.length) * 100));
-        
+
         addLog(`开始注册邮箱 ${email.email} 的同名账户...`);
-        
+
         try {
           // 生成随机密码
           const password = generateStrongPassword();
           addLog(`已为 ${email.email} 生成随机密码`);
-          
+
           // 获取验证码
           addLog(`正在发送验证码到 ${email.email}...`);
           const sendResponse = await infiniAccountApi.sendVerificationCode(email.email);
-          
+
           if (!sendResponse.success) {
             throw new Error(`发送验证码失败: ${sendResponse.message}`);
           }
-          
+
           addLog('验证码发送成功');
-          
+
           // 延迟一下确保邮件已到达
           await new Promise(resolve => setTimeout(resolve, 2000));
-          
+
           // 获取验证码
           addLog('正在获取验证码...');
-          
+
           // 从同一个邮箱获取验证码
           const codeResponse = await infiniAccountApi.fetchVerificationCode(email.email, email.email);
-          
+
           if (!codeResponse.success || !codeResponse.data.code) {
             throw new Error(`获取验证码失败: ${codeResponse.message}`);
           }
-          
+
           const verificationCode = codeResponse.data.code;
           addLog(`成功获取验证码: ${verificationCode}`);
-          
+
           // 注册账户
           addLog('正在注册Infini账户...');
-          
+
           // 使用axios直接调用Infini API
           const options = {
             method: 'POST',
@@ -267,53 +267,53 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
               invitation_code: invitationCode
             }
           };
-          
+
           addLog(`使用邀请码: ${invitationCode}`);
 
           const response = await api.request(options);
-          
+
           if (response.data && response.data.code === 0) {
             addLog('Infini注册成功', 'success');
-            
+
             // 保存账户信息到本地数据库
             addLog('正在保存账户信息到本地数据库...');
-            
+
             const createResponse = await infiniAccountApi.createAccount(
-              email.email, 
+              email.email,
               password
             );
-            
+
             if (!createResponse.success) {
               throw new Error(`保存账户信息失败: ${createResponse.message}`);
             }
-            
+
             const accountId = createResponse.data.id;
             addLog(`账户信息保存成功，ID: ${accountId}`, 'success');
-            
+
             // 同步账户信息
             addLog('正在同步账户信息...');
             const syncResponse = await infiniAccountApi.syncAccount(accountId);
-            
+
             if (!syncResponse.success) {
               throw new Error(`同步账户信息失败: ${syncResponse.message}`);
             }
-            
+
             addLog('账户信息同步成功', 'success');
-            
+
             // 如果需要配置2FA
             if (enable2FA) {
               addLog('即将自动配置2FA...');
               // 此处需要额外调用2FA配置接口
               // 由于2FA配置比较复杂，可能需要单独处理
             }
-            
+
             // 如果需要配置KYC
             if (enableKYC) {
               addLog('即将自动配置KYC...');
               // 此处需要额外调用KYC配置接口
               // 由于KYC配置比较复杂，可能需要单独处理
             }
-            
+
             setSuccessCount(prev => prev + 1);
             addLog(`${email.email} 注册完成!`, 'success');
           } else {
@@ -323,22 +323,22 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
           setFailedCount(prev => prev + 1);
           addLog(`${email.email} 注册失败: ${error.message}`, 'error');
         }
-        
+
         // 添加短暂延迟，避免API请求过于频繁
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      
+
       // 更新最终进度
       setProgressPercent(100);
       setCurrentEmailIndex(-1);
-      
+
       // 显示结果
       if (successCount === selectedEmails.length) {
         message.success(`批量注册完成，成功注册 ${successCount} 个账户`);
       } else {
         message.warning(`批量注册完成，成功: ${successCount}，失败: ${failedCount}`);
       }
-      
+
       // 通知父组件成功
       if (successCount > 0) {
         onSuccess();
@@ -355,28 +355,28 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
     const length = Math.floor(Math.random() * 9) + 16; // 16-24位长度
     const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=';
     let password = '';
-    
+
     // 确保至少包含一个特殊字符
     let hasSpecialChar = false;
     const specialChars = '!@#$%^&*()_+~`|}{[]:;?><,./-=';
-    
+
     // 生成随机密码
     for (let i = 0; i < length; i++) {
       const randomChar = charset.charAt(Math.floor(Math.random() * charset.length));
       password += randomChar;
-      
+
       // 检查是否包含特殊字符
       if (specialChars.includes(randomChar)) {
         hasSpecialChar = true;
       }
     }
-    
+
     // 如果没有特殊字符，替换最后一个字符为特殊字符
     if (!hasSpecialChar) {
       const randomSpecialChar = specialChars.charAt(Math.floor(Math.random() * specialChars.length));
       password = password.slice(0, -1) + randomSpecialChar;
     }
-    
+
     return password;
   };
 
@@ -396,10 +396,10 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
 
     return (
       <ProgressContainer>
-        <Progress 
-          percent={progressPercent} 
-          status={failedCount > 0 ? 'exception' : undefined} 
-          format={() => `${successCount + failedCount}/${selectedEmails.length}`} 
+        <Progress
+          percent={progressPercent}
+          status={failedCount > 0 ? 'exception' : undefined}
+          format={() => `${successCount + failedCount}/${selectedEmails.length}`}
         />
         <div style={{ marginTop: 8 }}>
           <Text type="secondary">
@@ -439,7 +439,7 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
           <Text strong>发送验证码</Text>
           <div>向选中的邮箱发送验证码</div>
         </Timeline.Item>
-        
+
         <Timeline.Item
           dot={registering && currentEmailIndex > 0 && currentEmailIndex < selectedEmails.length ? <LoadingOutlined /> : null}
           color={successCount + failedCount > 0 ? 'green' : 'blue'}
@@ -447,21 +447,21 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
           <Text strong>获取验证码</Text>
           <div>从邮箱中提取收到的验证码</div>
         </Timeline.Item>
-        
+
         <Timeline.Item
           color="blue"
         >
           <Text strong>注册Infini账户</Text>
           <div>调用Infini注册接口创建账户</div>
         </Timeline.Item>
-        
+
         <Timeline.Item
           color="blue"
         >
           <Text strong>保存账户信息</Text>
           <div>将账户信息保存到本地数据库</div>
         </Timeline.Item>
-        
+
         <Timeline.Item
           color="blue"
         >
@@ -502,7 +502,7 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
           showIcon
           style={{ marginBottom: 16 }}
         />
-        
+
         <Form layout="vertical">
           <Form.Item label="邀请码">
             <Input
@@ -513,7 +513,7 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
               style={{ width: 200 }}
             />
           </Form.Item>
-          
+
           <Form.Item>
             <Space>
               <Checkbox
@@ -523,7 +523,7 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
               >
                 自动配置2FA
               </Checkbox>
-              
+
               <Checkbox
                 checked={enableKYC}
                 onChange={(e) => setEnableKYC(e.target.checked)}
@@ -534,9 +534,9 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
             </Space>
           </Form.Item>
         </Form>
-        
+
         <Divider />
-        
+
         <StyledTransfer
           dataSource={transferData}
           titles={['可选邮箱', '已选邮箱']}
@@ -554,22 +554,22 @@ const RegisterEmailSameNameModal: React.FC<RegisterEmailSameNameModalProps> = ({
           }}
           operations={['添加到已选', '移除']}
           showSearch
-          filterOption={(inputValue, item) => 
-            item.title.indexOf(inputValue) !== -1 || 
-            item.description.indexOf(inputValue) !== -1
+          filterOption={(inputValue, item) =>
+            item.title?.indexOf(inputValue) !== -1 ||
+            item.description?.indexOf(inputValue) !== -1
           }
           locale={{
             searchPlaceholder: '搜索邮箱',
             notFoundContent: '没有符合条件的邮箱'
           }}
         />
-        
+
         <div style={{ marginTop: 20 }}>
           <Text>已选择 {targetKeys.length} 个邮箱</Text>
         </div>
-        
+
         {renderProgress()}
-        
+
         {renderLogs()}
       </Spin>
     </Modal>
