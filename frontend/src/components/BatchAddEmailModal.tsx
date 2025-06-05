@@ -67,7 +67,7 @@ const BatchAddEmailModal: React.FC<BatchAddEmailModalProps> = ({ visible, onCanc
       }
 
       // 按行分割输入内容
-      const lines = emailText.split('\n').filter(line => line.trim());
+      const lines = emailText.split('\n').filter((line: string) => line.trim());
       if (lines.length === 0) {
         message.error('未检测到有效的邮箱信息');
         setParsing(false);
@@ -77,7 +77,7 @@ const BatchAddEmailModal: React.FC<BatchAddEmailModalProps> = ({ visible, onCanc
       const parsedEmails: EmailData[] = [];
       let hasErrors = false;
 
-      lines.forEach((line, index) => {
+      lines.forEach((line: string, index: number) => {
         // 分割每行内容（格式：邮箱,密码,类型,域名）
         const parts = line.split(',');
         const email = parts[0]?.trim();
@@ -87,7 +87,7 @@ const BatchAddEmailModal: React.FC<BatchAddEmailModalProps> = ({ visible, onCanc
 
         // 简单验证邮箱格式
         const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        
+
         if (!isValidEmail || !password) {
           hasErrors = true;
           parsedEmails.push({
@@ -112,7 +112,7 @@ const BatchAddEmailModal: React.FC<BatchAddEmailModalProps> = ({ visible, onCanc
       });
 
       setEmailList(parsedEmails);
-      
+
       if (hasErrors) {
         message.warning('部分邮箱信息格式有误，请检查');
       } else {
@@ -152,7 +152,7 @@ const BatchAddEmailModal: React.FC<BatchAddEmailModalProps> = ({ visible, onCanc
       // 依次保存每个邮箱
       for (let i = 0; i < validEmails.length; i++) {
         const emailData = validEmails[i];
-        
+
         // 跳过已经处理过的邮箱
         if (emailData.status === 'success') {
           successCount++;
@@ -171,7 +171,7 @@ const BatchAddEmailModal: React.FC<BatchAddEmailModalProps> = ({ visible, onCanc
             username: emailData.email,
             password: emailData.password,
             domainName: emailData.domainName,
-            
+
             // 配置邮箱类型对应的IMAP和SMTP设置
             ...(emailData.type === 'gmail' ? {
               imapHost: 'imap.gmail.com',
@@ -196,7 +196,7 @@ const BatchAddEmailModal: React.FC<BatchAddEmailModalProps> = ({ visible, onCanc
               smtpPort: 465,
               smtpSecure: 1
             }),
-            
+
             isActive: 1,
             isDefault: 0,
             status: 'pending'
@@ -204,7 +204,7 @@ const BatchAddEmailModal: React.FC<BatchAddEmailModalProps> = ({ visible, onCanc
 
           // 调用API创建邮箱账户
           const response = await emailAccountApi.createEmailAccount(accountData);
-          
+
           // 更新邮箱状态
           const index = updatedEmails.findIndex(e => e.key === emailData.key);
           if (index !== -1) {
@@ -220,7 +220,7 @@ const BatchAddEmailModal: React.FC<BatchAddEmailModalProps> = ({ visible, onCanc
           }
         } catch (error: any) {
           console.error(`添加邮箱 ${emailData.email} 失败:`, error);
-          
+
           // 更新邮箱状态
           const index = updatedEmails.findIndex(e => e.key === emailData.key);
           if (index !== -1) {
@@ -383,9 +383,9 @@ const BatchAddEmailModal: React.FC<BatchAddEmailModalProps> = ({ visible, onCanc
 
             <Form.Item>
               <Space>
-                <Button 
-                  type="primary" 
-                  onClick={handleParse} 
+                <Button
+                  type="primary"
+                  onClick={handleParse}
                   loading={parsing}
                   disabled={adding}
                 >
@@ -438,9 +438,9 @@ const BatchAddEmailModal: React.FC<BatchAddEmailModalProps> = ({ visible, onCanc
 
               <div style={{ marginTop: 16 }}>
                 <Space>
-                  <Button 
-                    type="primary" 
-                    onClick={handleAddEmails} 
+                  <Button
+                    type="primary"
+                    onClick={handleAddEmails}
                     loading={adding}
                     disabled={parsing || emailList.length === 0}
                   >
