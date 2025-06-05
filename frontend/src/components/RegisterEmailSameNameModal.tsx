@@ -32,7 +32,7 @@ import {
 import styled from 'styled-components';
 import { TransferDirection } from 'antd/lib/transfer';
 import { Key as TransferKey } from 'rc-table/lib/interface';
-import api, { infiniAccountApi, emailAccountApi } from '../services/api';
+import api, { infiniAccountApi, emailAccountApi, apiBaseUrl } from '../services/api';
 
 const { Title, Text, Paragraph } = Typography;
 
