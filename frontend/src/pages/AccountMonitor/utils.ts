@@ -2,7 +2,6 @@
  * AccountMonitor组件相关工具函数
  */
 import { message } from 'antd';
-import { CheckCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { InfiniAccount } from './types';
 
@@ -106,13 +105,9 @@ export const getStyleForBalance = (amount: number, colorRanges: any[]) => {
 export const copyToClipboard = (text: string, messageText: string = '已复制到剪贴板') => {
   navigator.clipboard.writeText(text)
     .then(() => {
-      message.success({
-        content: messageText,
-        icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-        duration: 2
-      });
+      message.success(messageText);
     })
-    .catch(err => {
+    .catch((err: any) => {
       console.error('复制失败:', err);
       message.error('复制失败，请手动复制');
     });
