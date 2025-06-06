@@ -7,22 +7,25 @@ import {
   Form,
   Input,
   Button,
-  Select,
   message,
-  Alert,
-  Space,
-  Divider,
-  Typography,
   Checkbox,
+  Radio,
+  Space,
+  Typography,
+  Tabs,
   Row,
   Col,
+  Select,
+  Divider,
+  Alert,
   Tooltip
 } from 'antd';
-import { QuestionCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, LockOutlined, UserOutlined, MailOutlined } from '@ant-design/icons';
 import { infiniAccountApi, randomUserApi } from '../../../services/api';
 
-const { Option } = Select;
 const { Text } = Typography;
+const { Option } = Select;
+const { TabPane } = Tabs;
 
 interface AccountRegisterModalProps {
   visible: boolean;
@@ -37,73 +40,122 @@ const AccountRegisterModal: React.FC<AccountRegisterModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('manual');
   const [randomUsers, setRandomUsers] = useState<any[]>([]);
-  const [loadingRandomUsers, setLoadingRandomUsers] = useState(false);
-  const [selectedRandomUserId, setSelectedRandomUserId] = useState<number | null>(null);
+  const [randomUserLoading, setRandomUserLoading] = useState(false);
+  const [selectedRandomUser, setSelectedRandomUser] = useState<any>(null);
+  const [autoKYC, setAutoKYC] = useState<boolean>(false);
+  const [auto2FA, setAuto2FA] = useState<boolean>(false);
+  const [customPassword, setCustomPassword] = useState<boolean>(false);
+  const [password, setPassword] = useState<string>('');
+  const [useMockUserId, setUseMockUserId] = useState<boolean>(false);
+  const [mockUserId, setMockUserId] = useState<string>('');
 
   // 获取随机用户列表
   const fetchRandomUsers = async () => {
     try {
-      setLoadingRandomUsers(true);
-      const response = await randomUserApi.getAvailableRandomUsers();
-      
-      if (response.success && response.data) {
-        setRandomUsers(response.data);
+      setRandomUserLoading(true);
+      const response = await randomUserApi.getRandomUsers(1, 100, { status: 'available' });
+      if (response.success) {
+        setRandomUsers(response.data.users || []);
       } else {
-        message.error(response.message || '获取随机用户列表失败');
+        message.error(response.message || '获取随机用户失败');
       }
     } catch (error: any) {
-      console.error('获取随机用户列表失败:', error);
-      message.error(error.message || '获取随机用户列表失败');
+      message.error(error.message || '获取随机用户失败');
+      console.error('获取随机用户失败:', error);
     } finally {
-      setLoadingRandomUsers(false);
+      setRandomUserLoading(false);
     }
   };
 
-  // 当模态框打开时，获取随机用户列表
   useEffect(() => {
-    if (visible) {
+    if (visible && activeTab === 'random') {
       fetchRandomUsers();
-      form.resetFields();
     }
-  }, [visible, form]);
+  }, [visible, activeTab]);
 
-  // 处理随机用户选择
-  const handleRandomUserSelect = (value: number) => {
-    setSelectedRandomUserId(value);
+  // 切换标签页
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
+    if (key === 'random' && randomUsers.length === 0) {
+      fetchRandomUsers();
+    }
+  };
+
+  // 选择随机用户
+  const handleSelectRandomUser = (userId: number) => {
+    const user = randomUsers.find(u => u.id === userId);
+    setSelectedRandomUser(user);
     
-    // 找到选中的随机用户
-    const selectedUser = randomUsers.find(user => user.id === value);
-    
-    if (selectedUser) {
-      // 自动填充表单
+    if (user) {
       form.setFieldsValue({
-        firstName: selectedUser.firstName,
-        lastName: selectedUser.lastName,
-        email: selectedUser.email,
-        password: selectedUser.password || 'Abc123456', // 使用默认密码或随机用户的密码
-        mockUserId: selectedUser.id
+        firstName: user.first_name,
+        lastName: user.last_name,
+        email: user.email
       });
     }
+  };
+
+  // 生成随机密码
+  const generateRandomPassword = (): string => {
+    const length = 12;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * charset.length);
+      password += charset[randomIndex];
+    }
+    return password;
+  };
+
+  // 重置表单
+  const resetForm = () => {
+    form.resetFields();
+    setSelectedRandomUser(null);
+    setAutoKYC(false);
+    setAuto2FA(false);
+    setCustomPassword(false);
+    setPassword('');
+    setUseMockUserId(false);
+    setMockUserId('');
+    setActiveTab('manual');
+  };
+
+  // 关闭模态框
+  const handleCancel = () => {
+    resetForm();
+    onClose();
   };
 
   // 提交表单
   const handleSubmit = async () => {
     try {
-      await form.validateFields();
-      const values = form.getFieldsValue();
-      
+      const values = await form.validateFields();
       setLoading(true);
-      
+
+      // 构建注册数据
+      const registerData = {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        password: customPassword ? password : generateRandomPassword(),
+        autoKYC,
+        auto2FA,
+        randomUserId: selectedRandomUser?.id
+      };
+
+      // 如果使用模拟用户ID
+      if (useMockUserId && mockUserId) {
+        registerData.mockUserId = mockUserId;
+      }
+
       // 调用注册API
-      const response = await infiniAccountApi.registerAccount({
-        ...values,
-        emailVerified: 1 // 默认将邮箱验证设为已验证
-      });
-      
+      const response = await infiniAccountApi.registerAccount(registerData);
+
       if (response.success) {
         message.success('账户注册成功');
-        form.resetFields();
+        resetForm();
         onSuccess();
         onClose();
       } else {
@@ -113,196 +165,314 @@ const AccountRegisterModal: React.FC<AccountRegisterModalProps> = ({
       if (error.errorFields) {
         message.error('请检查表单填写是否正确');
       } else {
-        console.error('账户注册失败:', error);
         message.error(error.message || '账户注册失败');
+        console.error('账户注册失败:', error);
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // 生成随机密码
-  const generateRandomPassword = () => {
-    const length = 10;
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-    let password = "";
-    
-    // 确保密码至少包含一个大写字母、一个小写字母、一个数字和一个特殊字符
-    password += "A"; // 大写字母
-    password += "a"; // 小写字母
-    password += "1"; // 数字
-    password += "!"; // 特殊字符
-    
-    // 填充剩余长度
-    for (let i = 4; i < length; i++) {
-      const randomIndex = Math.floor(Math.random() * charset.length);
-      password += charset[randomIndex];
-    }
-    
-    // 打乱密码顺序
-    password = password.split('').sort(() => 0.5 - Math.random()).join('');
-    
-    form.setFieldsValue({ password });
-  };
-
   return (
     <Modal
       title="注册Infini账户"
-      open={visible}
-      onCancel={onClose}
+      visible={visible}
+      onCancel={handleCancel}
+      footer={null}
       width={700}
-      footer={[
-        <Button key="cancel" onClick={onClose}>
-          取消
-        </Button>,
-        <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
-          注册
-        </Button>
-      ]}
     >
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={{
-          emailVerified: 1,
-          password: 'Abc123456' // 默认密码
-        }}
-      >
-        <Alert
-          message="注册说明"
-          description="注册Infini账户会创建一个新的Infini账户，并将其添加到本系统中进行管理。"
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-        
-        <Divider orientation="left">使用随机用户数据(可选)</Divider>
-        
-        <Form.Item label="选择随机用户">
-          <Select
-            placeholder="选择一个随机用户以自动填充信息"
-            allowClear
-            loading={loadingRandomUsers}
-            onChange={handleRandomUserSelect}
-            style={{ width: '100%' }}
+      <Tabs activeKey={activeTab} onChange={handleTabChange}>
+        <TabPane tab="手动注册" key="manual">
+          <Form
+            form={form}
+            layout="vertical"
+            requiredMark="optional"
           >
-            {randomUsers.map(user => (
-              <Option key={user.id} value={user.id}>
-                {user.firstName} {user.lastName} ({user.email})
-              </Option>
-            ))}
-          </Select>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            选择随机用户后将自动填充表单信息
-          </Text>
-        </Form.Item>
-        
-        <Divider orientation="left">账户基本信息</Divider>
-        
-        <Row gutter={16}>
-          <Col span={12}>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="名"
+                  name="firstName"
+                  rules={[{ required: true, message: '请输入名' }]}
+                >
+                  <Input prefix={<UserOutlined />} placeholder="请输入名" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="姓"
+                  name="lastName"
+                  rules={[{ required: true, message: '请输入姓' }]}
+                >
+                  <Input prefix={<UserOutlined />} placeholder="请输入姓" />
+                </Form.Item>
+              </Col>
+            </Row>
+
             <Form.Item
-              label="名"
-              name="firstName"
-              rules={[{ required: true, message: '请输入名' }]}
+              label="邮箱"
+              name="email"
+              rules={[
+                { required: true, message: '请输入邮箱' },
+                { type: 'email', message: '请输入有效的邮箱地址' }
+              ]}
             >
-              <Input placeholder="例如: John" />
+              <Input prefix={<MailOutlined />} placeholder="请输入邮箱" />
             </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label="姓"
-              name="lastName"
-              rules={[{ required: true, message: '请输入姓' }]}
-            >
-              <Input placeholder="例如: Doe" />
+
+            <Form.Item label="密码设置">
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Checkbox
+                  checked={customPassword}
+                  onChange={(e) => setCustomPassword(e.target.checked)}
+                >
+                  自定义密码
+                </Checkbox>
+                
+                {customPassword ? (
+                  <Input.Password
+                    prefix={<LockOutlined />}
+                    placeholder="请输入密码"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                ) : (
+                  <Alert
+                    message="将使用系统生成的随机密码"
+                    type="info"
+                    showIcon
+                  />
+                )}
+              </Space>
             </Form.Item>
-          </Col>
-        </Row>
-        
-        <Form.Item
-          label="邮箱"
-          name="email"
-          rules={[
-            { required: true, message: '请输入邮箱地址' },
-            { type: 'email', message: '请输入有效的邮箱地址' }
-          ]}
-        >
-          <Input placeholder="例如: example@gmail.com" />
-        </Form.Item>
-        
-        <Form.Item
-          label={
-            <Space>
-              <span>密码</span>
-              <Tooltip title="密码必须包含至少一个大写字母、一个小写字母和一个数字，长度至少为8位">
-                <QuestionCircleOutlined />
-              </Tooltip>
-            </Space>
-          }
-          name="password"
-          rules={[
-            { required: true, message: '请输入密码' },
-            { min: 8, message: '密码长度不能少于8位' },
-            {
-              pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/,
-              message: '密码必须包含大小写字母和数字'
-            }
-          ]}
-          extra={
-            <Button type="link" size="small" onClick={generateRandomPassword} style={{ paddingLeft: 0 }}>
-              生成随机密码
-            </Button>
-          }
-        >
-          <Input.Password placeholder="输入至少8位包含大小写字母和数字的密码" />
-        </Form.Item>
-        
-        <Form.Item
-          label="邮箱验证状态"
-          name="emailVerified"
-          initialValue={1}
-        >
-          <Select>
-            <Option value={1}>已验证</Option>
-            <Option value={0}>未验证</Option>
-          </Select>
-        </Form.Item>
-        
-        <Form.Item name="mockUserId" hidden>
-          <Input />
-        </Form.Item>
-        
-        <Divider orientation="left">高级选项</Divider>
-        
-        <Form.Item
-          name="enableKyc"
-          valuePropName="checked"
-        >
-          <Checkbox>
-            <Space>
-              <span>自动完成KYC认证</span>
-              <Tooltip title="开启此选项将自动为该账户完成KYC认证流程">
-                <InfoCircleOutlined />
-              </Tooltip>
-            </Space>
-          </Checkbox>
-        </Form.Item>
-        
-        <Form.Item
-          name="enable2fa"
-          valuePropName="checked"
-        >
-          <Checkbox>
-            <Space>
-              <span>自动绑定2FA</span>
-              <Tooltip title="开启此选项将自动为该账户绑定2FA验证">
-                <InfoCircleOutlined />
-              </Tooltip>
-            </Space>
-          </Checkbox>
-        </Form.Item>
-      </Form>
+
+            <Divider />
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item label="KYC认证">
+                  <Checkbox
+                    checked={autoKYC}
+                    onChange={(e) => setAutoKYC(e.target.checked)}
+                  >
+                    自动完成KYC认证
+                  </Checkbox>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="2FA认证">
+                  <Checkbox
+                    checked={auto2FA}
+                    onChange={(e) => setAuto2FA(e.target.checked)}
+                  >
+                    自动完成2FA绑定
+                  </Checkbox>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Form.Item label="模拟用户ID">
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Checkbox
+                  checked={useMockUserId}
+                  onChange={(e) => setUseMockUserId(e.target.checked)}
+                >
+                  使用模拟用户ID
+                </Checkbox>
+                
+                {useMockUserId && (
+                  <Input
+                    placeholder="请输入模拟用户ID"
+                    value={mockUserId}
+                    onChange={(e) => setMockUserId(e.target.value)}
+                  />
+                )}
+              </Space>
+            </Form.Item>
+
+            <Form.Item>
+              <Space>
+                <Button type="primary" onClick={handleSubmit} loading={loading}>
+                  注册账户
+                </Button>
+                <Button onClick={handleCancel}>取消</Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </TabPane>
+
+        <TabPane tab="使用随机用户" key="random">
+          <Row gutter={16}>
+            <Col span={10}>
+              <div style={{ marginBottom: 16 }}>
+                <Button
+                  type="primary"
+                  onClick={fetchRandomUsers}
+                  loading={randomUserLoading}
+                >
+                  刷新随机用户列表
+                </Button>
+              </div>
+              <div style={{ height: 400, overflowY: 'auto', border: '1px solid #f0f0f0', padding: '8px' }}>
+                {randomUsers.length > 0 ? (
+                  randomUsers.map(user => (
+                    <div
+                      key={user.id}
+                      style={{
+                        padding: '8px',
+                        marginBottom: '8px',
+                        border: '1px solid #d9d9d9',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        backgroundColor: selectedRandomUser?.id === user.id ? '#e6f7ff' : 'transparent'
+                      }}
+                      onClick={() => handleSelectRandomUser(user.id)}
+                    >
+                      <div><strong>{user.first_name} {user.last_name}</strong></div>
+                      <div>{user.email}</div>
+                      <div><Text type="secondary">{user.country}</Text></div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px' }}>
+                    {randomUserLoading ? '加载中...' : '暂无可用随机用户'}
+                  </div>
+                )}
+              </div>
+            </Col>
+            <Col span={14}>
+              <Form
+                form={form}
+                layout="vertical"
+                requiredMark="optional"
+              >
+                <Alert
+                  message="选择左侧的随机用户后，相关信息将自动填充"
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="名"
+                      name="firstName"
+                      rules={[{ required: true, message: '请输入名' }]}
+                    >
+                      <Input prefix={<UserOutlined />} disabled={!selectedRandomUser} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      label="姓"
+                      name="lastName"
+                      rules={[{ required: true, message: '请输入姓' }]}
+                    >
+                      <Input prefix={<UserOutlined />} disabled={!selectedRandomUser} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item
+                  label="邮箱"
+                  name="email"
+                  rules={[
+                    { required: true, message: '请输入邮箱' },
+                    { type: 'email', message: '请输入有效的邮箱地址' }
+                  ]}
+                >
+                  <Input prefix={<MailOutlined />} disabled={!selectedRandomUser} />
+                </Form.Item>
+
+                <Form.Item label="密码设置">
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Checkbox
+                      checked={customPassword}
+                      onChange={(e) => setCustomPassword(e.target.checked)}
+                    >
+                      自定义密码
+                    </Checkbox>
+                    
+                    {customPassword ? (
+                      <Input.Password
+                        prefix={<LockOutlined />}
+                        placeholder="请输入密码"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    ) : (
+                      <Alert
+                        message="将使用系统生成的随机密码"
+                        type="info"
+                        showIcon
+                      />
+                    )}
+                  </Space>
+                </Form.Item>
+
+                <Divider />
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="KYC认证">
+                      <Checkbox
+                        checked={autoKYC}
+                        onChange={(e) => setAutoKYC(e.target.checked)}
+                      >
+                        自动完成KYC认证
+                      </Checkbox>
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="2FA认证">
+                      <Checkbox
+                        checked={auto2FA}
+                        onChange={(e) => setAuto2FA(e.target.checked)}
+                      >
+                        自动完成2FA绑定
+                      </Checkbox>
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item label="模拟用户ID">
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Checkbox
+                      checked={useMockUserId}
+                      onChange={(e) => setUseMockUserId(e.target.checked)}
+                    >
+                      使用模拟用户ID
+                    </Checkbox>
+                    
+                    {useMockUserId && (
+                      <Input
+                        placeholder="请输入模拟用户ID"
+                        value={mockUserId}
+                        onChange={(e) => setMockUserId(e.target.value)}
+                      />
+                    )}
+                  </Space>
+                </Form.Item>
+
+                <Form.Item>
+                  <Space>
+                    <Button
+                      type="primary"
+                      onClick={handleSubmit}
+                      loading={loading}
+                      disabled={!selectedRandomUser}
+                    >
+                      注册账户
+                    </Button>
+                    <Button onClick={handleCancel}>取消</Button>
+                  </Space>
+                </Form.Item>
+              </Form>
+            </Col>
+          </Row>
+        </TabPane>
+      </Tabs>
     </Modal>
   );
 };
