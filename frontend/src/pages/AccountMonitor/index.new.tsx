@@ -24,7 +24,11 @@ import {
   Popconfirm,
   Empty,
   TableColumnsType,
-  Spin
+  Spin,
+  Select,
+  Collapse,
+  Tooltip,
+  Modal
 } from 'antd';
 import {
   PlusOutlined,
