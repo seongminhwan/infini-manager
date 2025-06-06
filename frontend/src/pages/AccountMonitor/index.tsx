@@ -68,7 +68,6 @@ import AccountDetailModal from './components/AccountDetailModal';
 import BatchSyncResultModal from './components/BatchSyncResultModal';
 import AccountCreateModal from './components/AccountCreateModal';
 import BatchAddAccountModal from './components/BatchAddAccountModal';
-import AccountRegisterModal from './components/AccountRegisterModal';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -100,7 +99,6 @@ const AccountMonitor: React.FC = () => {
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [sortInfo, setSortInfo] = useState<{ field?: string, order?: 'asc' | 'desc' }>({});
-  const [registerModalVisible, setRegisterModalVisible] = useState(false);
   const [randomUserRegisterModalVisible, setRandomUserRegisterModalVisible] = useState(false);
   const [registerEmailSameNameModalVisible, setRegisterEmailSameNameModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -1706,12 +1704,6 @@ const AccountMonitor: React.FC = () => {
         <p style={{ fontSize: 12, color: '#999' }}>点击行查看卡片详情</p>
       </Modal>
 
-      {/* 注册账户模态框 */}
-      <AccountRegisterModal
-        visible={registerModalVisible}
-        onClose={() => setRegisterModalVisible(false)}
-        onSuccess={fetchAccounts}
-      />
 
       {/* 注册邮箱同名账户模态框 */}
       <RegisterEmailSameNameModal
