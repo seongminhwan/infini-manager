@@ -2061,7 +2061,6 @@ const AccountRegisterModal: React.FC<{
   const [loading, setLoading] = useState(false);
   const [emailAccounts, setEmailAccounts] = useState<any[]>([]);
   const [loadingEmailAccounts, setLoadingEmailAccounts] = useState(false);
-  const [selectedEmailAccount, setSelectedEmailAccount] = useState<any>(null);
   const [registering, setRegistering] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [accountGroups, setAccountGroups] = useState<AccountGroup[]>([]);
@@ -2100,7 +2099,6 @@ const AccountRegisterModal: React.FC<{
         // 如果有活跃账户，默认选择第一个
         const activeAccount = accounts.find((acc: any) => acc.status === 'active');
         if (activeAccount) {
-          setSelectedEmailAccount(activeAccount);
           form.setFieldsValue({ emailAccountId: activeAccount.id });
         }
       } else {
@@ -2150,10 +2148,7 @@ const AccountRegisterModal: React.FC<{
 
   // 打开新增邮箱模态框
   const openAddEmailModal = () => {
-    // 这里应该触发邮箱账户列表页面的新增模态框
-    // 由于无法直接跨页面触发，可以通过导航或使用消息传递
-    message.info('请前往邮箱账户列表页面添加新邮箱');
-    // 可以选择跳转到邮箱管理页面
+    // 打开邮箱管理页面的新增邮箱功能
     window.open('/email-manage', '_blank');
   };
 
@@ -2459,14 +2454,6 @@ const AccountRegisterModal: React.FC<{
               </Option>
             ))}
           </Select>
-        </Form.Item>
-
-        <Form.Item
-          name="invitationCode"
-          label="邀请码"
-          initialValue="TC7MLI9"
-        >
-          <Input placeholder="请输入邀请码" />
         </Form.Item>
 
         <Row gutter={16}>
