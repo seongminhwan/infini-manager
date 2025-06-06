@@ -68,6 +68,7 @@ import AccountDetailModal from './components/AccountDetailModal';
 import BatchSyncResultModal from './components/BatchSyncResultModal';
 import AccountCreateModal from './components/AccountCreateModal';
 import BatchAddAccountModal from './components/BatchAddAccountModal';
+import AccountRegisterModal from './components/AccountRegisterModal';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -1707,6 +1708,13 @@ const AccountMonitor: React.FC = () => {
         />
         <p style={{ fontSize: 12, color: '#999' }}>点击行查看卡片详情</p>
       </Modal>
+
+      {/* 注册账户模态框 */}
+      <AccountRegisterModal
+        visible={registerModalVisible}
+        onClose={() => setRegisterModalVisible(false)}
+        onSuccess={fetchAccounts}
+      />
 
       {/* 注册邮箱同名账户模态框 */}
       <RegisterEmailSameNameModal
