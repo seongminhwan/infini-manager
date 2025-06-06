@@ -14,28 +14,24 @@
 **⚠️ IMPORTANT DISCLAIMER: THIS PROJECT IS FOR EDUCATIONAL AND RESEARCH PURPOSES ONLY ⚠️**
 
 - 本项目仅用于技术学习、研究和个人非商业用途  
-  This project is solely for technical learning, research, and personal non-commercial use
-  
+   This project is solely for technical learning, research, and personal non-commercial use
 - 严禁将本系统用于任何商业目的  
-  Commercial use of this system is strictly prohibited
-  
+   Commercial use of this system is strictly prohibited
 - 严禁使用本系统进行任何违反法律法规的活动  
-  Any use of this system for illegal activities is strictly prohibited
-  
+   Any use of this system for illegal activities is strictly prohibited
 - 使用本系统所产生的任何法律责任均由使用者自行承担  
-  Users bear all legal responsibilities arising from the use of this system
-  
+   Users bear all legal responsibilities arising from the use of this system
 - 开发者不对使用本系统所导致的任何直接或间接损失负责  
-  Developers are not responsible for any direct or indirect losses caused by using this system
-  
+   Developers are not responsible for any direct or indirect losses caused by using this system
 - 如对系统用途有疑问，请在使用前咨询法律顾问  
-  If you have questions about the system's usage, please consult a legal advisor before use
+   If you have questions about the system's usage, please consult a legal advisor before use
 
 ## 系统状态警告
 
 **⚠️ 开发阶段警告 ⚠️**
 
 本系统目前处于开发阶段，存在以下风险：
+
 - 系统稳定性无法保证
 - 可能存在未知的安全隐患
 - 功能可能随时变更或失效
@@ -45,6 +41,7 @@
 ## 未完成工作提示
 
 请注意，本系统仍有大量功能尚未完成或验证：
+
 - 多项核心功能仍在开发中
 - 部分已实现功能未经充分测试
 - 性能优化尚未完成
@@ -56,6 +53,7 @@
 **⚠️ 必须配置主邮箱 ⚠️**
 
 在使用本系统前，您必须：
+
 1. 配置系统主邮箱
 2. 完成邮箱验证流程
 3. 确认邮箱可正常接收通知
@@ -65,6 +63,7 @@
 ## 当前可用功能
 
 **目前系统仅开放以下功能：**
+
 - 账户监控模块
 
 其他模块尚在开发中，暂不可用。
@@ -76,6 +75,7 @@
 ## 系统简介
 
 这是一个用于监测和维护Infini账号的系统，系统主要分为两个部分:
+
 1. 账号情况监控、管理、转账，包括账户余额监控、账户状态监控、账户信息查询
 2. 通知系统，可以通过TG/Email方式通知用户，后续还会扩展
 
@@ -86,20 +86,24 @@
 ### 必需软件
 
 1. **Node.js**：JavaScript运行环境
+
    - 下载地址：https://nodejs.org/
    - 推荐版本：14.x或更高版本
    - 安装后，打开命令行窗口输入`node -v`确认安装成功
 
 2. **npm**：Node.js包管理器（Node.js安装时会自动安装）
+
    - 命令行输入`npm -v`确认安装成功
 
 ### 可选软件（使用Docker部署时必需）
 
 1. **Docker**：容器化平台
+
    - 下载地址：https://www.docker.com/products/docker-desktop/
    - 安装后，打开命令行窗口输入`docker -v`确认安装成功
 
 2. **Docker Compose**：容器编排工具（通常Docker Desktop会自带）
+
    - 命令行输入`docker-compose -v`确认安装成功
 
 ## 安装与启动（三种方式）
@@ -109,6 +113,7 @@
 这种方式适合开发者或者想要了解系统内部工作原理的用户。
 
 1. **获取源代码**
+
 ```bash
 # 使用Git克隆项目
 git clone https://github.com/seongminhwan/infini-manager.git
@@ -117,6 +122,7 @@ cd infini-manager
 ```
 
 2. **安装和启动后端**
+
 ```bash
 # 进入后端目录
 cd backend
@@ -129,6 +135,7 @@ npm run dev
 ```
 
 3. **安装和启动前端**（在新的命令行窗口中）
+
 ```bash
 # 进入前端目录
 cd frontend
@@ -158,6 +165,7 @@ make front
 ```
 
 如果要使用MySQL数据库：
+
 ```bash
 # 启动MySQL服务和后端
 make start-mysql
@@ -167,11 +175,13 @@ make start-mysql-all
 ```
 
 停止服务：
+
 ```bash
 make stop
 ```
 
 查看所有可用命令：
+
 ```bash
 make help
 ```
@@ -181,12 +191,14 @@ make help
 这种方式适合不想在本地安装Node.js或需要在隔离环境中运行的用户。
 
 1. **准备工作**
+
 ```bash
 # 复制后端配置文件（首次使用需要）
 cp backend/.env.example backend/.env
 ```
 
 2. **启动服务**
+
 ```bash
 # 使用Docker Compose启动所有服务
 make docker-start
@@ -195,10 +207,12 @@ docker-compose up -d
 ```
 
 3. **访问系统**
+
    - 前端界面：http://localhost 或 http://localhost:80
    - 后端API：http://localhost:33201
 
 4. **查看日志**
+
 ```bash
 make docker-logs
 # 或者
@@ -206,6 +220,7 @@ docker-compose logs -f
 ```
 
 5. **停止服务**
+
 ```bash
 make docker-stop
 # 或者
@@ -228,7 +243,7 @@ docker-compose down
 - **优点**：性能较好，适合多用户访问
 - **缺点**：需要额外安装MySQL服务器，配置较复杂
 - **适用场景**：生产环境，多用户使用
-- **默认配置**：主机localhost，端口3307，用户名root，密码password，数据库名infini_manager
+- __默认配置__：主机localhost，端口3307，用户名root，密码password，数据库名infini_manager
 
 ## 如何切换数据库类型（小白教程）
 
@@ -253,7 +268,7 @@ make start-mysql
 
 本项目分为前端和后端两个部分：
 
-```
+```ini
 infini-manager/
 ├── backend/           # 后端代码目录
 │   ├── src/           # 源代码
@@ -286,6 +301,7 @@ infini-manager/
 **问题**: 启动服务时提示端口33201或33202已被占用。
 
 **解决方案**:
+
 ```bash
 # 查找占用端口的进程
 lsof -i :33201
@@ -304,19 +320,24 @@ make stop
 **问题**: 使用MySQL时连接失败。
 
 **解决方案**:
+
 1. 确认MySQL服务是否启动
+
 2. 检查`backend/.env`中的数据库配置是否正确
+
 3. 如果使用Docker的MySQL，可以重启容器：
-   ```bash
-   make mysql-stop
-   make mysql-start
-   ```
+
+```bash
+make mysql-stop
+make mysql-start
+```
 
 ### 3. 前端无法连接后端API
 
 **问题**: 前端界面加载成功，但无法获取数据。
 
 **解决方案**:
+
 1. 确认后端服务是否正常运行
 2. 打开浏览器控制台（F12），查看是否有请求错误
 3. 确认前端配置文件中的API地址是否正确：
@@ -328,15 +349,17 @@ make stop
 **问题**: 使用Docker重启后数据丢失。
 
 **解决方案**:
+
 - 确保数据卷正确配置，Docker数据应该存储在：
-  - MySQL数据：`./data/mysql`
-  - SQLite数据：`./backend/db`
+   - MySQL数据：`./data/mysql`
+   - SQLite数据：`./backend/db`
 
 ### 5. 无法发送通知
 
 **问题**: 系统无法发送电子邮件或TG通知。
 
 **解决方案**:
+
 1. 检查后端`.env`文件中的邮箱和TG配置
 2. 确保配置的邮箱账户可用且允许第三方应用访问
 3. 对于Gmail，需要生成应用专用密码

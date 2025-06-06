@@ -34,6 +34,13 @@ class GmailClient {
   private smtpTransporter: nodemailer.Transporter;
   private config: GmailConfig;
   private proxyConfig: SimpleProxyConfig | null = null;
+  
+  // 默认重试配置
+  private readonly defaultRetryOptions = {
+    maxRetries: 3,
+    baseRetryDelay: 2000,
+    useExponentialBackoff: true
+  };
 
   /**
    * 构造函数，初始化Gmail客户端
@@ -123,9 +130,56 @@ class GmailClient {
    * 连接到IMAP服务器
    * @returns 返回Promise<void>
    */
-  private connectImap(): Promise<void> {
-    return new Promise(async (resolve, reject) => {
+  private isAuthenticationError(error: unknown): boolean {
+    // 提取错误信息
+    const errorMessage = error instanceof Error ? error.message :
+                       typeof error === 'object' && error !== null && 'message' in error ?
+                       String(error.message) : String(error);
+    
+    // 检查常见的认证错误信息
+    return errorMessage.includes('Invalid credentials') ||
+           errorMessage.includes('Authentication failed') ||
+           errorMessage.includes('AUTHENTICATIONFAILED') ||
+           errorMessage.includes('auth fail') ||
+           errorMessage.includes('LOGIN failed') ||
+           errorMessage.includes('AUTHENTICATE') ||
+           errorMessage.includes('Bad login');
+  }
+  
+  /**
+   * 计算重试延迟时间
+   * @param retryCount 当前重试次数
+   * @returns 延迟时间（毫秒）
+   */
+  private getRetryDelay(retryCount: number): number {
+    const options = {
+      ...this.defaultRetryOptions,
+      ...this.config.retryOptions
+    };
+    
+    if (options.useExponentialBackoff) {
+      // 使用指数退避策略：基础延迟 * 2^(重试次数-1)
+      return options.baseRetryDelay * Math.pow(2, retryCount - 1);
+    } else {
+      // 使用线性延迟：基础延迟 * 重试次数
+      return options.baseRetryDelay * retryCount;
+    }
+  }
+
+  /**
+   * 连接到IMAP服务器
+   * @returns 返回Promise<void>
+   */
+  private async connectImap(): Promise<void> {
+    let retryCount = 0;
+    const maxRetries = this.config.retryOptions?.maxRetries || this.defaultRetryOptions.maxRetries;
+    
+    while (true) {
       try {
+        // 记录重试次数
+        const retryLogSuffix = retryCount > 0 ? ` (重试 ${retryCount}/${maxRetries})` : '';
+        console.log(`[IMAP] 尝试连接 ${this.config.user} 的邮箱${retryLogSuffix}`);
+        
         // 获取代理配置
         const proxyConfig = await this.setupProxy();
         
@@ -136,61 +190,96 @@ class GmailClient {
           host: this.config.imapHost,
           port: this.config.imapPort,
           tls: this.config.imapSecure,
-          tlsOptions: { rejectUnauthorized: false }
+          tlsOptions: { rejectUnauthorized: false },
+          // 添加较短的超时设置，避免连接过长时间挂起
+          connTimeout: 30000, // 连接超时30秒
+          authTimeout: 20000  // 认证超时20秒
         };
 
-          // 如果有代理配置，添加代理代理
-          if (proxyConfig) {
-            const proxyUrl = `${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`;
-            const authInfo = proxyConfig.auth ? 
-              `(用户: ${proxyConfig.auth.username || 'anonymous'})` : '(无认证)';
+        // 如果有代理配置，添加代理代理
+        if (proxyConfig) {
+          const proxyUrl = `${proxyConfig.type}://${proxyConfig.host}:${proxyConfig.port}`;
+          const authInfo = proxyConfig.auth ?
+            `(用户: ${proxyConfig.auth.username || 'anonymous'})` : '(无认证)';
+          
+          console.log(`[IMAP] 账户 ${this.config.user} 连接使用代理: ${proxyUrl} ${authInfo}${retryLogSuffix}`);
+          console.log(`[IMAP] 账户 ${this.config.user} 连接详情: 主机=${this.config.imapHost}, 端口=${this.config.imapPort}, 安全=${this.config.imapSecure}`);
+          
+          // 创建代理代理
+          const agent = createImapProxyAgent(proxyConfig);
+          if (agent) {
+            imapOptions.tlsOptions = {
+              ...imapOptions.tlsOptions,
+              rejectUnauthorized: false
+            };
             
-            console.log(`[IMAP] 连接使用代理: ${proxyUrl} ${authInfo}`);
-            console.log(`[IMAP] 连接详情: 主机=${this.config.imapHost}, 端口=${this.config.imapPort}, 安全=${this.config.imapSecure}`);
-            
-            // 创建代理代理
-            const agent = createImapProxyAgent(proxyConfig);
-            if (agent) {
-              imapOptions.tlsOptions = {
-                ...imapOptions.tlsOptions,
-                rejectUnauthorized: false
-              };
-              
-              // 根据IMAP连接是否使用SSL/TLS设置不同的代理
-              if (this.config.imapSecure) {
-                imapOptions.tlsOptions.agent = agent;
-                console.log(`[IMAP] 已为TLS连接设置代理代理`);
-              } else {
-                imapOptions.socketTimeout = 60000; // 增加超时时间
-                imapOptions.connTimeout = 60000;
-                imapOptions.agent = agent;
-                console.log(`[IMAP] 已为非TLS连接设置代理代理`);
-              }
+            // 根据IMAP连接是否使用SSL/TLS设置不同的代理
+            if (this.config.imapSecure) {
+              imapOptions.tlsOptions.agent = agent;
+              console.log(`[IMAP] 已为TLS连接设置代理代理`);
             } else {
-              console.warn('[IMAP] 创建代理代理失败，将使用直连模式');
+              imapOptions.socketTimeout = 60000; // 增加超时时间
+              imapOptions.connTimeout = 60000;
+              imapOptions.agent = agent;
+              console.log(`[IMAP] 已为非TLS连接设置代理代理`);
             }
           } else {
-            console.log(`[IMAP] 直接连接到服务器: ${this.config.imapHost}:${this.config.imapPort} (无代理)`);
+            console.warn('[IMAP] 创建代理代理失败，将使用直连模式');
           }
+        } else {
+          console.log(`[IMAP] 账户 ${this.config.user} 直接连接到服务器: ${this.config.imapHost}:${this.config.imapPort} (无代理)${retryLogSuffix}`);
+        }
 
-        // 创建新的IMAP客户端
-        this.imapClient = new IMAP(imapOptions);
+        // 将回调风格的连接转换为Promise
+        return new Promise<void>((resolve, reject) => {
+          // 创建新的IMAP客户端
+          this.imapClient = new IMAP(imapOptions);
 
-        // 设置事件处理
-        this.imapClient.once('ready', () => {
-          resolve();
+          // 设置事件处理
+          this.imapClient.once('ready', () => {
+            console.log(`[IMAP] 账户 ${this.config.user} 连接成功${retryLogSuffix}`);
+            resolve();
+          });
+
+          this.imapClient.once('error', (err) => {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            console.error(`[IMAP] 账户 ${this.config.user} 连接错误${retryLogSuffix}:`, errorMessage);
+            reject(err);
+          });
+
+          // 连接到IMAP服务器
+          this.imapClient.connect();
         });
-
-        this.imapClient.once('error', (err) => {
-          reject(err);
-        });
-
-        // 连接到IMAP服务器
-        this.imapClient.connect();
+        
       } catch (error) {
-        reject(error);
+        // 检查是否是认证相关错误，需要重试
+        if (this.isAuthenticationError(error) && retryCount < maxRetries) {
+          retryCount++;
+          const retryDelay = this.getRetryDelay(retryCount);
+          console.log(`[IMAP] 账户 ${this.config.user} 认证失败，将在 ${retryDelay}ms 后进行第 ${retryCount}/${maxRetries} 次重试...`);
+          
+          // 提取错误信息用于记录
+          const errorMessage = error instanceof Error ? error.message :
+                             typeof error === 'object' && error !== null && 'message' in error ?
+                             String(error.message) : String(error);
+          console.log(`[IMAP] 错误详情: ${errorMessage}`);
+          
+          // 关闭任何可能开着的连接
+          this.disconnectImap();
+          
+          // 等待一段时间后重试
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+        
+        // 如果不是认证错误或已达到最大重试次数，则抛出异常
+        const errorMessage = error instanceof Error ? error.message :
+                           typeof error === 'object' && error !== null && 'message' in error ?
+                           String(error.message) : String(error);
+        console.error(`[IMAP] 账户 ${this.config.user} 连接失败，不再重试:`, errorMessage);
+        throw new Error(`连接到IMAP服务器失败 (账户: ${this.config.user}): ${errorMessage}`);
       }
-    });
+    }
   }
 
   /**
@@ -225,38 +314,74 @@ class GmailClient {
    * @returns 返回Promise<GmailMessage[]>
    */
   async listMessages(options: GmailQueryOptions = {}): Promise<GmailMessage[]> {
-    try {
-      // 连接到IMAP服务器
-      await this.connectImap();
+    let retryCount = 0;
+    const maxRetries = this.config.retryOptions?.maxRetries || this.defaultRetryOptions.maxRetries;
+    
+    while (retryCount <= maxRetries) {
+      try {
+        console.log(`[Gmail客户端] 开始连接邮箱: ${this.config.user}${retryCount > 0 ? ` (重试 ${retryCount}/${maxRetries})` : ''}`);
+        
+        // 连接到IMAP服务器
+        await this.connectImap();
 
-      // 打开邮箱
-      const mailbox = options.mailbox || 'INBOX';
-      await this.openMailbox(mailbox);
+        // 打开邮箱
+        const mailbox = options.mailbox || 'INBOX';
+        await this.openMailbox(mailbox);
+        console.log(`[Gmail客户端] 成功打开邮箱文件夹 ${mailbox} - 账户: ${this.config.user}`);
 
-      // 构建搜索条件
-      const searchCriteria: any[] = options.searchFilter || ['ALL'];
-      
-      // 添加日期筛选
-      if (options.since) {
-        searchCriteria.push(['SINCE', options.since]);
+        // 构建搜索条件
+        const searchCriteria: any[] = options.searchFilter || ['ALL'];
+        
+        // 添加日期筛选
+        if (options.since) {
+          searchCriteria.push(['SINCE', options.since]);
+        }
+        
+        if (options.before) {
+          searchCriteria.push(['BEFORE', options.before]);
+        }
+
+        console.log(`[Gmail客户端] 搜索条件: ${JSON.stringify(searchCriteria)} - 账户: ${this.config.user}`);
+        
+        // 获取邮件列表
+        const messages = await this.searchMessages(searchCriteria, options);
+        console.log(`[Gmail客户端] 成功获取 ${messages.length} 封邮件 - 账户: ${this.config.user}`);
+
+        // 关闭连接
+        this.disconnectImap();
+
+        return messages;
+      } catch (error) {
+        this.disconnectImap();
+        
+        // 检查是否是认证错误并且还有重试机会
+        if (this.isAuthenticationError(error) && retryCount < maxRetries) {
+          retryCount++;
+          const retryDelay = this.getRetryDelay(retryCount);
+          console.log(`[Gmail客户端] 账户 ${this.config.user} 认证失败，将在 ${retryDelay}ms 后进行第 ${retryCount}/${maxRetries} 次重试...`);
+          
+          // 提取错误信息用于记录
+          const errorMessage = error instanceof Error ? error.message :
+                            typeof error === 'object' && error !== null && 'message' in error ?
+                            String(error.message) : String(error);
+          console.log(`[Gmail客户端] 错误详情: ${errorMessage}`);
+          
+          // 等待一段时间后重试
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+        
+        // 如果不是认证错误或已达到最大重试次数
+        const errorMessage = error instanceof Error ? error.message :
+                           typeof error === 'object' && error !== null && 'message' in error ?
+                           String(error.message) : String(error);
+        console.error(`[Gmail客户端] 获取邮件列表失败 - 账户: ${this.config.user}`, errorMessage);
+        throw new Error(`获取邮件列表失败 (账户: ${this.config.user}): ${errorMessage}`);
       }
-      
-      if (options.before) {
-        searchCriteria.push(['BEFORE', options.before]);
-      }
-
-      // 获取邮件列表
-      const messages = await this.searchMessages(searchCriteria, options);
-
-      // 关闭连接
-      this.disconnectImap();
-
-      return messages;
-    } catch (error) {
-      this.disconnectImap();
-      console.error('获取邮件列表失败:', error);
-      throw new Error(`获取邮件列表失败: ${error}`);
     }
+    
+    // 这行代码正常不会执行到，因为在循环中会要么成功返回，要么抛出异常
+    throw new Error(`获取邮件列表失败: 超过最大重试次数 (账户: ${this.config.user})`);
   }
 
   /**

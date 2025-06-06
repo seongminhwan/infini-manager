@@ -81,7 +81,6 @@ import RedPacketModal from '../../components/RedPacketModal';
 import OneClickSetupModal from '../../components/OneClickSetupModal';
 import BatchRegisterModal from '../../components/BatchRegisterModal';
 import BatchRecoverAccountModal from '../../components/BatchRecoverAccountModal';
-import RegisterEmailSameNameModal from '../../components/RegisterEmailSameNameModal';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
 import { infiniCardApi } from '../../services/api';
@@ -241,35 +240,35 @@ const AccountDetailModal: React.FC<{
   const [loadingMockUser, setLoadingMockUser] = useState(false);
   const [mockUserModalVisible, setMockUserModalVisible] = useState(false);
   const [twoFactorAuthModalVisible, setTwoFactorAuthModalVisible] = useState(false);
-
+  
   // 2FA详情模态框状态
   const [twoFaModalVisible, setTwoFaModalVisible] = useState(false);
-
+  
   // 2FA和KYC模态框状态
   const [kycAuthModalVisible, setKycAuthModalVisible] = useState(false);
   const [kycViewModalVisible, setKycViewModalVisible] = useState(false);
-
+  
   // 处理打开2FA详情模态框
   const handleView2fa = () => {
     setTwoFaModalVisible(true);
   };
-
+  
   // 关闭2FA模态框
   const handleClose2faModal = () => {
     setTwoFaModalVisible(false);
   };
-
+  
   // KYC数据状态
   const [kycData, setKycData] = useState<any>(null);
   const [loadingKycData, setLoadingKycData] = useState<boolean>(false);
-
+  
   // 一键开卡模态框状态
   const [cardApplyModalVisible, setCardApplyModalVisible] = useState(false);
-
+  
   // 卡片详情模态框状态
   const [cardDetailModalVisible, setCardDetailModalVisible] = useState(false);
   const [selectedCard, setSelectedCard] = useState<any>(null);
-
+  
   // 卡片信息状态
   const [cardList, setCardList] = useState<any[]>([]);
   const [loadingCards, setLoadingCards] = useState(false);
@@ -279,7 +278,7 @@ const AccountDetailModal: React.FC<{
   const [loadingCustomEmailConfig, setLoadingCustomEmailConfig] = useState(false);
   const [customEmailForm] = Form.useForm(); // 为自定义邮箱配置创建新的表单实例
   const [customEmailEditMode, setCustomEmailEditMode] = useState(false);
-
+  
   // 获取自定义邮箱配置
   const fetchCustomEmailConfig = async (accountId: number) => {
     if (!accountId) return;
@@ -307,23 +306,23 @@ const AccountDetailModal: React.FC<{
       setLoadingCustomEmailConfig(false);
     }
   };
-
+  
   // 刷新卡片信息
   const syncCardInfo = async () => {
     if (!account || !account.id) {
       message.error('无法刷新卡片信息：缺少账户ID');
       return;
     }
-
+    
     try {
       setLoadingCards(true);
       message.loading('正在刷新卡片信息...');
-
+      
       // 调用同步卡片信息接口
       const response = await api.post(`${API_BASE_URL}/api/infini-cards/sync`, {
         accountId: account.id
       });
-
+      
       if (response.data.success) {
         message.success('卡片信息同步成功');
         // 获取最新的卡片列表
@@ -338,22 +337,22 @@ const AccountDetailModal: React.FC<{
       setLoadingCards(false);
     }
   };
-
+  
   // 获取卡片列表
   const getCardList = async () => {
     if (!account || !account.id) {
       message.error('无法获取卡片信息：缺少账户ID');
       return;
     }
-
+    
     try {
       setLoadingCards(true);
-
+      
       // 调用获取卡片列表接口
       const response = await api.get(`${API_BASE_URL}/api/infini-cards/list`, {
         params: { accountId: account.id }
       });
-
+      
       if (response.data.success) {
         setCardList(response.data.data || []);
       } else {
@@ -368,31 +367,31 @@ const AccountDetailModal: React.FC<{
       setLoadingCards(false);
     }
   };
-
+  
   // 获取实际验证级别的函数
   const getActualVerificationLevel = (acc: InfiniAccount): number => {
     // 优先使用verification_level，如果不存在则使用verificationLevel
     return acc.verification_level !== undefined ? acc.verification_level : (acc.verificationLevel || 0);
   };
-
+  
   // 查看KYC信息
   const handleViewKyc = async () => {
     if (!account || !account.id) {
       message.error('无法查看KYC信息：缺少账户ID');
       return;
     }
-
+    
     console.log('开始获取KYC信息，账户ID:', account.id, '验证级别:', account.verification_level);
-
+    
     // 先打开模态框，显示加载状态
     setKycViewModalVisible(true);
     setLoadingKycData(true);
-
-    try {
+    
+      try {
       // 使用统一的api实例获取KYC信息
       const response = await api.get(`${API_BASE_URL}/api/infini-accounts/kyc/information/${account.id}`);
       console.log('获取KYC信息完整响应:', response);
-
+      
       if (response.data.success && response.data.data.kyc_information && response.data.data.kyc_information.length > 0) {
         const kycInfo = response.data.data.kyc_information[0];
         console.log('获取到KYC信息:', kycInfo);
@@ -400,7 +399,7 @@ const AccountDetailModal: React.FC<{
         if (account.verification_level === 3 && (!kycInfo.status || kycInfo.status === 0)) {
           kycInfo.status = 1; // 设置为验证中状态
         }
-
+        
         // 转换API返回的snake_case字段为camelCase，以匹配KycViewModal组件的期望
         const transformedKycInfo = {
           id: kycInfo.id,
@@ -420,7 +419,7 @@ const AccountDetailModal: React.FC<{
           // 如果有image_url字段则使用，否则为undefined
           imageUrl: kycInfo.image_url
         };
-
+        
         console.log('转换后的KYC信息:', transformedKycInfo);
         setKycData(transformedKycInfo);
       } else {
@@ -466,39 +465,39 @@ const AccountDetailModal: React.FC<{
       setLoadingKycData(false);
     }
   };
-
+  
   // 关闭KYC查看模态框
   const handleCloseKycViewModal = () => {
     setKycViewModalVisible(false);
     setKycData(null);
   };
-
+  
   // 准备KYC认证 - 打开KYC认证模态框
   const prepareKycAuth = () => {
     if (!account || !account.password) {
       message.error('缺少必要信息，无法进行KYC认证');
       return;
     }
-
+    
     // 显示KYC认证模态框
     setKycAuthModalVisible(true);
   };
-
+  
   // 关闭KYC认证模态框
   const handleCloseKycAuthModal = () => {
     setKycAuthModalVisible(false);
   };
-
+  
   // 打开一键开卡模态框
   const handleOpenCardApply = () => {
     setCardApplyModalVisible(true);
   };
-
+  
   // 关闭一键开卡模态框
   const handleCloseCardApply = () => {
     setCardApplyModalVisible(false);
   };
-
+  
   // 复制文本到剪贴板
   const copyToClipboard = (text: string, messageText: string = '已复制到剪贴板') => {
     navigator.clipboard.writeText(text)
@@ -524,11 +523,11 @@ const AccountDetailModal: React.FC<{
         status: account.status,
         userType: account.userType,
       });
-
+      
       // 重置mock user状态
       setMockUser(null);
       setMockUserModalVisible(false);
-
+      
       // 获取卡片信息
       getCardList();
       // 获取自定义邮箱配置
@@ -551,11 +550,11 @@ const AccountDetailModal: React.FC<{
       message.info('该账户没有关联的随机用户');
       return;
     }
-
+    
     try {
       setLoadingMockUser(true);
       const response = await randomUserApi.getRandomUserById(account.mockUserId.toString());
-
+      
       if (response.success && response.data) {
         setMockUser(response.data);
         setMockUserModalVisible(true);
@@ -587,14 +586,14 @@ const AccountDetailModal: React.FC<{
     try {
       setLoading(true);
       const values = await form.validateFields();
-
+      
       // 只提交有值的字段
       const updateData: Record<string, any> = {};
       if (values.email) updateData.email = values.email;
       if (values.password) updateData.password = values.password;
       if (values.status) updateData.status = values.status;
       if (values.userType !== undefined) updateData.userType = values.userType;
-
+      
       const response = await api.put(`${API_BASE_URL}/api/infini-accounts/${account?.id}`, updateData);
 
       if (response.data.success) {
@@ -660,12 +659,12 @@ const AccountDetailModal: React.FC<{
         imap_port,
         smtp_port,
       };
-
+      
       // 如果是编辑模式且密码字段为空或未更改，则不提交密码字段
       if (customEmailConfig && (payload.password === undefined || payload.password === '')) {
         delete payload.password;
       }
-
+      
       // 将 extra_config 字符串转换为 JSON 对象
       if (payload.extra_config && typeof payload.extra_config === 'string') {
         try {
@@ -690,7 +689,7 @@ const AccountDetailModal: React.FC<{
         message.success(customEmailConfig ? '自定义邮箱配置更新成功' : '自定义邮箱配置添加成功');
         setCustomEmailConfig(response.data || null);
         if (response.data) {
-          customEmailForm.setFieldsValue(response.data);
+            customEmailForm.setFieldsValue(response.data);
         }
         setCustomEmailEditMode(false);
         // onSuccess(); // 可选：如果需要刷新外部列表
@@ -722,7 +721,7 @@ const AccountDetailModal: React.FC<{
       message.error('缺少必要信息，无法配置2FA');
       return;
     }
-
+    
     // 显示2FA配置模态框
     setTwoFactorAuthModalVisible(true);
   };
@@ -746,21 +745,21 @@ const AccountDetailModal: React.FC<{
         >
           <Input prefix={<MailOutlined />} placeholder="请输入Infini登录邮箱" />
         </Form.Item>
-
+        
         <Form.Item
           name="password"
           label="Infini登录密码"
         >
           <Input.Password prefix={<LockOutlined />} placeholder="请输入Infini登录密码" />
         </Form.Item>
-
+        
         <Form.Item
           name="status"
           label="账户状态"
         >
           <Input placeholder="账户状态" />
         </Form.Item>
-
+        
         <Form.Item
           name="userType"
           label="用户类型"
@@ -774,12 +773,12 @@ const AccountDetailModal: React.FC<{
   // 渲染账户详情
   const renderAccountDetails = () => {
     if (!account) return null;
-
+    
     // 添加调试输出，查看账户数据中的verification_level
     console.log('当前账户信息:', account);
     console.log('verification_level:', account.verification_level);
 
-    return (
+  return (
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
@@ -790,75 +789,75 @@ const AccountDetailModal: React.FC<{
               </StatusTag>
               {account.verification_level !== undefined && (
                 <StatusTag color={
-                  account.verification_level === 2 ? 'green' :
-                    account.verification_level === 3 ? 'gold' :
-                      account.verification_level === 1 ? 'blue' : 'orange'
+                  account.verification_level === 2 ? 'green' : 
+                  account.verification_level === 3 ? 'gold' : 
+                  account.verification_level === 1 ? 'blue' : 'orange'
                 }>
-                  {account.verification_level === 2 ? 'KYC认证' :
-                    account.verification_level === 3 ? 'KYC认证中' :
-                      account.verification_level === 1 ? '基础认证' : '未认证'}
+                  {account.verification_level === 2 ? 'KYC认证' : 
+                  account.verification_level === 3 ? 'KYC认证中' :
+                  account.verification_level === 1 ? '基础认证' : '未认证'}
                 </StatusTag>
               )}
             </Title>
           </div>
           <div>
-            {account.mockUserId && (
-              <Button
-                type="primary"
-                ghost
-                icon={<UserOutlined />}
-                onClick={fetchMockUser}
-                loading={loadingMockUser}
-                style={{ marginRight: 8 }}
-              >
-                查看关联用户
-              </Button>
-            )}
-            {/* 显示2FA相关按钮：已启用的显示查看/配置，未启用的显示启用2FA */}
-            {account.google2faIsBound ? (
-              <Button
-                type="primary"
-                ghost
-                icon={<SafetyCertificateOutlined />}
-                onClick={handleView2fa}
-                style={{ marginRight: 8 }}
-              >
-                {account.twoFaInfo ? '查看2FA' : '配置2FA'}
-              </Button>
-            ) : (
-              <Button
-                type="primary"
-                ghost
-                icon={<SafetyCertificateOutlined />}
-                onClick={prepare2faConfig}
-                style={{ marginRight: 8 }}
-              >
-                启用2FA
-              </Button>
-            )}
-            {/* 已完成KYC认证(verification_level=2或3)时显示"查看KYC"按钮 */}
-            {getActualVerificationLevel(account) >= 2 && (
-              <Button
-                type="primary"
-                ghost
-                icon={<IdcardOutlined />}
-                onClick={handleViewKyc}
-                style={{ marginRight: 8 }}
-              >
-                查看KYC
-              </Button>
-            )}
+          {account.mockUserId && (
+            <Button 
+              type="primary"
+              ghost
+              icon={<UserOutlined />} 
+              onClick={fetchMockUser}
+              loading={loadingMockUser}
+              style={{ marginRight: 8 }}
+            >
+              查看关联用户
+            </Button>
+          )}
+          {/* 显示2FA相关按钮：已启用的显示查看/配置，未启用的显示启用2FA */}
+          {account.google2faIsBound ? (
             <Button
               type="primary"
               ghost
-              icon={<CreditCardOutlined />}
-              onClick={handleOpenCardApply}
+              icon={<SafetyCertificateOutlined />}
+              onClick={handleView2fa}
+              style={{ marginRight: 8 }}
             >
-              一键开卡
+              {account.twoFaInfo ? '查看2FA' : '配置2FA'}
             </Button>
+          ) : (
+            <Button
+              type="primary"
+              ghost
+              icon={<SafetyCertificateOutlined />}
+              onClick={prepare2faConfig}
+              style={{ marginRight: 8 }}
+            >
+              启用2FA
+            </Button>
+          )}
+          {/* 已完成KYC认证(verification_level=2或3)时显示"查看KYC"按钮 */}
+          {getActualVerificationLevel(account) >= 2 && (
+            <Button
+              type="primary"
+              ghost
+              icon={<IdcardOutlined />}
+              onClick={handleViewKyc}
+              style={{ marginRight: 8 }}
+            >
+              查看KYC
+            </Button>
+          )}
+          <Button
+            type="primary"
+            ghost
+            icon={<CreditCardOutlined />}
+            onClick={handleOpenCardApply}
+          >
+            一键开卡
+          </Button>
           </div>
         </div>
-
+        
         <Descriptions column={1} size="small" bordered>
           <Descriptions.Item label="用户ID">{account.userId}</Descriptions.Item>
           <Descriptions.Item label="邮箱">{account.email}</Descriptions.Item>
@@ -875,55 +874,55 @@ const AccountDetailModal: React.FC<{
           )}
         </Descriptions>
 
-
+        
         <Divider orientation="left">余额信息</Divider>
-
+        
         <Row gutter={[16, 16]}>
           <Col span={12}>
-            <Statistic
-              title="可用余额"
-              value={formatAmount(account.availableBalance)}
+            <Statistic 
+              title="可用余额" 
+              value={formatAmount(account.availableBalance)} 
               prefix={<DollarOutlined />}
             />
           </Col>
           <Col span={12}>
-            <Statistic
-              title="提现中金额"
-              value={formatAmount(account.withdrawingAmount)}
+            <Statistic 
+              title="提现中金额" 
+              value={formatAmount(account.withdrawingAmount)} 
               prefix={<DollarOutlined />}
             />
           </Col>
           <Col span={12}>
-            <Statistic
-              title="红包余额"
-              value={formatAmount(account.redPacketBalance)}
+            <Statistic 
+              title="红包余额" 
+              value={formatAmount(account.redPacketBalance)} 
               prefix={<DollarOutlined />}
             />
           </Col>
           <Col span={12}>
-            <Statistic
-              title="总收益"
-              value={formatAmount(account.totalEarnBalance)}
+            <Statistic 
+              title="总收益" 
+              value={formatAmount(account.totalEarnBalance)} 
               prefix={<DollarOutlined />}
             />
           </Col>
           <Col span={12}>
-            <Statistic
-              title="总消费"
-              value={formatAmount(account.totalConsumptionAmount)}
+            <Statistic 
+              title="总消费" 
+              value={formatAmount(account.totalConsumptionAmount)} 
               prefix={<DollarOutlined />}
             />
           </Col>
           <Col span={12}>
-            <Statistic
-              title="日消费"
-              value={formatAmount(account.dailyConsumption)}
+            <Statistic 
+              title="日消费" 
+              value={formatAmount(account.dailyConsumption)} 
               prefix={<DollarOutlined />}
             />
           </Col>
         </Row>
-
-
+        
+        
         {/* 卡片信息展示区域 */}
         <Divider orientation="left">卡片信息</Divider>
         <Spin spinning={loadingCards}>
@@ -953,8 +952,8 @@ const AccountDetailModal: React.FC<{
                     <Space>
                       <CreditCardOutlined />
                       <span>{card.card_last_four_digits ? `**** **** **** ${card.card_last_four_digits}` : '未获取到卡号'}</span>
-                      <Button
-                        type="link"
+                      <Button 
+                        type="link" 
                         onClick={(e) => {
                           e.stopPropagation(); // 阻止事件冒泡
                           setSelectedCard(card);
@@ -984,15 +983,15 @@ const AccountDetailModal: React.FC<{
               ))}
             </div>
           ) : (
-            <Empty
-              description="暂无卡片信息"
+            <Empty 
+              description="暂无卡片信息" 
               image={Empty.PRESENTED_IMAGE_SIMPLE}
             />
           )}
         </Spin>
-
+        
         <Divider orientation="left">账户安全</Divider>
-
+        
         <div>
           <BalanceTag color={account.google2faIsBound ? 'green' : 'orange'}>
             {account.google2faIsBound ? 'Google 2FA 已绑定' : 'Google 2FA 未绑定'}
@@ -1008,13 +1007,13 @@ const AccountDetailModal: React.FC<{
           </BalanceTag>
           {account.verification_level !== undefined && (
             <BalanceTag color={
-              account.verification_level === 2 ? 'green' :
-                account.verification_level === 3 ? 'gold' :
-                  account.verification_level === 1 ? 'blue' : 'orange'
+              account.verification_level === 2 ? 'green' : 
+              account.verification_level === 3 ? 'gold' : 
+              account.verification_level === 1 ? 'blue' : 'orange'
             }>
-              {account.verification_level === 2 ? 'KYC已认证' :
-                account.verification_level === 3 ? 'KYC认证中' :
-                  account.verification_level === 1 ? '基础已认证' : 'KYC未认证'}
+              {account.verification_level === 2 ? 'KYC已认证' : 
+               account.verification_level === 3 ? 'KYC认证中' :
+               account.verification_level === 1 ? '基础已认证' : 'KYC未认证'}
             </BalanceTag>
           )}
         </div>
@@ -1115,7 +1114,7 @@ const AccountDetailModal: React.FC<{
                     name="imap_port"
                     label="IMAP 端口"
                     rules={[{ required: true, message: '请输入有效的IMAP端口号' }]}
-                  // transform 属性已移除，将在 onFinish 中处理
+                    // transform 属性已移除，将在 onFinish 中处理
                   >
                     <Input type="number" placeholder="例如: 993" />
                   </Form.Item>
@@ -1145,7 +1144,7 @@ const AccountDetailModal: React.FC<{
                     name="smtp_port"
                     label="SMTP 端口"
                     rules={[{ required: true, message: '请输入有效的SMTP端口号' }]}
-                  // transform 属性已移除，将在 onFinish 中处理
+                    // transform 属性已移除，将在 onFinish 中处理
                   >
                     <Input type="number" placeholder="例如: 465 或 587" />
                   </Form.Item>
@@ -1172,23 +1171,23 @@ const AccountDetailModal: React.FC<{
               </Form.Item>
               <Form.Item name="extra_config" label="额外配置 (JSON格式)"
                 getValueFromEvent={(e) => { // 处理输入，确保是字符串或null
-                  const value = e.target.value;
-                  return value.trim() === '' ? null : value;
+                    const value = e.target.value;
+                    return value.trim() === '' ? null : value;
                 }}
                 rules={[
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value || typeof value !== 'string') {
-                        return Promise.resolve();
-                      }
-                      try {
-                        JSON.parse(value);
-                        return Promise.resolve();
-                      } catch (e) {
-                        return Promise.reject(new Error('额外配置必须是有效的JSON格式'));
-                      }
-                    },
-                  }),
+                    ({ getFieldValue }) => ({
+                        validator(_, value) {
+                            if (!value || typeof value !== 'string') {
+                                return Promise.resolve();
+                            }
+                            try {
+                                JSON.parse(value);
+                                return Promise.resolve();
+                            } catch (e) {
+                                return Promise.reject(new Error('额外配置必须是有效的JSON格式'));
+                            }
+                        },
+                    }),
                 ]}
               >
                 <Input.TextArea rows={3} placeholder='例如: {"key": "value"}' />
@@ -1202,9 +1201,9 @@ const AccountDetailModal: React.FC<{
                     setCustomEmailEditMode(false);
                     // customEmailForm.resetFields(); // 取消时不重置，以便保留上次的有效值或初始值
                     if (customEmailConfig) {
-                      customEmailForm.setFieldsValue(customEmailConfig); // 恢复到编辑前的数据
+                        customEmailForm.setFieldsValue(customEmailConfig); // 恢复到编辑前的数据
                     } else {
-                      customEmailForm.resetFields(); // 如果是新增模式取消，则清空
+                        customEmailForm.resetFields(); // 如果是新增模式取消，则清空
                     }
                   }}>取消</Button>
                 </Space>
@@ -1212,7 +1211,7 @@ const AccountDetailModal: React.FC<{
             </Form>
           </Card>
         )}
-
+        
       </div>
     );
   };
@@ -1260,7 +1259,7 @@ const AccountDetailModal: React.FC<{
               取消
             </Button>
           ];
-
+          
           // 添加刷新卡片信息按钮
           if (!editMode && account) {
             footerButtons.push(
@@ -1277,11 +1276,11 @@ const AccountDetailModal: React.FC<{
               </Button>
             );
           }
-
+          
           // 条件性添加自动KYC按钮
-          if (!editMode && account &&
-            getActualVerificationLevel(account) < 2 &&
-            getActualVerificationLevel(account) !== 3) {
+          if (!editMode && account && 
+              getActualVerificationLevel(account) < 2 && 
+              getActualVerificationLevel(account) !== 3) {
             footerButtons.push(
               <Button
                 key="autoKyc"
@@ -1295,7 +1294,7 @@ const AccountDetailModal: React.FC<{
               </Button>
             );
           }
-
+          
           // 条件性添加自动配置2FA按钮
           if (!editMode && account && !account.google2faIsBound) {
             footerButtons.push(
@@ -1310,7 +1309,7 @@ const AccountDetailModal: React.FC<{
               </Button>
             );
           }
-
+          
           // 添加编辑/保存按钮
           footerButtons.push(
             editMode ? (
@@ -1332,7 +1331,7 @@ const AccountDetailModal: React.FC<{
               </Button>
             )
           );
-
+          
           return footerButtons;
         })()}
       >
@@ -1353,7 +1352,7 @@ const AccountDetailModal: React.FC<{
             onClose={() => setTwoFactorAuthModalVisible(false)}
             onSuccess={onSuccess}
           />
-
+          
           {/* 2FA信息查看模态框 */}
           <TwoFaViewModal
             visible={twoFaModalVisible}
@@ -1363,7 +1362,7 @@ const AccountDetailModal: React.FC<{
             accountId={account.id.toString()}
             onSuccess={onSuccess}
           />
-
+          
           {/* KYC认证模态框 */}
           <KycAuthModal
             visible={kycAuthModalVisible}
@@ -1377,7 +1376,7 @@ const AccountDetailModal: React.FC<{
               message.success('KYC认证成功，账户状态已更新');
             }}
           />
-
+          
           {/* KYC信息查看模态框 */}
           <KycViewModal
             visible={kycViewModalVisible}
@@ -1390,7 +1389,7 @@ const AccountDetailModal: React.FC<{
               onSuccess();
             }}
           />
-
+          
           {/* 一键开卡模态框 */}
           <CardApplyModal
             visible={cardApplyModalVisible}
@@ -1429,7 +1428,7 @@ const BatchSyncResultModal: React.FC<{
   onClose: () => void;
 }> = ({ visible, result, onClose }) => {
   if (!result) return null;
-
+  
   // 表格列定义
   const columns = [
     {
@@ -1454,7 +1453,7 @@ const BatchSyncResultModal: React.FC<{
       render: (message?: string) => message || '-',
     },
   ];
-
+  
   return (
     <Modal
       title="批量同步结果"
@@ -1472,9 +1471,9 @@ const BatchSyncResultModal: React.FC<{
         <Descriptions.Item label="同步成功">{result.success}</Descriptions.Item>
         <Descriptions.Item label="同步失败">{result.failed}</Descriptions.Item>
       </Descriptions>
-
+      
       <Divider>详细结果</Divider>
-
+      
       <Table
         columns={columns}
         dataSource={result.accounts}
@@ -1499,7 +1498,7 @@ const AccountCreateModal: React.FC<{
   // 自定义邮箱配置状态
   const [useCustomEmailConfig, setUseCustomEmailConfig] = useState(false);
   // 自定义邮箱配置表单
-  const [customEmailForm] = Form.useForm();
+  const [customEmailForm] = Form.useForm(); 
 
   // 重置状态
   const resetState = () => {
@@ -1525,7 +1524,7 @@ const AccountCreateModal: React.FC<{
 
       // 更新同步状态
       setSyncStage('login');
-
+      
       // 第一步：登录
       const loginResponse = await api.post(`${API_BASE_URL}/api/infini-accounts/login`, {
         email: values.email,
@@ -1541,14 +1540,14 @@ const AccountCreateModal: React.FC<{
 
       // 更新同步状态
       setSyncStage('fetch');
-
+      
       // 等待一小段时间，让用户看到状态变化
       await new Promise(resolve => setTimeout(resolve, 500));
-
+      
       // 设置账户信息
       setAccountInfo(loginResponse.data.data);
       setSyncStage('complete');
-
+      
     } catch (error: any) {
       setSyncStage('error');
       setSyncError(error.response?.data?.message || error.message || '获取账户信息失败');
@@ -1563,7 +1562,7 @@ const AccountCreateModal: React.FC<{
     try {
       setLoading(true);
       const values = await form.validateFields();
-
+      
       const accountPayload: any = {
         email: values.email,
         password: values.password,
@@ -1574,7 +1573,7 @@ const AccountCreateModal: React.FC<{
         try {
           // 验证自定义邮箱配置表单
           const customEmailValues = await customEmailForm.validateFields();
-
+          
           // 准备自定义邮箱配置数据
           const customEmailConfig: any = {
             email: customEmailValues.custom_email_address,
@@ -1607,7 +1606,7 @@ const AccountCreateModal: React.FC<{
           return;
         }
       }
-
+      
       const response = await api.post(`${API_BASE_URL}/api/infini-accounts`, accountPayload);
 
       if (response.data.success) {
@@ -1637,21 +1636,21 @@ const AccountCreateModal: React.FC<{
               请先填写并提交Infini账户信息
             </Text>
           )}
-
+          
           {syncStage === 'login' && (
             <>
               <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
               <Text style={{ marginTop: 16 }}>正在登录第三方接口...</Text>
             </>
           )}
-
+          
           {syncStage === 'fetch' && (
             <>
               <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
               <Text style={{ marginTop: 16 }}>正在调用账户余额接口...</Text>
             </>
           )}
-
+          
           {syncStage === 'error' && (
             <>
               <ExclamationCircleOutlined style={{ fontSize: 32, color: '#ff4d4f', marginBottom: 16 }} />
@@ -1681,7 +1680,7 @@ const AccountCreateModal: React.FC<{
             {accountInfo.status === 'active' ? '活跃' : accountInfo.status}
           </StatusTag>
         </Title>
-
+        
         <Descriptions column={1} size="small" bordered>
           <Descriptions.Item label="用户ID">{accountInfo.userId}</Descriptions.Item>
           <Descriptions.Item label="邮箱">{accountInfo.email}</Descriptions.Item>
@@ -1691,40 +1690,40 @@ const AccountCreateModal: React.FC<{
         </Descriptions>
 
         <Divider orientation="left">余额信息</Divider>
-
+        
         <Row gutter={[16, 16]}>
           <Col span={12}>
-            <Statistic
-              title="可用余额"
-              value={formatAmount(accountInfo.availableBalance)}
+            <Statistic 
+              title="可用余额" 
+              value={formatAmount(accountInfo.availableBalance)} 
               prefix={<DollarOutlined />}
             />
           </Col>
           <Col span={12}>
-            <Statistic
-              title="提现中金额"
-              value={formatAmount(accountInfo.withdrawingAmount)}
+            <Statistic 
+              title="提现中金额" 
+              value={formatAmount(accountInfo.withdrawingAmount)} 
               prefix={<DollarOutlined />}
             />
           </Col>
           <Col span={12}>
-            <Statistic
-              title="红包余额"
-              value={formatAmount(accountInfo.redPacketBalance)}
+            <Statistic 
+              title="红包余额" 
+              value={formatAmount(accountInfo.redPacketBalance)} 
               prefix={<DollarOutlined />}
             />
           </Col>
           <Col span={12}>
-            <Statistic
-              title="总收益"
-              value={formatAmount(accountInfo.totalEarnBalance)}
+            <Statistic 
+              title="总收益" 
+              value={formatAmount(accountInfo.totalEarnBalance)} 
               prefix={<DollarOutlined />}
             />
           </Col>
         </Row>
 
         <Divider orientation="left">账户安全</Divider>
-
+        
         <div>
           <BalanceTag color={accountInfo.google2faIsBound ? 'green' : 'orange'}>
             {accountInfo.google2faIsBound ? 'Google 2FA 已绑定' : 'Google 2FA 未绑定'}
@@ -1793,7 +1792,7 @@ const AccountCreateModal: React.FC<{
               >
                 <Input prefix={<MailOutlined />} placeholder="请输入Infini登录邮箱" />
               </Form.Item>
-
+              
               <Form.Item
                 name="password"
                 label="Infini登录密码"
@@ -1801,16 +1800,16 @@ const AccountCreateModal: React.FC<{
               >
                 <Input.Password prefix={<LockOutlined />} placeholder="请输入Infini登录密码" />
               </Form.Item>
-
+              
               <Form.Item>
-                <Checkbox
-                  checked={useCustomEmailConfig}
+                <Checkbox 
+                  checked={useCustomEmailConfig} 
                   onChange={(e) => setUseCustomEmailConfig(e.target.checked)}
                 >
                   使用自定义邮箱配置（用于接收验证码等）
                 </Checkbox>
               </Form.Item>
-
+              
               {useCustomEmailConfig && (
                 <Card size="small" title="自定义邮箱配置" style={{ marginBottom: 16, borderColor: '#bae7ff' }}>
                   <Form
@@ -1913,8 +1912,8 @@ const AccountCreateModal: React.FC<{
                         <Radio value="disabled">禁用</Radio>
                       </Radio.Group>
                     </Form.Item>
-                    <Form.Item
-                      name="custom_extra_config"
+                    <Form.Item 
+                      name="custom_extra_config" 
                       label="额外配置 (JSON格式)"
                       getValueFromEvent={(e) => {
                         const value = e.target.value;
@@ -1941,7 +1940,7 @@ const AccountCreateModal: React.FC<{
                   </Form>
                 </Card>
               )}
-
+              
               <Form.Item>
                 <Text type="secondary">
                   <InfoCircleOutlined style={{ marginRight: 8 }} />
@@ -1950,7 +1949,7 @@ const AccountCreateModal: React.FC<{
               </Form.Item>
             </Form>
           </Col>
-
+          
           {accountInfo && (
             <Col span={12}>
               <AccountInfoContainer>
@@ -1958,7 +1957,7 @@ const AccountCreateModal: React.FC<{
               </AccountInfoContainer>
             </Col>
           )}
-
+          
           {!accountInfo && (
             <Col span={24} style={{ display: syncStage !== 'idle' ? 'block' : 'none' }}>
               <Divider />
@@ -1979,7 +1978,7 @@ const getStyleForBalance = (amount: number, colorRanges: any[]) => {
     color: "default", // 默认标签颜色
     style: {} as React.CSSProperties // 默认样式为空
   };
-
+  
   // 从大到小遍历阈值，找到第一个符合条件的区间
   for (const range of colorRanges) {
     if (amount >= range.threshold) {
@@ -1994,7 +1993,7 @@ const getStyleForBalance = (amount: number, colorRanges: any[]) => {
       break;
     }
   }
-
+  
   return result;
 };
 
@@ -2026,32 +2025,32 @@ const generateStrongPassword = (): string => {
   const length = Math.floor(Math.random() * 9) + 16; // 16-24位长度
   const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=';
   let password = '';
-
+  
   // 确保至少包含一个特殊字符
   let hasSpecialChar = false;
   const specialChars = '!@#$%^&*()_+~`|}{[]:;?><,./-=';
-
+  
   // 生成随机密码
   for (let i = 0; i < length; i++) {
     const randomChar = charset.charAt(Math.floor(Math.random() * charset.length));
     password += randomChar;
-
+    
     // 检查是否包含特殊字符
     if (specialChars.includes(randomChar)) {
       hasSpecialChar = true;
     }
   }
-
+  
   // 如果没有特殊字符，替换最后一个字符为特殊字符
   if (!hasSpecialChar) {
     const randomSpecialChar = specialChars.charAt(Math.floor(Math.random() * specialChars.length));
     password = password.slice(0, -1) + randomSpecialChar;
   }
-
+  
   return password;
 };
 
-// 注册Infini账户模态框组件
+// 注册模态框组件
 const AccountRegisterModal: React.FC<{
   visible: boolean;
   onClose: () => void;
@@ -2059,296 +2058,220 @@ const AccountRegisterModal: React.FC<{
 }> = ({ visible, onClose, onSuccess }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [emailAccounts, setEmailAccounts] = useState<any[]>([]);
-  const [loadingEmailAccounts, setLoadingEmailAccounts] = useState(false);
-  const [selectedEmailAccount, setSelectedEmailAccount] = useState<any>(null);
-  const [registering, setRegistering] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
-  const [accountGroups, setAccountGroups] = useState<AccountGroup[]>([]);
-  const [loadingGroups, setLoadingGroups] = useState(false);
-  const logSectionRef = useRef<HTMLDivElement>(null);
-
-  // 添加日志
-  const addLog = useCallback((text: string, type: 'info' | 'success' | 'error' = 'info') => {
-    const timestamp = new Date().toLocaleTimeString();
-    const prefix = type === 'error' 
-      ? '❌ ' 
-      : type === 'success' 
-        ? '✅ ' 
-        : '📝 ';
-    
-    setLogs(prevLogs => [...prevLogs, `${prefix}[${timestamp}] ${text}`]);
-    
-    // 滚动到底部
-    setTimeout(() => {
-      if (logSectionRef.current) {
-        logSectionRef.current.scrollTop = logSectionRef.current.scrollHeight;
-      }
-    }, 10);
-  }, []);
-
-  // 获取邮箱账户
-  const fetchEmailAccounts = useCallback(async () => {
+  const [kycEnabled, setKycEnabled] = useState(false);
+  const [kycImages, setKycImages] = useState<KycImage[]>([]);
+  const [loadingKycImages, setLoadingKycImages] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const [useCustomEmailConfig, setUseCustomEmailConfig] = useState(false); // 新增状态
+  
+  // 发送验证码
+  const sendVerificationCode = async () => {
     try {
-      setLoadingEmailAccounts(true);
-      const response = await api.get(`${apiBaseUrl}/api/email-accounts`);
+      const email = form.getFieldValue('email');
       
-      if (response.data.success) {
-        const accounts = response.data.data || [];
-        setEmailAccounts(accounts);
-        
-        // 如果有活跃账户，默认选择第一个
-        const activeAccount = accounts.find((acc: any) => acc.status === 'active');
-        if (activeAccount) {
-          setSelectedEmailAccount(activeAccount);
-          form.setFieldsValue({ emailAccountId: activeAccount.id });
-        }
-      } else {
-        message.error('获取邮箱账户失败');
+      // 验证邮箱格式
+      if (!email || !/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
+        message.error('请输入有效的邮箱地址');
+        return;
       }
-    } catch (error) {
-      console.error('获取邮箱账户失败:', error);
-      message.error('获取邮箱账户列表失败');
-    } finally {
-      setLoadingEmailAccounts(false);
-    }
-  }, [form]);
-
-  // 获取账户分组
-  const fetchAccountGroups = useCallback(async () => {
-    try {
-      setLoadingGroups(true);
-      const response = await infiniAccountApi.getAllAccountGroups();
+      
+      setSendingCode(true);
+      const response = await infiniAccountApi.sendVerificationCode(email);
       
       if (response.success) {
-        setAccountGroups(response.data || []);
+        message.success('验证码已发送，请检查邮箱');
+        // 开始倒计时
+        setCountdown(60);
+        const timer = setInterval(() => {
+          setCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
       } else {
-        message.error('获取账户分组失败');
+        message.error('发送验证码失败: ' + response.message);
       }
-    } catch (error) {
-      console.error('获取账户分组失败:', error);
-      message.error('获取账户分组列表失败');
+    } catch (error: any) {
+      message.error('发送验证码失败: ' + error.message);
     } finally {
-      setLoadingGroups(false);
+      setSendingCode(false);
     }
-  }, []);
-
+  };
+  
+  // 获取验证码（仅用于测试）
+  const fetchCode = async () => {
+    try {
+      const email = form.getFieldValue('email');
+      
+      if (!email) {
+        message.error('请先输入邮箱地址');
+        return;
+      }
+      
+      const response = await infiniAccountApi.fetchVerificationCode(email);
+      
+      if (response.success && response.data) {
+        setVerificationCode(response.data.code);
+        form.setFieldsValue({ verificationCode: response.data });
+        message.success('获取验证码成功: ' + response.data);
+      } else {
+        message.error('获取验证码失败: ' + response.message);
+      }
+    } catch (error: any) {
+      message.error('获取验证码失败: ' + error.message);
+    }
+  };
+  
+  // 重置状态
+  const resetState = () => {
+    form.resetFields();
+    setKycEnabled(false);
+    setVerificationCode('');
+    setCountdown(0);
+  };
+  
+  // 获取KYC图片列表
+  const fetchKycImages = async () => {
+    try {
+      setLoadingKycImages(true);
+      const response = await api.get(`${apiBaseUrl}/api/kyc-images`);
+      
+      if (response.data.success) {
+        setKycImages(response.data.data || []);
+      } else {
+        message.error('获取KYC图片列表失败: ' + response.data.message);
+      }
+    } catch (error: any) {
+      message.error('获取KYC图片列表失败: ' + error.message);
+    } finally {
+      setLoadingKycImages(false);
+    }
+  };
+  
+  // KYC选项变更时
+  const handleKycChange = (e: any) => {
+    const checked = e.target.checked;
+    setKycEnabled(checked);
+    
+    if (checked) {
+      fetchKycImages();
+    }
+  };
+  
   // 生成随机密码
   const generatePassword = () => {
     const password = generateStrongPassword();
     form.setFieldsValue({ password });
     message.success('已生成随机强密码');
   };
-
+  
+  // 生成随机KYC信息
+  const generateRandomKyc = () => {
+    // 随机国家列表
+    const countries = ['中国', '美国', '英国', '日本', '加拿大', '澳大利亚', '德国', '法国'];
+    // 随机证件类型
+    const idTypes = ['身份证', '护照', '驾照'];
+    
+    // 随机生成手机号
+    const generateRandomPhone = () => {
+      return `1${Math.floor(Math.random() * 9 + 1)}${Array(9).fill(0).map(() => Math.floor(Math.random() * 10)).join('')}`;
+    };
+    
+    // 随机生成证件号
+    const generateRandomIdNumber = () => {
+      return Array(18).fill(0).map(() => Math.floor(Math.random() * 10)).join('');
+    };
+    
+    // 设置随机值
+    form.setFieldsValue({
+      country: countries[Math.floor(Math.random() * countries.length)],
+      phone: generateRandomPhone(),
+      idType: idTypes[Math.floor(Math.random() * idTypes.length)],
+      idNumber: generateRandomIdNumber(),
+    });
+    
+    message.success('已生成随机KYC信息');
+  };
+  
   // 处理关闭
   const handleClose = () => {
-    form.resetFields();
-    setLogs([]);
-    setRegistering(false);
+    resetState();
     onClose();
   };
-
-  // 打开新增邮箱模态框
-  const openAddEmailModal = () => {
-    // 这里应该触发邮箱账户列表页面的新增模态框
-    // 由于无法直接跨页面触发，可以通过导航或使用消息传递
-    message.info('请前往邮箱账户列表页面添加新邮箱');
-    // 可以选择跳转到邮箱管理页面
-    window.open('/email-manage', '_blank');
-  };
-
-  // 处理表单提交
-  const handleSubmit = async (values: any) => {
-    // 检查是否选择了邮箱账户
-    if (!values.emailAccountId) {
-      message.error('请选择系统维护的邮箱配置');
-      return;
-    }
-
+  
+  // 提交表单
+  const handleSubmit = async (values: RegisterFormData & any) => { // 允许 any 访问自定义字段
     try {
       setLoading(true);
-      setRegistering(true);
-      addLog('开始注册流程...', 'info');
+      
+      // 提取表单数据
+      const {
+        email, password, needKyc, country, phone, idType, idNumber, kycImageId, enable2fa,
+        useCustomEmailConfig: formUseCustomEmailConfig, // 从 values 中获取
+        custom_email_address, custom_email_password,
+        custom_imap_host, custom_imap_port, imap_secure,
+        custom_smtp_host, custom_smtp_port, smtp_secure,
+        custom_email_status, custom_extra_config
+      } = values;
+      
+      // 模拟账户创建API调用
+      // 在实际应用中，这里会调用 infiniAccountApi.createAccount
+      // 并从响应中获取 newAccountId
+      console.log('模拟调用 infiniAccountApi.createAccount with:', { email, password /*, other fields */ });
+      const mockCreateAccountResponse = { success: true, data: { id: Date.now() }, message: '账户创建成功(模拟)' }; // 模拟成功响应和新账户ID
+      
+      if (mockCreateAccountResponse.success && mockCreateAccountResponse.data?.id) {
+        const newAccountId = mockCreateAccountResponse.data.id;
+        message.success(mockCreateAccountResponse.message);
 
-      // 获取选中的邮箱账户
-      const emailAccount = emailAccounts.find(acc => acc.id === values.emailAccountId);
-      if (!emailAccount) {
-        throw new Error('未找到选中的邮箱账户');
-      }
-      
-      addLog(`步骤1: 使用 ${emailAccount.email} 作为主邮箱`, 'info');
-
-      // 步骤1: 发送验证码
-      const email = values.email;
-      addLog(`步骤2: 正在向 ${email} 发送验证码...`, 'info');
-      const sendResponse = await infiniAccountApi.sendVerificationCode(email);
-      
-      if (!sendResponse.success) {
-        throw new Error(`发送验证码失败: ${sendResponse.message}`);
-      }
-      
-      addLog('验证码发送成功', 'success');
-      
-      // 步骤2: 获取验证码
-      addLog('步骤3: 正在获取验证码...', 'info');
-      // 延迟一下确保邮件已到达
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const codeResponse = await infiniAccountApi.fetchVerificationCode(email, emailAccount.email);
-      
-      if (!codeResponse.success || !codeResponse.data.code) {
-        throw new Error(`获取验证码失败: ${codeResponse.message}`);
-      }
-      
-      const verificationCode = codeResponse.data.code;
-      addLog(`成功获取验证码: ${verificationCode}`, 'success');
-      
-      // 步骤3: 注册Infini账户
-      addLog('步骤4: 正在注册Infini账户...', 'info');
-
-      // 使用axios直接调用Infini API
-      const options = {
-        method: 'POST',
-        url: 'https://api-card.infini.money/user/registration/email',
-        headers: {
-          'sec-ch-ua-platform': '"macOS"',
-          'Referer': 'https://app.infini.money/',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
-          'Accept': 'application/json, text/plain, */*',
-          'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-          'sec-ch-ua-mobile': '?0',
-          'Content-Type': 'application/json'
-        },
-        data: {
-          email: email,
-          verification_code: verificationCode,
-          password: values.password,
-          invitation_code: values.invitationCode || 'TC7MLI9' // 使用默认邀请码
-        }
-      };
-      
-      addLog(`使用邀请码: ${values.invitationCode || 'TC7MLI9'}`, 'info');
-
-      try {
-        const response = await api.request(options);
-        
-        if (response.data && response.data.code === 0) {
-          addLog('Infini注册成功', 'success');
-          
-          // 步骤4: 保存账户信息到本地数据库
-          addLog('步骤5: 正在保存账户信息到本地数据库...', 'info');
-          
-          // 创建账户信息
-          const createData: any = {
-            email: email,
-            password: values.password,
-            emailAccountId: values.emailAccountId,
-            auto2fa: values.enable2fa,
-            autoKyc: values.needKyc,
-            autoApplyCard: values.enableCard
+        // 如果启用了自定义邮箱配置，则创建它
+        if (formUseCustomEmailConfig) {
+          const customEmailConfigData = {
+            email: custom_email_address,
+            password: custom_email_password,
+            imap_host: custom_imap_host,
+            imap_port: Number(custom_imap_port),
+            imap_secure: imap_secure,
+            smtp_host: custom_smtp_host,
+            smtp_port: Number(custom_smtp_port),
+            smtp_secure: smtp_secure,
+            status: custom_email_status,
+            extra_config: custom_extra_config ? JSON.parse(custom_extra_config) : null,
           };
-          
-          // 如果选择了账户分组，添加到请求数据
-          if (values.accountGroupId) {
-            createData.accountGroupId = values.accountGroupId;
+
+          try {
+            console.log(`尝试为新账户 ID ${newAccountId} 创建自定义邮箱配置:`, customEmailConfigData);
+            const customEmailResponse = await infiniAccountApi.createCustomEmailConfig(newAccountId, customEmailConfigData);
+            if (customEmailResponse.success) {
+              message.success('自定义邮箱配置已成功关联到新账户。');
+            } else {
+              message.error(`自定义邮箱配置失败: ${customEmailResponse.message || '未知错误'}`);
+            }
+          } catch (customEmailError: any) {
+            message.error(`创建自定义邮箱配置时出错: ${customEmailError.message || '未知网络错误'}`);
+            console.error("创建自定义邮箱配置错误:", customEmailError);
           }
-          
-          const createResponse = await infiniAccountApi.createAccount(
-            email, 
-            values.password,
-            undefined, // 不使用随机用户ID
-            createData
-          );
-          
-          if (!createResponse.success) {
-            throw new Error(`保存账户信息失败: ${createResponse.message}`);
-          }
-          
-          const createdAccount = createResponse.data;
-          addLog('账户信息保存成功', 'success');
-          
-          // 步骤5: 同步账户信息 
-          addLog('步骤6: 正在同步账户信息...', 'info');
-          const syncResponse = await infiniAccountApi.syncAccount(createdAccount.id);
-          
-          if (!syncResponse.success) {
-            throw new Error(`同步账户信息失败: ${syncResponse.message}`);
-          }
-          
-          addLog('账户信息同步成功，已获取最新账户资料', 'success');
-          addLog('注册流程完成!', 'success');
-          
-          // 注册成功
-          message.success('Infini账户注册成功!');
-          
-          // 延迟关闭模态框
-          setTimeout(() => {
-            handleClose();
-            onSuccess();
-          }, 1500);
-        } else {
-          throw new Error(`Infini API返回错误: ${response.data.message || JSON.stringify(response.data)}`);
         }
-      } catch (axiosError) {
-        console.error('Infini API调用失败:', axiosError);
-        throw new Error(`Infini API调用失败: ${(axiosError as Error).message}`);
+        
+        resetState();
+        onSuccess(); // 调用外部传入的成功回调，例如刷新账户列表
+        onClose();   // 关闭模态框
+      } else {
+        message.error(mockCreateAccountResponse.message || '账户创建失败(模拟)');
       }
-    } catch (error) {
-      const errorMessage = (error as Error).message;
-      addLog(`注册失败: ${errorMessage}`, 'error');
-      message.error('注册失败: ' + errorMessage);
-      console.error('Infini账户注册失败:', error);
+    } catch (error: any) {
+      message.error('注册过程中发生错误: ' + error.message);
+      console.error("注册表单提交错误:", error);
     } finally {
       setLoading(false);
-      setRegistering(false);
     }
   };
-
-  // 初始化数据
-  useEffect(() => {
-    if (visible) {
-      fetchEmailAccounts();
-      fetchAccountGroups();
-    }
-  }, [visible, fetchEmailAccounts, fetchAccountGroups]);
-
-  // 日志面板组件
-  const LogPanel = React.memo(() => {
-    return (
-      <div 
-        id="log-container" 
-        ref={logSectionRef}
-        style={{
-          marginTop: 16,
-          maxHeight: 150,
-          overflowY: 'auto',
-          background: '#f5f5f5',
-          padding: 8,
-          borderRadius: 4
-        }}
-      >
-        {logs.length === 0 ? (
-          <Text type="secondary">暂无日志记录</Text>
-        ) : (
-          logs.map((log, index) => (
-            <div 
-              key={index}
-              style={{
-                marginBottom: 4,
-                fontFamily: 'monospace',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-all',
-                fontSize: 12
-              }}
-            >
-              {log}
-            </div>
-          ))
-        )}
-      </div>
-    );
-  });
-
+  
   return (
     <Modal
       title="注册Infini账户"
@@ -2356,7 +2279,7 @@ const AccountRegisterModal: React.FC<{
       onCancel={handleClose}
       width={700}
       footer={[
-        <Button key="cancel" onClick={handleClose} disabled={registering}>
+        <Button key="cancel" onClick={handleClose}>
           取消
         </Button>,
         <Button
@@ -2364,7 +2287,6 @@ const AccountRegisterModal: React.FC<{
           type="primary"
           loading={loading}
           onClick={() => form.submit()}
-          disabled={registering}
         >
           注册账户
         </Button>,
@@ -2375,66 +2297,30 @@ const AccountRegisterModal: React.FC<{
         layout="vertical"
         onFinish={handleSubmit}
         initialValues={{
-          needKyc: false,
+          needKyc: false, // 保留一个即可
           enable2fa: false,
-          enableCard: false,
-          invitationCode: 'TC7MLI9'
+          useCustomEmailConfig: false, // 初始化
+          imap_secure: true, // 默认IMAP安全连接
+          smtp_secure: true, // 默认SMTP安全连接
+          custom_email_status: 'active', // 默认自定义邮箱状态
         }}
       >
         <Form.Item
-          name="emailAccountId"
-          label="系统邮箱配置"
-          rules={[{ required: true, message: '请选择系统维护的邮箱配置' }]}
-          extra="用于接收验证码和其他系统通知"
-        >
-          <Select
-            placeholder="请选择系统维护的邮箱配置"
-            loading={loadingEmailAccounts}
-            dropdownRender={menu => (
-              <>
-                {menu}
-                <Divider style={{ margin: '8px 0' }} />
-                <Button 
-                  type="link" 
-                  icon={<PlusOutlined />} 
-                  onClick={openAddEmailModal}
-                  style={{ padding: '8px', display: 'block', width: '100%', textAlign: 'left' }}
-                >
-                  新增邮箱配置
-                </Button>
-              </>
-            )}
-          >
-            {emailAccounts.map(account => (
-              <Option key={account.id} value={account.id}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <MailOutlined style={{ marginRight: 8 }} />
-                  <span>{account.email}</span>
-                  {account.status === 'active' && (
-                    <Tag color="green" style={{ marginLeft: 8 }}>活跃</Tag>
-                  )}
-                </div>
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
           name="email"
-          label="注册邮箱"
+          label="邮箱"
           rules={[
             { required: true, message: '请输入邮箱' },
             { type: 'email', message: '请输入有效的邮箱地址' }
           ]}
         >
-          <Input prefix={<MailOutlined />} placeholder="请输入要注册的Infini邮箱" />
+          <Input prefix={<MailOutlined />} placeholder="请输入邮箱" />
         </Form.Item>
 
         <Form.Item
           name="password"
-          label="注册密码"
+          label="密码"
           rules={[{ required: true, message: '请输入密码' }]}
-          extra={<Button type="link" onClick={generatePassword} style={{ padding: 0 }}>生成随机强密码</Button>}
+          extra={ <Button type="link" onClick={generatePassword} style={{ padding: 0 }}>生成随机强密码</Button> }
         >
           <Input.Password
             prefix={<LockOutlined />}
@@ -2443,59 +2329,320 @@ const AccountRegisterModal: React.FC<{
         </Form.Item>
 
         <Form.Item
-          name="accountGroupId"
-          label="账户分组"
+          name="verificationCode"
+          label="邮箱验证码"
+          rules={[{ required: true, message: '请输入邮箱验证码' }]}
         >
-          <Select placeholder="请选择账户分组" loading={loadingGroups} allowClear>
-            {accountGroups.map(group => (
-              <Option key={group.id} value={group.id}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <UserOutlined style={{ marginRight: 8 }} />
-                  <span>{group.name}</span>
-                  {group.isDefault && (
-                    <Tag color="blue" style={{ marginLeft: 8 }}>默认</Tag>
-                  )}
-                </div>
-              </Option>
-            ))}
-          </Select>
+          <div style={{ display: 'flex' }}>
+            <Input
+              prefix={<SafetyOutlined />}
+              placeholder="请输入邮箱验证码"
+              value={verificationCode} // 如果需要手动输入或显示获取到的验证码
+              onChange={e => setVerificationCode(e.target.value)} // 如果需要手动输入
+            />
+            <Button
+              onClick={sendVerificationCode}
+              loading={sendingCode}
+              disabled={countdown > 0}
+              style={{ marginLeft: 8 }}
+            >
+              {countdown > 0 ? `${countdown}s后重发` : '发送验证码'}
+            </Button>
+            {/* <Button onClick={fetchCode} style={{ marginLeft: 8 }}>获取(测试)</Button> */}
+          </div>
         </Form.Item>
 
+        <Form.Item name="useCustomEmailConfig" valuePropName="checked">
+          <Checkbox onChange={(e) => setUseCustomEmailConfig(e.target.checked)}>
+            使用自定义邮箱配置 (用于接收验证码等)
+          </Checkbox>
+        </Form.Item>
+
+        {useCustomEmailConfig && (
+          <Card size="small" title="自定义邮箱配置" style={{ marginBottom: 16, borderColor: '#bae7ff' }}>
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_email_address"
+                  label="邮箱地址"
+                  rules={[{ required: useCustomEmailConfig, type: 'email', message: '请输入有效的邮箱地址' }]}
+                >
+                  <Input prefix={<MailOutlined />} placeholder="例如: custom_user@example.com" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_email_password"
+                  label="邮箱密码/授权码"
+                  rules={[{ required: useCustomEmailConfig, message: '密码不能为空' }]}
+                >
+                  <Input.Password prefix={<LockOutlined />} placeholder="输入邮箱密码或应用授权码" />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_imap_host"
+                  label="IMAP 主机"
+                  rules={[{ required: useCustomEmailConfig, message: 'IMAP 主机不能为空' }]}
+                >
+                  <Input placeholder="例如: imap.example.com" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="custom_imap_port"
+                  label="IMAP 端口"
+                  rules={[{ required: useCustomEmailConfig, message: '请输入有效的IMAP端口号' }]}
+                >
+                  <Input type="number" placeholder="例如: 993" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="imap_secure"
+                  label="IMAP SSL/TLS"
+                  valuePropName="checked"
+                >
+                  <Checkbox>启用</Checkbox>
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_smtp_host"
+                  label="SMTP 主机"
+                  rules={[{ required: useCustomEmailConfig, message: 'SMTP 主机不能为空' }]}
+                >
+                  <Input placeholder="例如: smtp.example.com" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="custom_smtp_port"
+                  label="SMTP 端口"
+                  rules={[{ required: useCustomEmailConfig, message: '请输入有效的SMTP端口号' }]}
+                >
+                  <Input type="number" placeholder="例如: 465 或 587" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="smtp_secure"
+                  label="SMTP SSL/TLS"
+                  valuePropName="checked"
+                >
+                  <Checkbox>启用</Checkbox>
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item
+              name="custom_email_status"
+              label="自定义邮箱状态"
+              rules={[{ required: useCustomEmailConfig, message: '请选择状态' }]}
+            >
+              <Radio.Group>
+                <Radio value="active">激活</Radio>
+                <Radio value="disabled">禁用</Radio>
+              </Radio.Group>
+            </Form.Item>
+             <Form.Item name="custom_extra_config" label="额外配置 (JSON格式)"
+                getValueFromEvent={(e) => {
+                    const value = e.target.value;
+                    return value.trim() === '' ? null : value;
+                }}
+                rules={[
+                    ({ getFieldValue }) => ({
+                        validator(_, value) {
+                            if (!value || typeof value !== 'string' || !useCustomEmailConfig) { // 仅当启用自定义配置时校验
+                                return Promise.resolve();
+                            }
+                            try {
+                                JSON.parse(value);
+                                return Promise.resolve();
+                            } catch (e) {
+                                return Promise.reject(new Error('额外配置必须是有效的JSON格式'));
+                            }
+                        },
+                    }),
+                ]}
+              >
+                <Input.TextArea rows={2} placeholder='例如: {"key": "value"}' />
+              </Form.Item>
+          </Card>
+        )}
+
+        <Form.Item name="needKyc" valuePropName="checked">
+          <Checkbox onChange={handleKycChange}>需要KYC认证</Checkbox>
+        </Form.Item>
         <Form.Item
-          name="invitationCode"
-          label="邀请码"
-          initialValue="TC7MLI9"
+          name="verificationCode"
+          label="验证码"
+          rules={[{ required: true, message: '请输入验证码' }]}
         >
-          <Input placeholder="请输入邀请码" />
+          <div style={{ display: 'flex' }}>
+            <Input 
+              placeholder="请输入验证码" 
+              style={{ flex: 1 }}
+              value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value)}
+            />
+            <Button 
+              type="primary"
+              loading={sendingCode}
+              disabled={countdown > 0}
+              onClick={sendVerificationCode}
+              style={{ marginLeft: 8, width: 120 }}
+            >
+              {countdown > 0 ? `${countdown}秒后重试` : '发送验证码'}
+            </Button>
+            <Button 
+              type="link"
+              onClick={fetchCode}
+              style={{ marginLeft: 8 }}
+            >
+              提取验证码
+            </Button>
+          </div>
         </Form.Item>
-
-        <Row gutter={16}>
-          <Col span={8}>
-            <Form.Item
-              name="enable2fa"
-              valuePropName="checked"
-            >
-              <Checkbox>自动开启2FA</Checkbox>
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item
-              name="needKyc"
-              valuePropName="checked"
-            >
-              <Checkbox>自动KYC认证</Checkbox>
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item
-              name="enableCard"
-              valuePropName="checked"
-            >
-              <Checkbox>自动开卡</Checkbox>
-            </Form.Item>
-          </Col>
-        </Row>
-
+        
+        <Form.Item
+          name="password"
+          label="密码"
+          rules={[{ required: true, message: '请输入密码' }]}
+        >
+          <Input.Password 
+            prefix={<LockOutlined />} 
+            placeholder="请输入密码" 
+            addonAfter={
+              <Button 
+                type="text" 
+                icon={<ReloadOutlined />} 
+                onClick={generatePassword}
+                style={{ border: 'none', padding: 0 }}
+              />
+            }
+          />
+        </Form.Item>
+        
+        <Form.Item 
+          name="needKyc" 
+          valuePropName="checked"
+        >
+          <Checkbox onChange={handleKycChange}>进行KYC认证</Checkbox>
+        </Form.Item>
+        
+        {kycEnabled && (
+          <Collapse defaultActiveKey={['1']} style={{ marginBottom: 16 }}>
+            <Panel header="KYC信息" key="1" extra={
+              <Button 
+                type="text" 
+                icon={<ReloadOutlined />} 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  generateRandomKyc();
+                }}
+                style={{ padding: '4px 8px' }}
+              >
+                随机生成
+              </Button>
+            }>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="country"
+                    label="国家"
+                    rules={[{ required: kycEnabled, message: '请选择国家' }]}
+                  >
+                    <Input 
+                      prefix={<GlobalOutlined />} 
+                      placeholder="请输入国家" 
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="phone"
+                    label="手机号"
+                    rules={[{ required: kycEnabled, message: '请输入手机号' }]}
+                  >
+                    <Input 
+                      prefix={<MobileOutlined />} 
+                      placeholder="请输入手机号" 
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="idType"
+                    label="证件类型"
+                    rules={[{ required: kycEnabled, message: '请选择证件类型' }]}
+                  >
+                    <Select placeholder="请选择证件类型" prefix={<IdcardOutlined />}>
+                      <Option value="身份证">身份证</Option>
+                      <Option value="护照">护照</Option>
+                      <Option value="驾照">驾照</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="idNumber"
+                    label="证件编号"
+                    rules={[{ required: kycEnabled, message: '请输入证件编号' }]}
+                  >
+                    <Input 
+                      prefix={<NumberOutlined />} 
+                      placeholder="请输入证件编号" 
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              <Form.Item
+                name="kycImageId"
+                label="KYC图片"
+                rules={[{ required: kycEnabled, message: '请选择KYC图片' }]}
+              >
+                <Select 
+                  placeholder="请选择KYC图片" 
+                  loading={loadingKycImages}
+                  optionLabelProp="label"
+                >
+                  {kycImages.map(image => (
+                    <Option 
+                      key={image.id} 
+                      value={image.id}
+                      label={`图片ID: ${image.id} - 标签: ${image.tags}`}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <img 
+                          src={image.img_base64} 
+                          alt="KYC图片" 
+                          style={{ width: 40, height: 40, marginRight: 8, objectFit: 'cover' }}
+                        />
+                        <span>{`图片ID: ${image.id} - 标签: ${image.tags}`}</span>
+                      </div>
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Panel>
+          </Collapse>
+        )}
+        
+        <Form.Item 
+          name="enable2fa" 
+          valuePropName="checked"
+        >
+          <Checkbox>自动开启2FA</Checkbox>
+        </Form.Item>
+        
         <Form.Item>
           <Text type="secondary">
             <InfoCircleOutlined style={{ marginRight: 8 }} />
@@ -2503,9 +2650,6 @@ const AccountRegisterModal: React.FC<{
           </Text>
         </Form.Item>
       </Form>
-
-      {/* 日志面板 */}
-      {logs.length > 0 && <LogPanel />}
     </Modal>
   );
 };
@@ -2523,23 +2667,23 @@ const ResizableTitle: React.FC<{
 
   // 使用有效的宽度值，确保resize功能始终可用
   const actualWidth = width || 100;
-
+  
   // 使用useCallback优化事件处理函数，减少重渲染
   const handleResize = useCallback(
     (e: React.SyntheticEvent<Element>, data: ResizeCallbackData) => {
       e.preventDefault();
-
+      
       // 使用节流减少resize回调频率
       if (resizeTimeoutRef.current !== null) {
         window.clearTimeout(resizeTimeoutRef.current);
       }
-
+      
       // 直接操作DOM更新视觉指示器
       if (handleRef.current) {
         handleRef.current.style.opacity = '1';
         handleRef.current.style.backgroundColor = '#1890ff';
       }
-
+      
       // 节流处理resize回调，降低状态更新频率
       resizeTimeoutRef.current = window.setTimeout(() => {
         onResize(e, data);
@@ -2548,7 +2692,7 @@ const ResizableTitle: React.FC<{
     },
     [onResize]
   );
-
+  
   // 使用useCallback优化事件处理函数，使用useRef而不是useState跟踪状态
   const handleResizeStart = useCallback(() => {
     resizingRef.current = true;
@@ -2559,7 +2703,7 @@ const ResizableTitle: React.FC<{
     // 添加辅助类到body来改变全局鼠标样式，提升用户体验
     document.body.classList.add('resizing-columns');
   }, []);
-
+  
   const handleResizeStop = useCallback(() => {
     resizingRef.current = false;
     if (handleRef.current) {
@@ -2567,7 +2711,7 @@ const ResizableTitle: React.FC<{
     }
     // 移除辅助类
     document.body.classList.remove('resizing-columns');
-
+    
     // 清除可能存在的超时计时器
     if (resizeTimeoutRef.current !== null) {
       window.clearTimeout(resizeTimeoutRef.current);
@@ -2611,7 +2755,7 @@ const ResizableTitle: React.FC<{
             position: 'absolute',
             right: -15, // 扩大偏移值，确保触发区域跨越表头单元格边界
             top: 0,
-            bottom: 0,
+            bottom: 0, 
             width: 30, // 增加宽度到30px，进一步扩大可触发区域
             zIndex: 100, // 提高z-index确保可点击
             cursor: 'col-resize',
@@ -2637,7 +2781,7 @@ const ResizableTitle: React.FC<{
       onResize={handleResize}
       onResizeStart={handleResizeStart}
       onResizeStop={handleResizeStop}
-      draggableOpts={{
+      draggableOpts={{ 
         enableUserSelectHack: false,
         // 更大的网格值减少状态更新频率，提高性能
         grid: [10, 0], // 水平方向每次移动10px，进一步减少计算次数
@@ -2646,15 +2790,15 @@ const ResizableTitle: React.FC<{
         scale: 1, // 固定缩放比例
       }}
     >
-      <th
-        {...restProps}
-        style={{
-          ...restProps.style,
+      <th 
+        {...restProps} 
+        style={{ 
+          ...restProps.style, 
           position: 'relative',
           userSelect: 'none', // 防止文本选择干扰拖拽
           cursor: 'default', // 确保基本光标正确
           transition: 'width 0.05s ease-out', // 添加宽度变化的平滑过渡
-        }}
+        }} 
       />
     </Resizable>
   );
@@ -2666,14 +2810,13 @@ const AccountMonitor: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [syncingAccount, setSyncingAccount] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-
+  
   // 服务器端分页状态
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [filters, setFilters] = useState<Record<string, any>>({});
-  const [sortInfo, setSortInfo] = useState<{ field?: string, order?: 'asc' | 'desc' }>({});
+  const [sortInfo, setSortInfo] = useState<{field?: string, order?: 'asc' | 'desc'}>({});
   const [registerModalVisible, setRegisterModalVisible] = useState(false);
   const [randomUserRegisterModalVisible, setRandomUserRegisterModalVisible] = useState(false);
-  const [registerEmailSameNameModalVisible, setRegisterEmailSameNameModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<InfiniAccount | null>(null);
   const [batchSyncing, setBatchSyncing] = useState(false);
@@ -2684,15 +2827,15 @@ const AccountMonitor: React.FC = () => {
   const [groups, setGroups] = useState<AccountGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [accountGroupsMap, setAccountGroupsMap] = useState<Map<number, AccountGroup[]>>(new Map());
-
+  
   // 表格列控制状态和表格列宽、顺序状态
   const [columnsToShow, setColumnsToShow] = useState<string[]>([
-    'index', 'email', 'userId', 'groups', 'verification_level', 'availableBalance',
+    'index', 'email', 'userId', 'groups', 'verification_level', 'availableBalance', 
     'redPacketBalance', 'status', 'security', 'lastSyncAt', 'action'
   ]);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
-
+  
   // 余额颜色区间配置
   const [redPacketBalanceColorRanges, setRedPacketBalanceColorRanges] = useState<any[]>([
     { threshold: 1.4, color: 'green', backgroundColor: '#52c41a', textColor: 'white' },
@@ -2707,10 +2850,10 @@ const AccountMonitor: React.FC = () => {
     { threshold: 1, color: 'orange', backgroundColor: '#fa8c16', textColor: 'white' },
     { threshold: 0, color: 'default', backgroundColor: '', textColor: '' }
   ]);
-
+  
   // 禁用注册功能配置状态
   const [disableRegisterFeatures, setDisableRegisterFeatures] = useState<boolean>(false);
-
+  
   // 为保存配置创建防抖函数
   const debouncedSaveColumnWidths = useRef<DebouncedFunc<(widths: Record<string, number>) => void>>(
     debounce((widths: Record<string, number>) => {
@@ -2728,7 +2871,7 @@ const AccountMonitor: React.FC = () => {
         });
     }, 500) // 用户停止操作500ms后再保存
   ).current;
-
+  
   const debouncedSaveColumnOrder = useRef<DebouncedFunc<(order: string[]) => void>>(
     debounce((order: string[]) => {
       // 将列顺序配置保存到数据库
@@ -2745,7 +2888,7 @@ const AccountMonitor: React.FC = () => {
         });
     }, 500) // 用户停止操作500ms后再保存
   ).current;
-
+  
   const debouncedSaveColumnsToShow = useRef<DebouncedFunc<(columns: string[]) => void>>(
     debounce((columns: string[]) => {
       // 将显示列配置保存到数据库
@@ -2775,9 +2918,9 @@ const AccountMonitor: React.FC = () => {
   const syncAllAccounts = async () => {
     try {
       setBatchSyncing(true);
-
+      
       const response = await api.post(`${API_BASE_URL}/api/infini-accounts/sync-all`);
-
+      
       if (response.data.success) {
         const result = response.data.data as BatchSyncResult;
         setBatchSyncResult(result);
@@ -2794,16 +2937,16 @@ const AccountMonitor: React.FC = () => {
       setBatchSyncing(false);
     }
   };
-
+  
   // 批量同步所有账户KYC信息
   const batchSyncAllKyc = async () => {
     try {
       setBatchSyncing(true);
       message.info('开始批量同步KYC信息...');
-
+      
       // 调用批量同步KYC信息的API
       const response = await api.post(`${API_BASE_URL}/api/infini-accounts/sync-all-kyc`);
-
+      
       if (response.data.success) {
         message.success('批量同步KYC信息成功');
         fetchPaginatedAccounts(); // 使用分页API刷新账户列表
@@ -2819,22 +2962,22 @@ const AccountMonitor: React.FC = () => {
       setBatchSyncing(false);
     }
   };
-
+  
   // 批量同步所有账户卡片信息
   const batchSyncAllCards = async () => {
     try {
       setBatchSyncing(true);
       message.info('开始批量同步卡片信息...');
-
+      
       // 获取所有账户
       const accountsResponse = await api.get(`${API_BASE_URL}/api/infini-accounts`);
-
+      
       if (!accountsResponse.data.success) {
         message.error(accountsResponse.data.message || '获取账户列表失败');
         setBatchSyncing(false);
         return;
       }
-
+      
       const allAccounts = accountsResponse.data.data || [];
       const total = allAccounts.length;
       let success = 0;
@@ -2845,14 +2988,14 @@ const AccountMonitor: React.FC = () => {
         success: boolean;
         message?: string;
       }> = [];
-
+      
       // 遍历所有账户，逐个同步卡片信息
       for (const account of allAccounts) {
         try {
           const syncResponse = await api.post(`${API_BASE_URL}/api/infini-cards/sync`, {
             accountId: account.id
           });
-
+          
           if (syncResponse.data.success) {
             success++;
             results.push({
@@ -2879,14 +3022,14 @@ const AccountMonitor: React.FC = () => {
           });
         }
       }
-
+      
       const result: BatchSyncResult = {
         total,
         success,
         failed,
         accounts: results
       };
-
+      
       setBatchSyncResult(result);
       setBatchResultModalVisible(true);
       message.success(`批量同步卡片信息完成: 总计${total}个账户, 成功${success}个, 失败${failed}个`);
@@ -2916,20 +3059,20 @@ const AccountMonitor: React.FC = () => {
       setLoadingGroups(true);
       console.log('获取所有账户分组');
       const response = await infiniAccountApi.getAllAccountGroups();
-
+      
       if (response.success && response.data) {
         setGroups(response.data);
-
+        
         // 构建分组详情并建立账户-分组映射
         const groupAccountsMap = new Map<number, AccountGroup[]>();
         for (const group of response.data) {
           try {
             console.log(`获取账户分组详情，分组ID: ${group.id}`);
             const groupDetailResponse = await infiniAccountApi.getAccountGroupById(group.id);
-
+            
             if (groupDetailResponse.success && groupDetailResponse.data && groupDetailResponse.data.accounts) {
               const groupDetail = groupDetailResponse.data;
-
+              
               // 为每个账户添加此分组
               groupDetail.accounts.forEach((account: { id: string; email: string }) => {
                 const accountId = parseInt(account.id);
@@ -2944,12 +3087,12 @@ const AccountMonitor: React.FC = () => {
             console.error(`获取分组 ${group.id} 详情失败:`, error);
           }
         }
-
+        
         setAccountGroupsMap(groupAccountsMap);
-
+        
         // 当前accounts状态检查
         console.log(`当前accounts状态长度: ${accounts.length}`);
-
+        
         // 只有当accounts不为空时才更新分组信息
         if (accounts && accounts.length > 0) {
           // 深拷贝当前账户数组，避免直接修改状态
@@ -2968,17 +3111,17 @@ const AccountMonitor: React.FC = () => {
       setLoadingGroups(false);
     }
   };
-
+  
   // 更新账户对象，添加分组信息
   const updateAccountsWithGroups = (accountsList: InfiniAccount[], groupsMap: Map<number, AccountGroup[]>) => {
     console.log(`更新账户分组信息，账户数量: ${accountsList.length}, 分组映射大小: ${groupsMap.size}`);
-
+    
     // 安全检查，确保accountsList不为空
     if (!accountsList || accountsList.length === 0) {
       console.warn('更新账户分组信息时发现账户列表为空');
       return; // 如果accountsList为空，直接返回，避免更新空数据
     }
-
+    
     const updatedAccounts = accountsList.map(account => {
       const accountGroups = groupsMap.get(account.id) || [];
       return {
@@ -2986,10 +3129,10 @@ const AccountMonitor: React.FC = () => {
         groups: accountGroups
       };
     });
-
+    
     console.log(`账户数据更新完成，新accounts长度: ${updatedAccounts.length}`);
     setAccounts(updatedAccounts); // 更新账户状态
-
+    
     // 注意：现在搜索是通过API实现的，不再需要在前端过滤数据
     // 如果需要刷新带搜索条件的数据，应该通过fetchPaginatedAccounts函数实现
   };
@@ -2999,30 +3142,30 @@ const AccountMonitor: React.FC = () => {
     try {
       setLoading(true);
       console.log('开始获取账户列表数据...');
-
+      
       // 使用统一的api实例获取所有账户
       const response = await api.get(`${API_BASE_URL}/api/infini-accounts`);
-
+      
       if (response.data.success) {
         const accountsData = response.data.data || [];
         console.log('获取到的账户数据总数:', accountsData.length);
-
+        
         if (accountsData.length === 0) {
           console.warn('API返回的账户数据为空');
           setAccounts([]);
           return;
         }
-
+        
         // 详细输出每个账户的验证级别，同时打印verification_level和verificationLevel两个字段
         accountsData.forEach((account: InfiniAccount) => {
-          console.log(`账户ID: ${account.id}, 邮箱: ${account.email}, 验证级别:`,
-            `verification_level=${account.verification_level}, verificationLevel=${account.verificationLevel}`,
-            `2FA状态: ${account.google2faIsBound ? '已绑定' : '未绑定'}`);
-
+          console.log(`账户ID: ${account.id}, 邮箱: ${account.email}, 验证级别:`, 
+                     `verification_level=${account.verification_level}, verificationLevel=${account.verificationLevel}`, 
+                     `2FA状态: ${account.google2faIsBound ? '已绑定' : '未绑定'}`);
+          
           // 特别关注ID为7和9的账户，详细输出账户信息
           if (account.id === 7 || account.id === 9) {
             console.log(`特别关注账户 ID=${account.id}:`, JSON.stringify(account, null, 2));
-
+            
             // 如果后端返回的是verificationLevel而不是verification_level，手动设置兼容字段
             if (account.verificationLevel !== undefined && account.verification_level === undefined) {
               account.verification_level = account.verificationLevel;
@@ -3035,14 +3178,14 @@ const AccountMonitor: React.FC = () => {
             }
           }
         });
-
+        
         // 更新账户列表前，先深度复制数据以避免引用问题
         const processedAccounts = JSON.parse(JSON.stringify(accountsData));
-
+        
         // 直接更新账户状态，不使用setTimeout
         setAccounts(processedAccounts);
         console.log(`设置账户数据，长度: ${processedAccounts.length}`);
-
+        
         // 如果已经获取了分组信息，直接添加分组信息
         if (accountGroupsMap.size > 0) {
           console.log('已有分组映射，直接更新账户分组信息');
@@ -3066,7 +3209,7 @@ const AccountMonitor: React.FC = () => {
       await fetchAccounts();
       await fetchGroups();
     };
-
+    
     loadData();
   }, []);
 
@@ -3074,9 +3217,9 @@ const AccountMonitor: React.FC = () => {
   const syncAccount = async (id: number) => {
     try {
       setSyncingAccount(id);
-
+      
       const response = await api.post(`${API_BASE_URL}/api/infini-accounts/${id}/sync`);
-
+      
       if (response.data.success) {
         message.success('账户信息同步成功');
         fetchPaginatedAccounts(); // 使用分页API刷新账户列表
@@ -3096,10 +3239,10 @@ const AccountMonitor: React.FC = () => {
   const syncKycStatus = async (id: number) => {
     try {
       setSyncingKycAccount(id);
-
+      
       // 调用同步KYC信息接口
       const response = await infiniAccountApi.getKycInformation(id.toString());
-
+      
       if (response.success) {
         message.success('KYC状态同步成功');
         // 刷新账户列表，确保状态更新
@@ -3119,9 +3262,9 @@ const AccountMonitor: React.FC = () => {
   const deleteAccount = async (id: number) => {
     try {
       setLoading(true);
-
+      
       const response = await api.delete(`${API_BASE_URL}/api/infini-accounts/${id}`);
-
+      
       if (response.data.success) {
         message.success('账户删除成功');
         fetchPaginatedAccounts(); // 使用分页API刷新账户列表
@@ -3153,17 +3296,17 @@ const AccountMonitor: React.FC = () => {
       setLoading(true);
       setSelectedAccountForCard(account);
       console.log('查看卡片详情，账户ID:', account.id);
-
+      
       // 先设置模态框为可见，这样即使在加载数据过程中也能向用户提供反馈
       setCardDetailModalVisible(true);
-
+      
       // 获取卡片列表
       const response = await api.get(`${API_BASE_URL}/api/infini-cards/list`, {
         params: { accountId: account.id }
       });
-
+      
       console.log('获取到卡片列表响应:', response.data);
-
+      
       if (response.data.success && response.data.data && response.data.data.length > 0) {
         // 选择第一张卡片作为默认展示
         const firstCard = response.data.data[0];
@@ -3183,7 +3326,7 @@ const AccountMonitor: React.FC = () => {
       setLoading(false);
     }
   };
-
+  
   // 添加调试函数，用于显示当前accounts状态
   const showAccountsStatus = () => {
     console.log(`当前accounts状态长度: ${accounts.length}`);
@@ -3232,7 +3375,7 @@ const AccountMonitor: React.FC = () => {
           </Space>
         </div>
       ),
-      onFilter: (value: any, record: InfiniAccount) =>
+      onFilter: (value: any, record: InfiniAccount) => 
         record.email.toLowerCase().includes(value.toString().toLowerCase()),
       filterIcon: (filtered: boolean) => (
         <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
@@ -3241,15 +3384,15 @@ const AccountMonitor: React.FC = () => {
         <Tooltip title="点击复制邮箱">
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <strong style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{text}</strong>
-            <Button
-              type="primary"
+            <Button 
+              type="primary" 
               ghost
-              size="small"
-              icon={<CopyOutlined />}
+              size="small" 
+              icon={<CopyOutlined />} 
               onClick={(e) => {
                 e.stopPropagation();
                 copyToClipboard(text, `邮箱 ${text} 已复制到剪贴板`);
-              }}
+              }} 
               style={{ marginLeft: 4 }}
             />
           </div>
@@ -3266,15 +3409,15 @@ const AccountMonitor: React.FC = () => {
         <Tooltip title="点击复制用户ID">
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <strong style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{text || '未设置'}</strong>
-            <Button
-              type="primary"
+            <Button 
+              type="primary" 
               ghost
-              size="small"
-              icon={<CopyOutlined />}
+              size="small" 
+              icon={<CopyOutlined />} 
               onClick={(e) => {
                 e.stopPropagation();
                 copyToClipboard(text || '', `用户ID ${text || '未设置'} 已复制到剪贴板`);
-              }}
+              }} 
               style={{ marginLeft: 4 }}
               disabled={!text}
             />
@@ -3294,8 +3437,8 @@ const AccountMonitor: React.FC = () => {
         { text: 'KYC认证中', value: '3' },
       ],
       onFilter: (value: any, record: InfiniAccount) => {
-        const actualLevel = record.verification_level !== undefined
-          ? record.verification_level
+        const actualLevel = record.verification_level !== undefined 
+          ? record.verification_level 
           : record.verificationLevel;
         return actualLevel !== undefined && actualLevel.toString() === value.toString();
       },
@@ -3307,7 +3450,7 @@ const AccountMonitor: React.FC = () => {
       render: (level: number | undefined, record: InfiniAccount) => {
         // 优先使用verification_level，如果为undefined则使用verificationLevel
         const actualLevel = level !== undefined ? level : record.verificationLevel;
-
+        
         // 使用KycInfoPopover组件显示KYC状态和信息
         return (
           <KycInfoPopover accountId={record.id} verificationLevel={actualLevel} />
@@ -3333,7 +3476,7 @@ const AccountMonitor: React.FC = () => {
       render: (amount: number) => {
         const { color, style } = getStyleForBalance(amount, redPacketBalanceColorRanges);
         return (
-          <BalanceTag
+          <BalanceTag 
             color={color}
             style={style}
           >
@@ -3387,28 +3530,28 @@ const AccountMonitor: React.FC = () => {
         <Popover
           title={`${record.email} 的卡片列表`}
           placement="rightBottom"
-          visible={activePopoverId === record.id}
-          onVisibleChange={(v) => { if (!v) { setActivePopoverId(null); } }}
+          visible={activePopoverId===record.id}
+          onVisibleChange={(v)=>{if(!v){setActivePopoverId(null);}}}
           content={
             <div style={{ width: 500 }}>
               {cardListLoading ? (
-                <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
+                <div style={{textAlign:'center',padding:24}}><Spin /></div>
               ) : (
                 text > 0 ? (
                   <div>
                     <Table
                       dataSource={cardList}
-                      rowKey={(r: any) => r.card_id || r.id}
+                      rowKey={(r:any)=>r.card_id||r.id}
                       pagination={false}
-                      onRow={(record: any) => ({
-                        onClick: () => showCardDetail(record),
+                      onRow={(record:any)=>({
+                        onClick: ()=> showCardDetail(record),
                         style: { cursor: 'pointer' }
                       })}
                       columns={[
-                        { title: '卡片ID', dataIndex: 'card_id', key: 'card_id' },
-                        { title: '卡号后四位', dataIndex: 'card_last_four_digits', key: 'last4' },
-                        { title: '状态', dataIndex: 'status', key: 'status' },
-                        { title: '余额', dataIndex: 'available_balance', key: 'balance' },
+                        { title:'卡片ID', dataIndex:'card_id', key:'card_id'},
+                        { title:'卡号后四位', dataIndex:'card_last_four_digits', key:'last4'},
+                        { title:'状态', dataIndex:'status', key:'status'},
+                        { title:'余额', dataIndex:'available_balance', key:'balance'},
                       ]}
                       size="small"
                       rowClassName={() => 'card-list-row'}
@@ -3433,81 +3576,81 @@ const AccountMonitor: React.FC = () => {
           <Tag
             color={text > 0 ? 'blue' : 'default'}
             style={{ cursor: text > 0 ? 'pointer' : 'default' }}
-            onClick={() => text > 0 && handleTagClick(record)}
+            onClick={()=> text>0 && handleTagClick(record)}
           >
             {text || 0}
           </Tag>
         </Popover>
       )
     },
-    {
-      title: '2FA',
-      key: 'security',
-      width: 180,
-      filters: [
-        { text: '2FA已绑定', value: '2fa_bound' },
-        { text: '2FA未绑定', value: '2fa_unbound' },
-      ],
-      filterMultiple: false,
-      onFilter: (value: any, record: InfiniAccount) => {
-        const strValue = value.toString();
-        switch (strValue) {
-          case '2fa_bound': return record.google2faIsBound === true || record.google2faIsBound === 1;
-          case '2fa_unbound': return record.google2faIsBound === false || record.google2faIsBound === 0;
-          default: return true;
-        }
-      },
-      render: (record: InfiniAccount) => {
-        // 判断2FA是否已绑定（兼容数值和布尔值类型）
-        const is2faBound = record.google2faIsBound === true || record.google2faIsBound === 1;
-        return (
-          <Tooltip title={is2faBound ? "Google 2FA 已绑定" : "Google 2FA 未绑定"}>
-            <Tag color={is2faBound ? "green" : "orange"}>
-              {is2faBound ? "已绑定" : "未绑定"}
+  {
+    title: '2FA',
+    key: 'security',
+    width: 180,
+    filters: [
+      { text: '2FA已绑定', value: '2fa_bound' },
+      { text: '2FA未绑定', value: '2fa_unbound' },
+    ],
+    filterMultiple: false,
+    onFilter: (value: any, record: InfiniAccount) => {
+      const strValue = value.toString();
+      switch (strValue) {
+        case '2fa_bound': return record.google2faIsBound === true || record.google2faIsBound === 1;
+        case '2fa_unbound': return record.google2faIsBound === false || record.google2faIsBound === 0;
+        default: return true;
+      }
+    },
+    render: (record: InfiniAccount) => {
+      // 判断2FA是否已绑定（兼容数值和布尔值类型）
+      const is2faBound = record.google2faIsBound === true || record.google2faIsBound === 1;
+      return (
+        <Tooltip title={is2faBound ? "Google 2FA 已绑定" : "Google 2FA 未绑定"}>
+          <Tag color={is2faBound ? "green" : "orange"}>
+            {is2faBound ? "已绑定" : "未绑定"}
+          </Tag>
+        </Tooltip>
+      );
+    },
+  },
+  {
+    title: '所属分组',
+    dataIndex: 'groups',
+    key: 'groups',
+    width: 180,
+    ellipsis: true,
+  filters: groups.map(group => ({ text: group.name, value: group.id })),
+  onFilter: (value: any, record: InfiniAccount) => {
+    // 如果没有选择任何分组过滤条件，返回true显示所有数据
+    if (value === undefined || value === null) return true;
+    
+    // 如果账户没有groups属性或长度为0
+    if (!record.groups || record.groups.length === 0) {
+      // 如果选择的是默认分组，则显示没有明确分组的账户
+      const defaultGroup = groups.find(g => g.isDefault);
+      return Boolean(defaultGroup && String(defaultGroup.id) === String(value));
+    }
+    
+    // 使用字符串比较确保类型一致
+    return record.groups.some(group => String(group.id) === String(value));
+  },
+    render: (_, record: InfiniAccount) => (
+      <Space size={[0, 4]} wrap>
+        {record.groups && record.groups.length > 0 ? (
+          record.groups.map(group => (
+            <Tag 
+              color={group.isDefault ? 'default' : 'blue'} 
+              key={group.id}
+              style={{ marginRight: 4, marginBottom: 4 }}
+            >
+              {group.name}
             </Tag>
-          </Tooltip>
-        );
-      },
-    },
-    {
-      title: '所属分组',
-      dataIndex: 'groups',
-      key: 'groups',
-      width: 180,
-      ellipsis: true,
-      filters: groups.map(group => ({ text: group.name, value: group.id })),
-      onFilter: (value: any, record: InfiniAccount) => {
-        // 如果没有选择任何分组过滤条件，返回true显示所有数据
-        if (value === undefined || value === null) return true;
-
-        // 如果账户没有groups属性或长度为0
-        if (!record.groups || record.groups.length === 0) {
-          // 如果选择的是默认分组，则显示没有明确分组的账户
-          const defaultGroup = groups.find(g => g.isDefault);
-          return Boolean(defaultGroup && String(defaultGroup.id) === String(value));
-        }
-
-        // 使用字符串比较确保类型一致
-        return record.groups.some(group => String(group.id) === String(value));
-      },
-      render: (_, record: InfiniAccount) => (
-        <Space size={[0, 4]} wrap>
-          {record.groups && record.groups.length > 0 ? (
-            record.groups.map(group => (
-              <Tag
-                color={group.isDefault ? 'default' : 'blue'}
-                key={group.id}
-                style={{ marginRight: 4, marginBottom: 4 }}
-              >
-                {group.name}
-              </Tag>
-            ))
-          ) : (
-            <Tag color="default">默认分组</Tag>
-          )}
-        </Space>
-      )
-    },
+          ))
+        ) : (
+          <Tag color="default">默认分组</Tag>
+        )}
+      </Space>
+    )
+  },
     {
       title: '最后同步时间',
       dataIndex: 'lastSyncAt',
@@ -3531,15 +3674,15 @@ const AccountMonitor: React.FC = () => {
           <Dropdown
             overlay={
               <Menu>
-                <Menu.Item
-                  key="detail"
+                <Menu.Item 
+                  key="detail" 
                   icon={<InfoCircleOutlined />}
                   onClick={() => viewAccountDetail(record)}
                 >
                   账户详情
                 </Menu.Item>
-                <Menu.Item
-                  key="cardDetail"
+                <Menu.Item 
+                  key="cardDetail" 
                   icon={<CreditCardOutlined />}
                   onClick={() => viewCardDetail(record)}
                 >
@@ -3553,20 +3696,20 @@ const AccountMonitor: React.FC = () => {
               查看 <DownOutlined />
             </Button>
           </Dropdown>
-
+          
           {/* 同步下拉按钮 - 包含同步和同步KYC选项 */}
           <Dropdown
             overlay={
               <Menu>
-                <Menu.Item
-                  key="sync"
+                <Menu.Item 
+                  key="sync" 
                   icon={<SyncOutlined spin={syncingAccount === record.id} />}
                   onClick={() => syncAccount(record.id)}
                 >
                   同步账户
                 </Menu.Item>
-                <Menu.Item
-                  key="syncKyc"
+                <Menu.Item 
+                  key="syncKyc" 
                   icon={<IdcardOutlined spin={syncingKycAccount === record.id} />}
                   onClick={() => syncKycStatus(record.id)}
                 >
@@ -3580,7 +3723,7 @@ const AccountMonitor: React.FC = () => {
               同步 <DownOutlined />
             </Button>
           </Dropdown>
-
+          
           <Popconfirm
             title="确定要删除此账户吗?"
             onConfirm={() => deleteAccount(record.id)}
@@ -3596,7 +3739,7 @@ const AccountMonitor: React.FC = () => {
       ),
     },
   ];
-
+  
   // 处理列宽调整
   const handleResize = useCallback(
     (index: number) => (e: React.SyntheticEvent<Element>, { size }: ResizeCallbackData) => {
@@ -3624,20 +3767,20 @@ const AccountMonitor: React.FC = () => {
   const onDrop = (e: React.DragEvent<HTMLElement>, dropIndex: number) => {
     const dragIndex = parseInt(e.dataTransfer.getData('colIndex'));
     if (dragIndex === dropIndex) return;
-
+    
     const newOrder = [...columnOrder];
     const keys = getVisibleColumns().map(col => col.key as string);
-
+    
     if (newOrder.length === 0) {
       // 如果是第一次拖拽，初始化列顺序
       newOrder.push(...keys);
     }
-
+    
     // 移动列顺序
     const dragKey = newOrder[dragIndex];
     newOrder.splice(dragIndex, 1);
     newOrder.splice(dropIndex, 0, dragKey);
-
+    
     setColumnOrder(newOrder);
     debouncedSaveColumnOrder(newOrder);
   };
@@ -3646,26 +3789,26 @@ const AccountMonitor: React.FC = () => {
   const getVisibleColumns = () => {
     // 筛选显示的列
     let visibleCols = allColumns.filter(col => columnsToShow.includes(col.key as string));
-
+    
     // 如果有列顺序配置，按照列顺序排序
     if (columnOrder.length > 0) {
       const orderMap = new Map<string, number>();
       columnOrder.forEach((key, index) => {
         orderMap.set(key, index);
       });
-
+      
       visibleCols = [...visibleCols].sort((a, b) => {
         const aIndex = orderMap.get(a.key as string) ?? 999;
         const bIndex = orderMap.get(b.key as string) ?? 999;
         return aIndex - bIndex;
       });
     }
-
+    
     // 应用列宽，只保留列宽调整功能，完全移除拖拽相关属性
     return visibleCols.map((col, index) => {
       const key = col.key as string;
       const width = columnWidths[key] || col.width;
-
+      
       return {
         ...col,
         width,
@@ -3677,7 +3820,7 @@ const AccountMonitor: React.FC = () => {
       };
     });
   };
-
+  
   // 处理列显示切换
   const handleColumnVisibilityChange = (checkedValues: string[]) => {
     // 确保"操作"列始终显示
@@ -3700,7 +3843,7 @@ const AccountMonitor: React.FC = () => {
           const disabled = disableRegisterResponse.data.value === 'true';
           setDisableRegisterFeatures(disabled);
         }
-
+        
         // 加载列宽配置
         const widthsResponse = await configApi.getConfigByKey('account_monitor_column_widths');
         if (widthsResponse.success && widthsResponse.data && widthsResponse.data.value) {
@@ -3737,7 +3880,7 @@ const AccountMonitor: React.FC = () => {
             console.error('解析显示列配置失败:', e);
           }
         }
-
+        
         // 加载红包余额颜色区间配置
         const redPacketColorResponse = await configApi.getConfigByKey('red_packet_balance_color_ranges');
         if (redPacketColorResponse.success && redPacketColorResponse.data && redPacketColorResponse.data.value) {
@@ -3748,7 +3891,7 @@ const AccountMonitor: React.FC = () => {
             console.error('解析红包余额颜色区间配置失败:', e);
           }
         }
-
+        
         // 加载用户余额颜色区间配置
         const availableColorResponse = await configApi.getConfigByKey('available_balance_color_ranges');
         if (availableColorResponse.success && availableColorResponse.data && availableColorResponse.data.value) {
@@ -3766,7 +3909,7 @@ const AccountMonitor: React.FC = () => {
 
     loadConfigs();
   }, []);
-
+  
   // 根据columnOrder获取排序后的列
   const getOrderedColumns = () => {
     // 获取所有可见列
@@ -3775,18 +3918,18 @@ const AccountMonitor: React.FC = () => {
       key: col.key as string,
       title: col.title as string
     }));
-
+    
     // 如果还没有顺序配置，返回默认可见列
     if (columnOrder.length === 0) {
       return visibleColumns;
     }
-
+    
     // 创建key到索引的映射
     const orderMap = new Map<string, number>();
     columnOrder.forEach((key, index) => {
       orderMap.set(key, index);
     });
-
+    
     // 按照columnOrder排序
     return [...visibleColumns].sort((a, b) => {
       const aIndex = orderMap.get(a.key) ?? 999;
@@ -3794,14 +3937,14 @@ const AccountMonitor: React.FC = () => {
       return aIndex - bIndex;
     });
   };
-
+  
   // 初始化列顺序
   const initColumnOrder = () => {
     const visibleKeys = getVisibleColumns().map(col => col.key as string);
     setColumnOrder(visibleKeys);
     return visibleKeys;
   };
-
+  
   // 列设置下拉菜单
   const columnsMenu = (
     <div style={{ padding: 12, minWidth: 300, backgroundColor: '#fff', border: '1px solid #f0f0f0', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
@@ -3826,7 +3969,7 @@ const AccountMonitor: React.FC = () => {
               <List.Item
                 key={item.key}
                 actions={[
-                  <Button
+                  <Button 
                     type="primary"
                     size="small"
                     shape="circle"
@@ -3836,34 +3979,34 @@ const AccountMonitor: React.FC = () => {
                     onClick={() => {
                       // 获取当前排序后的列
                       const orderedColumns = getOrderedColumns();
-
+                      
                       // 复制列顺序数组或初始化
                       let newOrder = [...columnOrder];
                       if (newOrder.length === 0) {
                         newOrder = orderedColumns.map(col => col.key);
                       }
-
+                      
                       // 获取当前项和上一项的key
                       const currentKey = item.key;
                       const prevKey = orderedColumns[index - 1].key;
-
+                      
                       // 找到这两个key在顺序数组中的位置
                       const currentIndex = newOrder.indexOf(currentKey);
                       const prevIndex = newOrder.indexOf(prevKey);
-
+                      
                       // 交换位置
                       if (currentIndex !== -1 && prevIndex !== -1) {
                         const temp = newOrder[currentIndex];
                         newOrder[currentIndex] = newOrder[prevIndex];
                         newOrder[prevIndex] = temp;
-
+                        
                         // 更新状态并保存
                         setColumnOrder([...newOrder]);
                         debouncedSaveColumnOrder(newOrder);
                       }
                     }}
                   />,
-                  <Button
+                  <Button 
                     type="primary"
                     size="small"
                     shape="circle"
@@ -3873,27 +4016,27 @@ const AccountMonitor: React.FC = () => {
                     onClick={() => {
                       // 获取当前排序后的列
                       const orderedColumns = getOrderedColumns();
-
+                      
                       // 复制列顺序数组或初始化
                       let newOrder = [...columnOrder];
                       if (newOrder.length === 0) {
                         newOrder = orderedColumns.map(col => col.key);
                       }
-
+                      
                       // 获取当前项和下一项的key
                       const currentKey = item.key;
                       const nextKey = orderedColumns[index + 1].key;
-
+                      
                       // 找到这两个key在顺序数组中的位置
                       const currentIndex = newOrder.indexOf(currentKey);
                       const nextIndex = newOrder.indexOf(nextKey);
-
+                      
                       // 交换位置
                       if (currentIndex !== -1 && nextIndex !== -1) {
                         const temp = newOrder[currentIndex];
                         newOrder[currentIndex] = newOrder[nextIndex];
                         newOrder[nextIndex] = temp;
-
+                        
                         // 更新状态并保存
                         setColumnOrder([...newOrder]);
                         debouncedSaveColumnOrder(newOrder);
@@ -3935,10 +4078,10 @@ const AccountMonitor: React.FC = () => {
   // 全局搜索函数 - 通过后端API实现
   const handleGlobalSearch = (value: string) => {
     setSearchText(value);
-
+    
     // 构建搜索过滤条件
     const searchFilters = { ...filters };
-
+    
     if (value.trim()) {
       // 使用搜索文本构建复合搜索条件
       searchFilters._search = value.trim();
@@ -3946,7 +4089,7 @@ const AccountMonitor: React.FC = () => {
       // 清除之前的搜索条件
       delete searchFilters._search;
     }
-
+    
     // 使用新的过滤条件刷新数据
     fetchPaginatedAccounts({
       ...pagination,
@@ -3969,7 +4112,7 @@ const AccountMonitor: React.FC = () => {
         sortField: sorterParams.field,
         sortOrder: sorterParams.order
       });
-
+      
       // 将搜索文本添加到过滤参数中
       const combinedFilters = { ...filtersParams };
       if (searchText && !combinedFilters._search) {
@@ -4018,21 +4161,21 @@ const AccountMonitor: React.FC = () => {
     'mockUserId': 'mock_user_id',
     'invitationCode': 'invitation_code'
   };
-
+  
   // 特殊字段映射，这些字段不需要表名前缀
   const directFieldMapping: Record<string, string> = {
     'cardCount': 'cardCount', // 直接使用别名排序
   };
-
+  
   // 将驼峰字段名转换为下划线分隔字段名
   const convertFieldName = (field?: string): string | undefined => {
     if (!field) return undefined;
-
+    
     // 检查是否是特殊字段（不需要表名前缀的字段）
     if (directFieldMapping[field]) {
       return directFieldMapping[field];
     }
-
+    
     // 常规字段映射
     return fieldNameMapping[field] || field;
   };
@@ -4040,7 +4183,7 @@ const AccountMonitor: React.FC = () => {
   // 表格变化处理 - 处理分页、筛选和排序
   const handleTableChange = (newPagination: any, newFilters: any, sorter: any) => {
     console.log('表格变化:', { newPagination, newFilters, sorter });
-
+    
     // 处理筛选条件
     const formattedFilters: Record<string, any> = {};
     Object.entries(newFilters).forEach(([key, values]: [string, any]) => {
@@ -4053,23 +4196,23 @@ const AccountMonitor: React.FC = () => {
         }
       }
     });
-
+    
     // 处理排序
     const newSortInfo = {
       field: undefined as string | undefined,
       order: undefined as 'asc' | 'desc' | undefined
     };
-
+    
     if (sorter && sorter.field) {
       // 将驼峰字段名转换为下划线分隔的字段名供后端使用
       newSortInfo.field = convertFieldName(sorter.field);
-      newSortInfo.order = sorter.order === 'ascend' ? 'asc' :
-        sorter.order === 'descend' ? 'desc' :
-          undefined;
-
+      newSortInfo.order = sorter.order === 'ascend' ? 'asc' : 
+                          sorter.order === 'descend' ? 'desc' : 
+                          undefined;
+      
       console.log(`字段名映射: ${sorter.field} -> ${newSortInfo.field}`);
     }
-
+    
     // 更新状态
     setFilters(formattedFilters);
     setSortInfo(newSortInfo);
@@ -4078,7 +4221,7 @@ const AccountMonitor: React.FC = () => {
       current: newPagination.current,
       pageSize: newPagination.pageSize
     });
-
+    
     // 获取新数据
     fetchPaginatedAccounts(
       {
@@ -4096,27 +4239,27 @@ const AccountMonitor: React.FC = () => {
   const [kycInfo, setKycInfo] = useState<any>(null);
   const [loadingKycInfo, setLoadingKycInfo] = useState<boolean>(false);
   const [selectedKycAccountId, setSelectedKycAccountId] = useState<string>('');
-
+  
   // 查看KYC信息
   const handleViewKycInfo = async (accountId: number, verificationLevel: number) => {
     // 显示加载状态
     setLoadingKycInfo(true);
     setKycModalVisible(true);
     setSelectedKycAccountId(accountId.toString());
-
+    
     try {
       // 获取KYC信息
       const response = await api.get(`${API_BASE_URL}/api/infini-accounts/kyc/information/${accountId}`);
       console.log('获取KYC信息响应:', response);
-
+      
       if (response.data.success && response.data.data.kyc_information && response.data.data.kyc_information.length > 0) {
         const kycInfoData = response.data.data.kyc_information[0];
-
+        
         // 处理KYC认证中的状态
         if (verificationLevel === 3 && (!kycInfoData.status || kycInfoData.status === 0)) {
           kycInfoData.status = 1; // 验证中状态
         }
-
+        
         // 转换为前端组件需要的格式
         const transformedInfo = {
           id: kycInfoData.id,
@@ -4133,7 +4276,7 @@ const AccountMonitor: React.FC = () => {
           createdAt: kycInfoData.created_at,
           imageUrl: kycInfoData.image_url
         };
-
+        
         setKycInfo(transformedInfo);
       } else {
         // 处理无KYC信息的情况
@@ -4170,7 +4313,7 @@ const AccountMonitor: React.FC = () => {
       setLoadingKycInfo(false);
     }
   };
-
+  
   // 关闭KYC信息弹窗
   const handleCloseKycModal = () => {
     setKycModalVisible(false);
@@ -4313,54 +4456,51 @@ const AccountMonitor: React.FC = () => {
                 批量同步 <DownOutlined />
               </Button>
             </Dropdown>
-            {!disableRegisterFeatures && (
-              <Dropdown
-                overlay={
-                  <Menu>
-                    <Menu.Item key="register" onClick={() => setRegisterModalVisible(true)}>
-                      注册账户
-                    </Menu.Item>
-                    <Menu.Item key="randomRegister" onClick={() => setRandomUserRegisterModalVisible(true)}>
-                      注册随机用户
-                    </Menu.Item>
-                    <Menu.Item key="oneClickSetup" onClick={() => setOneClickSetupModalVisible(true)}>
-                      一键注册随机用户
-                    </Menu.Item>
-                    <Menu.Item key="batchRegister" onClick={() => setBatchRegisterModalVisible(true)}>
-                      批量注册随机用户
-                    </Menu.Item>
-                    <Menu.Item key="registerEmailSameName" onClick={() => setRegisterEmailSameNameModalVisible(true)}>
-                      注册邮箱同名账户
-                    </Menu.Item>
-                  </Menu>
-                }
-                trigger={['click']}
-              >
-                <Button
-                  type="primary"
-                  icon={<UserAddOutlined />}
-                  style={{ marginRight: 8 }}
+              {!disableRegisterFeatures && (
+                <Dropdown
+                  overlay={
+                    <Menu>
+                      <Menu.Item key="register" onClick={() => setRegisterModalVisible(true)}>
+                        注册账户
+                      </Menu.Item>
+                      <Menu.Item key="randomRegister" onClick={() => setRandomUserRegisterModalVisible(true)}>
+                        注册随机用户
+                      </Menu.Item>
+                      <Menu.Item key="oneClickSetup" onClick={() => setOneClickSetupModalVisible(true)}>
+                        一键注册随机用户
+                      </Menu.Item>
+                      <Menu.Item key="batchRegister" onClick={() => setBatchRegisterModalVisible(true)}>
+                        批量注册随机用户
+                      </Menu.Item>
+                    </Menu>
+                  }
+                  trigger={['click']}
                 >
-                  注册账户 <DownOutlined />
-                </Button>
-              </Dropdown>
-            )}
+                  <Button 
+                    type="primary" 
+                    icon={<UserAddOutlined />}
+                    style={{ marginRight: 8 }}
+                  >
+                    注册账户 <DownOutlined />
+                  </Button>
+                </Dropdown>
+              )}
             <Dropdown
               overlay={
-                <Menu>
-                  <Menu.Item key="addAccount" onClick={() => setModalVisible(true)}>
-                    添加账户
-                  </Menu.Item>
-                  <Menu.Item key="batchAddAccount" onClick={() => setBatchAddModalVisible(true)}>
-                    批量添加账户
-                  </Menu.Item>
-                  <Menu.Item key="batchRecoverAccount" onClick={() => setBatchRecoverModalVisible(true)}>
-                    批量恢复账户
-                  </Menu.Item>
-                  <Menu.Item key="emailRecoverAccount" onClick={() => setIsBatchRecoverModalVisible(true)}>
-                    根据邮箱恢复账号
-                  </Menu.Item>
-                </Menu>
+              <Menu>
+                <Menu.Item key="addAccount" onClick={() => setModalVisible(true)}>
+                  添加账户
+                </Menu.Item>
+                <Menu.Item key="batchAddAccount" onClick={() => setBatchAddModalVisible(true)}>
+                  批量添加账户
+                </Menu.Item>
+                <Menu.Item key="batchRecoverAccount" onClick={() => setBatchRecoverModalVisible(true)}>
+                  批量恢复账户
+                </Menu.Item>
+                <Menu.Item key="emailRecoverAccount" onClick={() => setIsBatchRecoverModalVisible(true)}>
+                  根据邮箱恢复账号
+                </Menu.Item>
+              </Menu>
               }
               trigger={['click']}
             >
@@ -4407,7 +4547,7 @@ const AccountMonitor: React.FC = () => {
           />
         </TableContainer>
       </StyledCard>
-
+      
       <AccountDetailModal
         visible={detailModalVisible}
         account={selectedAccount}
@@ -4417,14 +4557,14 @@ const AccountMonitor: React.FC = () => {
         }}
         onSuccess={fetchAccounts}
       />
-
+      
       {/* 批量恢复账户模态框 */}
       <BatchRecoverAccountModal
         visible={batchRecoverModalVisible}
         onClose={() => setBatchRecoverModalVisible(false)}
         onSuccess={fetchAccounts}
       />
-
+      
       <BatchSyncResultModal
         visible={batchResultModalVisible}
         result={batchSyncResult}
@@ -4435,13 +4575,13 @@ const AccountMonitor: React.FC = () => {
         onClose={() => setModalVisible(false)}
         onSuccess={fetchAccounts}
       />
-
+      
       <AccountRegisterModal
         visible={registerModalVisible}
         onClose={() => setRegisterModalVisible(false)}
         onSuccess={fetchAccounts}
       />
-
+      
       <RandomUserRegisterModal
         visible={randomUserRegisterModalVisible}
         onCancel={() => setRandomUserRegisterModalVisible(false)}
@@ -4451,14 +4591,14 @@ const AccountMonitor: React.FC = () => {
           message.success('随机用户注册成功');
         }}
       />
-
+      
       {/* 批量添加账户模态框 */}
       <BatchAddAccountModal
         visible={batchAddModalVisible}
         onClose={() => setBatchAddModalVisible(false)}
         onSuccess={fetchAccounts}
       />
-
+      
       {/* 卡片详情模态框 */}
       {cardDetailModalVisible && selectedAccountForCard && (
         <CardDetailModal
@@ -4469,11 +4609,11 @@ const AccountMonitor: React.FC = () => {
           }}
           cardId={selectedCardInfo?.card_id}
           cardInfo={selectedCardInfo || {}}
-          accountId={selectedAccountForCard.id}
+          accountId={selectedAccountForCard.id} 
           onRefresh={() => fetchAccounts()}
         />
       )}
-
+      
       {/* 红包领取模态框 */}
       <RedPacketModal
         visible={redPacketModalVisible}
@@ -4481,14 +4621,14 @@ const AccountMonitor: React.FC = () => {
         accountIds={accounts.map(account => account.id.toString())}
         onSuccess={fetchAccounts}
       />
-
+      
       {/* 一键注册级用户模态框 */}
       <OneClickSetupModal
         visible={oneClickSetupModalVisible}
         onClose={() => setOneClickSetupModalVisible(false)}
         onSuccess={fetchAccounts}
       />
-
+      
       {/* 批量注册随机用户模态框 */}
       <BatchRegisterModal
         visible={batchRegisterModalVisible}
@@ -4515,7 +4655,7 @@ const AccountMonitor: React.FC = () => {
               lastSyncAt: new Date().toISOString(),
               verification_level: newAccount.isKycEnabled ? 2 : 0
             };
-
+            
             // 返回包含新账户的列表
             return [account, ...prevAccounts];
           });
@@ -4532,28 +4672,21 @@ const AccountMonitor: React.FC = () => {
         <Table
           dataSource={cardList}
           loading={cardListLoading}
-          rowKey={(r: any) => r.card_id || r.id}
+          rowKey={(r:any)=>r.card_id||r.id}
           pagination={false}
-          onRow={(record: any) => ({
-            onClick: () => showCardDetail(record)
+          onRow={(record:any)=>({
+            onClick: ()=> showCardDetail(record)
           })}
           columns={[
-            { title: '卡片ID', dataIndex: 'card_id', key: 'card_id' },
-            { title: '卡号后四位', dataIndex: 'card_last_four_digits', key: 'last4' },
-            { title: '状态', dataIndex: 'status', key: 'status' },
-            { title: '余额', dataIndex: 'available_balance', key: 'balance' },
+            { title:'卡片ID', dataIndex:'card_id', key:'card_id'},
+            { title:'卡号后四位', dataIndex:'card_last_four_digits', key:'last4'},
+            { title:'状态', dataIndex:'status', key:'status'},
+            { title:'余额', dataIndex:'available_balance', key:'balance'},
           ]}
           size="small"
         />
-        <p style={{ fontSize: 12, color: '#999' }}>点击行查看卡片详情</p>
+        <p style={{fontSize:12,color:'#999'}}>点击行查看卡片详情</p>
       </Modal>
-
-      {/* 注册邮箱同名账户模态框 */}
-      <RegisterEmailSameNameModal
-        visible={registerEmailSameNameModalVisible}
-        onClose={() => setRegisterEmailSameNameModalVisible(false)}
-        onSuccess={fetchAccounts}
-      />
     </div>
   );
 };
@@ -4594,7 +4727,7 @@ const BatchAddAccountModal: React.FC<{
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   // 表单编辑状态
   const [editingKey, setEditingKey] = useState('');
-
+  
   // 重置状态
   const resetState = () => {
     form.resetFields();
@@ -4603,17 +4736,17 @@ const BatchAddAccountModal: React.FC<{
     setEditingKey('');
     setIsSubmitting(false);
   };
-
+  
   // 处理关闭
   const handleClose = () => {
     resetState();
     onClose();
   };
-
+  
   // 解析文本，提取邮箱和密码以及自定义邮箱配置
   const parseText = (text: string): Array<BatchAddAccountItem> => {
     if (!text.trim()) return [];
-
+    
     const lines = text.split('\n');
     const parsedAccounts = lines.map((line, index) => {
       // 支持两种格式：
@@ -4626,7 +4759,7 @@ const BatchAddAccountModal: React.FC<{
           email: parts[0],
           password: parts[1]
         } as BatchAddAccountItem;
-
+        
         // 检查是否包含自定义邮箱配置信息
         if (parts.length >= 4) { // 至少包含自定义邮箱和密码
           return {
@@ -4643,40 +4776,40 @@ const BatchAddAccountModal: React.FC<{
             customEmailStatus: 'active' as 'active' | 'disabled'
           };
         }
-
+        
         return account;
       }
       return null;
     }).filter(account => account !== null) as Array<BatchAddAccountItem>;
-
+    
     return parsedAccounts;
   };
-
+  
   // 处理文本输入变化
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
     setBatchText(text);
   };
-
+  
   // 解析文本并生成表单
   const parseTextToForm = () => {
     if (!batchText.trim()) {
       message.warning('请先输入账户信息');
       return;
     }
-
+    
     const parsedAccounts = parseText(batchText);
-
+    
     // 处理去重和覆盖逻辑
     if (accounts.length > 0) {
       // 创建邮箱到账户的映射，用于快速查找
       const emailMap = new Map<string, BatchAddAccountItem>();
-
+      
       // 先将现有账户放入映射
       accounts.forEach(account => {
         emailMap.set(account.email.toLowerCase(), account);
       });
-
+      
       // 处理新解析的账户
       parsedAccounts.forEach(newAccount => {
         const lowerEmail = newAccount.email.toLowerCase();
@@ -4692,11 +4825,11 @@ const BatchAddAccountModal: React.FC<{
           emailMap.set(lowerEmail, newAccount);
         }
       });
-
+      
       // 将映射转换回数组
       const mergedAccounts = Array.from(emailMap.values());
       setAccounts(mergedAccounts);
-
+      
       message.success(`解析成功：${parsedAccounts.length}个账户已更新到表单`);
     } else {
       // 如果还没有表单数据，直接设置
@@ -4704,46 +4837,46 @@ const BatchAddAccountModal: React.FC<{
       message.success(`解析成功：${parsedAccounts.length}个账户`);
     }
   };
-
+  
   // 提交表单
   const handleSubmit = async () => {
     // 确保账户数据完整
-    // 如果有正在编辑的行，提示先保存
-    if (editingKey) {
-      message.warning('请先保存正在编辑的账户信息');
-      return;
-    }
-
-    // 检查账户数据完整性
-    const invalidAccounts = accounts.filter(acc => !acc.email || !acc.password);
-    if (invalidAccounts.length > 0) {
-      message.error('存在邮箱或密码为空的账户，请检查');
-      return;
-    }
-
+      // 如果有正在编辑的行，提示先保存
+      if (editingKey) {
+        message.warning('请先保存正在编辑的账户信息');
+        return;
+      }
+      
+      // 检查账户数据完整性
+      const invalidAccounts = accounts.filter(acc => !acc.email || !acc.password);
+      if (invalidAccounts.length > 0) {
+        message.error('存在邮箱或密码为空的账户，请检查');
+        return;
+      }
+    
     if (accounts.length === 0) {
       message.error('请输入有效的账户信息');
       return;
     }
-
+    
     try {
       setLoading(true);
       setIsSubmitting(true);
-
+      
       // 筛选出尚未成功添加的账户（状态不为'success'或'warning'的账户）
-      const accountsToProcess = isSubmitting
+      const accountsToProcess = isSubmitting 
         ? accounts.filter(acc => acc.status !== 'success' && acc.status !== 'warning')
         : accounts;
-
+      
       if (accountsToProcess.length === 0) {
         message.info('没有需要添加的账户，所有账户都已成功添加或已存在');
         setLoading(false);
         return;
       }
-
+      
       // 为每个账户准备提交数据，包括自定义邮箱配置
       const accountsToSubmit = accountsToProcess.map(({ email, password }) => ({ email, password }));
-
+      
       // 循环调用单个账户创建API
       const results = { success: 0, failed: 0, warnings: 0, messages: [] as string[] };
       const newAccountsList = [...accounts]; // 创建一个新数组，用于更新状态
@@ -4751,9 +4884,9 @@ const BatchAddAccountModal: React.FC<{
       for (let i = 0; i < accountsToProcess.length; i++) {
         const account = accountsToProcess[i];
         const accountIndex = accounts.findIndex(a => a.email === account.email);
-
+        
         if (accountIndex === -1) continue; // 安全检查
-
+        
         try {
           const accountPayload: any = {
             email: account.email,
@@ -4788,7 +4921,7 @@ const BatchAddAccountModal: React.FC<{
           }
 
           const response = await api.post(`${API_BASE_URL}/api/infini-accounts`, accountPayload);
-
+          
           if (response.data.success) { // 后端现在应该在 data 中返回创建的账户信息，包括其ID
             results.success++;
             newAccountsList[accountIndex].status = 'success';
@@ -4820,14 +4953,14 @@ const BatchAddAccountModal: React.FC<{
           }
         }
       }
-
+      
       // 更新账户列表，包含成功/警告/失败状态
       setAccounts(newAccountsList);
-
+      
       // 更新统计信息（成功和警告都算作添加成功）
       setSuccessCount(prev => prev + results.success);
       setLastFailedCount(results.failed);
-
+      
       if (results.failed === 0) {
         // 全部成功或警告
         if (results.warnings > 0) {
@@ -4835,7 +4968,7 @@ const BatchAddAccountModal: React.FC<{
         } else {
           message.success(`成功批量添加 ${results.success} 个账户`);
         }
-
+        
         // 如果全部成功或警告，延迟关闭模态框
         setTimeout(() => {
           resetState();
@@ -4857,7 +4990,7 @@ const BatchAddAccountModal: React.FC<{
             </div>
           ),
         });
-
+        
         // 如果有成功的，刷新列表
         if (results.success > 0) {
           onSuccess();
@@ -4870,7 +5003,7 @@ const BatchAddAccountModal: React.FC<{
       setLoading(false);
     }
   };
-
+  
   // 表单列定义
   const columns = [
     {
@@ -4919,9 +5052,9 @@ const BatchAddAccountModal: React.FC<{
               setAccounts(newData);
               // 如果取消勾选，可能需要清空相关的自定义邮箱字段
               if (!e.target.checked) {
-                const updatedItem = {
-                  ...newData[index],
-                  customEmailAddress: '',
+                const updatedItem = { 
+                  ...newData[index], 
+                  customEmailAddress: '', 
                   customEmailPassword: '',
                   customImapHost: '',
                   customImapPort: 993,
@@ -4935,8 +5068,8 @@ const BatchAddAccountModal: React.FC<{
                 newData.splice(index, 1, updatedItem);
                 setAccounts(newData);
                 if (isEditing(record)) { // 如果在编辑模式下取消勾选，也更新form
-                  form.setFieldsValue({
-                    customEmailAddress: '',
+                  form.setFieldsValue({ 
+                    customEmailAddress: '', 
                     customEmailPassword: '',
                     customImapHost: '',
                     customImapPort: 993,
@@ -4971,7 +5104,7 @@ const BatchAddAccountModal: React.FC<{
       editable: true,
       width: '25%',
       render: (text: string, record: BatchAddAccountItem) => (
-        record.useCustomEmail ? (text ? '********' : <Text type="secondary">未设置</Text>) : <Text type="secondary">-</Text>
+         record.useCustomEmail ? (text ? '********' : <Text type="secondary">未设置</Text>) : <Text type="secondary">-</Text>
       )
     },
     {
@@ -5020,7 +5153,7 @@ const BatchAddAccountModal: React.FC<{
       width: '20%',
       render: (status: 'success' | 'fail' | 'warning' | undefined, record: any) => {
         if (!status) return null;
-
+        
         if (status === 'success') {
           return (
             <Tag color="green">添加成功</Tag>
@@ -5065,8 +5198,8 @@ const BatchAddAccountModal: React.FC<{
             >
               保存
             </Typography.Link>
-            <Popconfirm
-              title="确定取消编辑?"
+            <Popconfirm 
+              title="确定取消编辑?" 
               onConfirm={cancel}
               okText="确定"
               cancelText="取消"
@@ -5076,15 +5209,15 @@ const BatchAddAccountModal: React.FC<{
           </span>
         ) : (
           <span>
-            <Typography.Link
-              disabled={editingKey !== ''}
+            <Typography.Link 
+              disabled={editingKey !== ''} 
               onClick={() => edit(record)}
               style={{ marginRight: 8 }}
             >
               编辑
             </Typography.Link>
-            <Popconfirm
-              title="确定删除此行?"
+            <Popconfirm 
+              title="确定删除此行?" 
               onConfirm={() => deleteRow(record.key)}
               okText="确定"
               cancelText="取消"
@@ -5098,26 +5231,26 @@ const BatchAddAccountModal: React.FC<{
   ];
 
   // 表单行是否处于编辑状态
-  const isEditing = (record: { key: string }) => record.key === editingKey;
-
+  const isEditing = (record: {key: string}) => record.key === editingKey;
+  
   // 开始编辑行
   const edit = (record: BatchAddAccountItem) => {
     form.setFieldsValue({ ...record }); // 直接使用 record 的值填充表单
     setEditingKey(record.key);
   };
-
+  
   // 取消编辑
   const cancel = () => {
     setEditingKey('');
   };
-
+  
   // 保存编辑
   const save = async (key: string) => {
     try {
       const row = await form.validateFields();
       const newData = [...accounts];
       const index = newData.findIndex(item => key === item.key);
-
+      
       if (index > -1) {
         const item = newData[index];
         newData.splice(index, 1, {
@@ -5135,13 +5268,13 @@ const BatchAddAccountModal: React.FC<{
       console.log('验证表单失败:', errInfo);
     }
   };
-
+  
   // 删除行
   const deleteRow = (key: string) => {
     const newData = accounts.filter(item => item.key !== key);
     setAccounts(newData);
   };
-
+  
   // 添加新行
   const addRow = () => {
     const newKey = `new_${Date.now()}`;
@@ -5153,7 +5286,7 @@ const BatchAddAccountModal: React.FC<{
     setAccounts([...accounts, newAccount]);
     edit(newAccount);
   };
-
+  
   // 处理可编辑列
   const mergedColumns = columns.map(col => {
     if (!col.editable) {
@@ -5170,7 +5303,7 @@ const BatchAddAccountModal: React.FC<{
       }),
     };
   });
-
+  
   // 编辑单元格组件
   const EditableCell = ({
     editing,
@@ -5187,7 +5320,7 @@ const BatchAddAccountModal: React.FC<{
     ) : (
       <Input.Password prefix={<LockOutlined />} placeholder="请输入密码" />
     );
-
+    
     return (
       <td {...restProps}>
         {editing ? (
@@ -5209,7 +5342,7 @@ const BatchAddAccountModal: React.FC<{
       </td>
     );
   };
-
+  
   return (
     <Modal
       title="批量添加Infini账户"
@@ -5220,9 +5353,9 @@ const BatchAddAccountModal: React.FC<{
         <Button key="cancel" onClick={handleClose}>
           取消
         </Button>,
-        <Tooltip
-          title={successCount > 0 || lastFailedCount > 0 ?
-            `累计成功添加: ${successCount} 个账户, 上次失败: ${lastFailedCount} 个账户` :
+        <Tooltip 
+          title={successCount > 0 || lastFailedCount > 0 ? 
+            `累计成功添加: ${successCount} 个账户, 上次失败: ${lastFailedCount} 个账户` : 
             ''}
         >
           <Button
@@ -5232,8 +5365,8 @@ const BatchAddAccountModal: React.FC<{
             onClick={handleSubmit}
             disabled={accounts.length === 0}
           >
-            {isSubmitting ?
-              `继续添加 (${accounts.filter(acc => acc.status !== 'success' && acc.status !== 'warning').length} 个账户)` :
+            {isSubmitting ? 
+              `继续添加 (${accounts.filter(acc => acc.status !== 'success' && acc.status !== 'warning').length} 个账户)` : 
               `批量添加 (${accounts.length} 个账户)`}
           </Button>
         </Tooltip>,
@@ -5256,7 +5389,7 @@ const BatchAddAccountModal: React.FC<{
 another@email.com anotherpass
 ..."
             />
-            <Button
+            <Button 
               icon={<SyncOutlined />}
               onClick={parseTextToForm}
               disabled={!batchText.trim()}
@@ -5266,40 +5399,40 @@ another@email.com anotherpass
             </Button>
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <Text>表单模式：可以直接编辑账户信息</Text>
-          <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={addRow}
-            >
-              添加行
-            </Button>
-          </Space>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text>表单模式：可以直接编辑账户信息</Text>
+            <Space>
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />}
+                onClick={addRow}
+              >
+                添加行
+              </Button>
+            </Space>
+          </div>
+          
+          <Form form={form} component={false}>
+            <Table
+              components={{
+                body: {
+                  cell: EditableCell,
+                },
+              }}
+              bordered
+              dataSource={accounts}
+              columns={mergedColumns}
+              rowClassName="editable-row"
+              pagination={{
+                pageSize: 10,
+                onChange: cancel,
+              }}
+              rowKey="key"
+              size="small"
+            />
+          </Form>
         </div>
-
-        <Form form={form} component={false}>
-          <Table
-            components={{
-              body: {
-                cell: EditableCell,
-              },
-            }}
-            bordered
-            dataSource={accounts}
-            columns={mergedColumns}
-            rowClassName="editable-row"
-            pagination={{
-              pageSize: 10,
-              onChange: cancel,
-            }}
-            rowKey="key"
-            size="small"
-          />
-        </Form>
-      </div>
-
+      
       <div style={{ marginTop: 16 }}>
         <Text type="secondary">
           <InfoCircleOutlined style={{ marginRight: 8 }} />

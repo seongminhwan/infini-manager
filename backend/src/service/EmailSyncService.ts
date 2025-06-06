@@ -116,12 +116,20 @@ export class EmailSyncService {
     let lastUid = 0;
 
     try {
+      console.log(`========== 开始邮件同步任务 [ID: ${syncLogId}] ==========`);
+      console.log(`账户ID: ${accountId}, 邮箱: ${account.email}, 同步类型: ${syncType}`);
+      console.log(`同步邮箱文件夹: ${JSON.stringify(mailboxes)}`);
+      if (startDate) console.log(`起始日期: ${startDate}`);
+      if (endDate) console.log(`截止日期: ${endDate}`);
+      
       // 动态加载GmailClient
       if (!GmailClient) {
         try {
           const module = await import('../utils/gmailClient');
           GmailClient = module.default;
+          console.log(`已成功加载GmailClient模块`);
         } catch (error) {
+          console.error(`加载GmailClient模块失败:`, error);
           throw new Error('无法加载邮件客户端: ' + (error as Error).message);
         }
       }
@@ -140,19 +148,22 @@ export class EmailSyncService {
       
       // 添加代理配置
       if (account.use_proxy) {
-        console.log(`使用代理配置同步邮箱 ${account.email}, 代理模式: ${account.proxy_mode}`);
+        console.log(`[账户 ${accountId}] ${account.email} 使用代理配置同步, 代理模式: ${account.proxy_mode}`);
         config.useProxy = true;
         config.proxyMode = account.proxy_mode;
         
         if (account.proxy_mode === 'specific' && account.proxy_server_id) {
           config.proxyServerId = account.proxy_server_id;
+          console.log(`[账户 ${accountId}] 使用指定代理服务器ID: ${account.proxy_server_id}`);
         } else if (account.proxy_mode === 'tag_random' && account.proxy_tag) {
           config.proxyTag = account.proxy_tag;
+          console.log(`[账户 ${accountId}] 使用随机代理标签: ${account.proxy_tag}`);
         }
       } else {
-        console.log(`直接连接同步邮箱 ${account.email} (不使用代理)`);
+        console.log(`[账户 ${accountId}] ${account.email} 直接连接同步 (不使用代理)`);
       }
 
+      console.log(`[账户 ${accountId}] ${account.email} 创建Gmail客户端...`);
       const gmailClient = new GmailClient(config);
 
       // 对每个邮箱文件夹执行同步
@@ -204,9 +215,13 @@ export class EmailSyncService {
           }
         }
 
+        console.log(`[账户 ${accountId}] ${account.email} 开始从邮箱 ${mailbox} 获取邮件...`);
+        console.log(`[账户 ${accountId}] 查询条件: ${JSON.stringify(queryOptions.searchFilter)}`);
+        console.log(`[账户 ${accountId}] 限制数量: ${queryOptions.limit}`);
+        
         // 获取邮件列表
         const messages = await gmailClient.listMessages(queryOptions);
-        console.log(`从邮箱 ${mailbox} 获取了 ${messages.length} 封邮件`);
+        console.log(`[账户 ${accountId}] ${account.email} 从邮箱 ${mailbox} 获取了 ${messages.length} 封邮件`);
 
         // 处理每封邮件
         for (const message of messages) {
@@ -226,7 +241,7 @@ export class EmailSyncService {
 
             totalMessages++;
           } catch (error) {
-            console.error(`处理邮件失败(UID: ${message.uid}):`, error);
+            console.error(`[账户 ${accountId}] ${account.email} 处理邮件失败(UID: ${message.uid}):`, error);
             failedMessages++;
           }
         }
@@ -246,7 +261,8 @@ export class EmailSyncService {
           updated_at: db.fn.now()
         });
 
-      console.log(`邮件同步完成: 总数 ${totalMessages}, 新增 ${newMessages}, 更新 ${updatedMessages}, 失败 ${failedMessages}`);
+      console.log(`[账户 ${accountId}] ${account.email} 邮件同步完成: 总数 ${totalMessages}, 新增 ${newMessages}, 更新 ${updatedMessages}, 失败 ${failedMessages}`);
+      console.log(`========== 结束邮件同步任务 [ID: ${syncLogId}] ==========`);
     } catch (error) {
       // 更新同步日志为失败状态
       await db('email_sync_logs')

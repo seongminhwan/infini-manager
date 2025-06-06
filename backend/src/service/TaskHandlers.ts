@@ -86,8 +86,8 @@ export const syncAccountsInfo = async (params: any): Promise<{ success: boolean;
             await db('infini_accounts')
               .where('id', accountId)
               .update({
-                last_sync_at: new Date(),
-                updated_at: new Date()
+                last_sync_at: Date.now(), // 使用毫秒级时间戳替代Date对象
+                updated_at: Date.now() // 使用毫秒级时间戳替代Date对象
               });
           } else {
             throw new Error(syncResponse.message || '同步失败');
@@ -99,8 +99,8 @@ export const syncAccountsInfo = async (params: any): Promise<{ success: boolean;
           await db('infini_accounts')
             .where('id', accountId)
             .update({
-              last_sync_at: new Date(),
-              updated_at: new Date()
+              last_sync_at: Date.now(), // 使用毫秒级时间戳替代Date对象
+              updated_at: Date.now() // 使用毫秒级时间戳替代Date对象
             });
           
           results.successCount++;

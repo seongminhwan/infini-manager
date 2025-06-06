@@ -66,9 +66,27 @@ export class TaskService {
    * 获取所有启用的任务
    */
   private async getAllEnabledTasks(): Promise<ScheduledTask[]> {
-    return await db('infini_scheduled_tasks')
+    const tasks = await db('infini_scheduled_tasks')
       .where('status', TaskStatus.ENABLED)
       .select('*');
+    
+    // 将时间戳转换为Date对象
+    return tasks.map(task => {
+      // 转换时间字段为Date对象
+      if (task.next_execution_time && typeof task.next_execution_time === 'number') {
+        task.next_execution_time = new Date(task.next_execution_time);
+      }
+      if (task.last_execution_time && typeof task.last_execution_time === 'number') {
+        task.last_execution_time = new Date(task.last_execution_time);
+      }
+      if (task.created_at && typeof task.created_at === 'number') {
+        task.created_at = new Date(task.created_at);
+      }
+      if (task.updated_at && typeof task.updated_at === 'number') {
+        task.updated_at = new Date(task.updated_at);
+      }
+      return task;
+    });
   }
 
   /**
@@ -110,9 +128,9 @@ export class TaskService {
         retry_count: taskDTO.retryCount || 0,
         retry_interval: taskDTO.retryInterval || 0,
         description: taskDTO.description || null,
-        next_execution_time: nextExecutionTime,
-        created_at: new Date(),
-        updated_at: new Date()
+        next_execution_time: nextExecutionTime.getTime(), // 存储为毫秒级时间戳
+        created_at: Date.now(), // 使用毫秒级时间戳替代Date对象
+        updated_at: Date.now() // 使用毫秒级时间戳替代Date对象
       });
       
       // 如果任务是启用状态，则调度任务
@@ -150,6 +168,14 @@ export class TaskService {
         throw new Error(`任务ID ${taskId} 不存在`);
       }
       
+      // 将时间戳转换为Date对象
+      if (currentTask.next_execution_time && typeof currentTask.next_execution_time === 'number') {
+        currentTask.next_execution_time = new Date(currentTask.next_execution_time);
+      }
+      if (currentTask.last_execution_time && typeof currentTask.last_execution_time === 'number') {
+        currentTask.last_execution_time = new Date(currentTask.last_execution_time);
+      }
+      
       // 如果要更新cron表达式，则验证其有效性
       if (taskDTO.cronExpression && !cron.validate(taskDTO.cronExpression)) {
         throw new Error(`无效的cron表达式: ${taskDTO.cronExpression}`);
@@ -157,7 +183,7 @@ export class TaskService {
       
       // 准备更新数据
       const updateData: any = {
-        updated_at: new Date()
+        updated_at: Date.now() // 使用毫秒级时间戳替代Date对象
       };
       
       if (taskDTO.taskName !== undefined) {
@@ -169,7 +195,7 @@ export class TaskService {
         
         // 计算新的下次执行时间
         const interval = CronExpressionParser.parse(taskDTO.cronExpression, { currentDate: new Date() });
-        updateData.next_execution_time = interval.next().toDate();
+        updateData.next_execution_time = interval.next().toDate().getTime(); // 存储为毫秒级时间戳
       }
       
       if (taskDTO.handler !== undefined) {
@@ -204,13 +230,21 @@ export class TaskService {
       }
       
       // 如果任务是启用状态，则重新调度任务
-      if ((taskDTO.status === TaskStatus.ENABLED) || 
+      if ((taskDTO.status === TaskStatus.ENABLED) ||
           (currentTask.status === TaskStatus.ENABLED && taskDTO.status === undefined)) {
         const updatedTask = await db('infini_scheduled_tasks')
           .where('id', taskId)
           .first();
         
         if (updatedTask) {
+          // 将时间戳转换为Date对象
+          if (updatedTask.next_execution_time && typeof updatedTask.next_execution_time === 'number') {
+            updatedTask.next_execution_time = new Date(updatedTask.next_execution_time);
+          }
+          if (updatedTask.last_execution_time && typeof updatedTask.last_execution_time === 'number') {
+            updatedTask.last_execution_time = new Date(updatedTask.last_execution_time);
+          }
+          
           this.scheduleTask(updatedTask);
         }
       }
@@ -243,7 +277,7 @@ export class TaskService {
         .where('id', taskId)
         .update({
           status: TaskStatus.DELETED,
-          updated_at: new Date()
+          updated_at: Date.now() // 使用毫秒级时间戳替代Date对象
         });
       
       // 如果任务已经被调度，则取消调度
@@ -270,6 +304,14 @@ export class TaskService {
       const task = await db('infini_scheduled_tasks')
         .where('id', taskId)
         .first();
+      
+      // 将时间戳转换为Date对象
+      if (task && task.next_execution_time && typeof task.next_execution_time === 'number') {
+        task.next_execution_time = new Date(task.next_execution_time);
+      }
+      if (task && task.last_execution_time && typeof task.last_execution_time === 'number') {
+        task.last_execution_time = new Date(task.last_execution_time);
+      }
       
       if (!task) {
         throw new Error(`任务ID ${taskId} 不存在`);
@@ -311,6 +353,11 @@ export class TaskService {
       if (!cron.validate(task.cron_expression)) {
         console.error(`无效的cron表达式: ${task.cron_expression}，任务 ${task.task_key} 将不会被调度`);
         return;
+      }
+
+      // 确保时间字段是Date对象
+      if (task.next_execution_time && typeof task.next_execution_time === 'number') {
+        task.next_execution_time = new Date(task.next_execution_time);
       }
       
       // 调度任务
@@ -358,12 +405,12 @@ export class TaskService {
       task_id: task.id,
       task_key: task.task_key,
       status: ExecutionStatus.RUNNING,
-      start_time: new Date(),
+      start_time: Date.now(), // 使用毫秒级时间戳替代Date对象
       trigger_type: triggerType,
       node_id: this.nodeId,
       attempt: attempt,
-      created_at: new Date(),
-      updated_at: new Date()
+      created_at: Date.now(), // 使用毫秒级时间戳替代Date对象
+      updated_at: Date.now() // 使用毫秒级时间戳替代Date对象
     });
     
     try {
@@ -429,9 +476,9 @@ export class TaskService {
         await db('infini_scheduled_tasks')
           .where('id', task.id)
           .update({
-            last_execution_time: new Date(),
-            next_execution_time: nextExecutionTime,
-            updated_at: new Date()
+            last_execution_time: Date.now(), // 使用毫秒级时间戳替代Date对象
+            next_execution_time: nextExecutionTime.getTime(), // 确保保存为时间戳
+            updated_at: Date.now() // 使用毫秒级时间戳替代Date对象
           });
         
         // 更新执行历史记录
@@ -439,10 +486,10 @@ export class TaskService {
           .where('id', historyId)
           .update({
             status: ExecutionStatus.SUCCESS,
-            end_time: new Date(),
+            end_time: Date.now(), // 使用毫秒级时间戳替代Date对象
             execution_time_ms: Date.now() - startTime,
             execution_log: logs.join('\n'),
-            updated_at: new Date()
+            updated_at: Date.now() // 使用毫秒级时间戳替代Date对象
           });
         
         logs.push(`任务执行成功，耗时: ${Date.now() - startTime}ms`);
@@ -488,11 +535,11 @@ export class TaskService {
           .where('id', historyId)
           .update({
             status: ExecutionStatus.FAILED,
-            end_time: new Date(),
+            end_time: Date.now(), // 使用毫秒级时间戳替代Date对象
             execution_time_ms: Date.now() - startTime,
             error_message: errMsg,
             execution_log: logs.join('\n'),
-            updated_at: new Date()
+            updated_at: Date.now() // 使用毫秒级时间戳替代Date对象
           });
         
         return {

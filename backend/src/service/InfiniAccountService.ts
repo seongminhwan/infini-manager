@@ -464,7 +464,7 @@ export class InfiniAccountService {
 
             // 时间差在容差范围内（-10秒到+无穷大）的邮件视为有效
             // 这解决邮件服务器时间精度和时区差异的问题
-            const isValidTimeWindow = timeDifferenceMs > -toleranceMs;
+            const isValidTimeWindow = Math.abs(timeDifferenceMs) > -toleranceMs;
 
             console.log(`邮件时间差: ${timeDifferenceMs}毫秒 (${Math.round(timeDifferenceMs / 1000)}秒), 容差: ${toleranceMs}毫秒`);
             console.log(`时间容差判断结果: ${isValidTimeWindow ? '【有效】在容差范围内' : '【无效】超出容差范围'}`);

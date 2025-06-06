@@ -177,6 +177,13 @@ export interface GmailConfig {
   proxyServerId?: number; // 指定代理服务器ID
   proxyTag?: string; // 代理标签
   proxyConfig?: import('../utils/ProxyUtils').OptionalProxyConfig; // 使用OptionalProxyConfig接口
+  
+  // 重试策略配置
+  retryOptions?: {
+    maxRetries?: number;       // 最大重试次数，默认为3
+    baseRetryDelay?: number;   // 基础重试延迟（毫秒），默认为2000
+    useExponentialBackoff?: boolean; // 是否使用指数退避策略，默认为true
+  }
 }
 
 export interface GmailHeader {

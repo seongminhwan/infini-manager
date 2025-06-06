@@ -2051,7 +2051,7 @@ const generateStrongPassword = (): string => {
   return password;
 };
 
-// 注册Infini账户模态框组件
+// 注册模态框组件
 const AccountRegisterModal: React.FC<{
   visible: boolean;
   onClose: () => void;
@@ -2059,79 +2059,110 @@ const AccountRegisterModal: React.FC<{
 }> = ({ visible, onClose, onSuccess }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [emailAccounts, setEmailAccounts] = useState<any[]>([]);
-  const [loadingEmailAccounts, setLoadingEmailAccounts] = useState(false);
-  const [selectedEmailAccount, setSelectedEmailAccount] = useState<any>(null);
-  const [registering, setRegistering] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
-  const [accountGroups, setAccountGroups] = useState<AccountGroup[]>([]);
-  const [loadingGroups, setLoadingGroups] = useState(false);
-  const logSectionRef = useRef<HTMLDivElement>(null);
+  const [kycEnabled, setKycEnabled] = useState(false);
+  const [kycImages, setKycImages] = useState<KycImage[]>([]);
+  const [loadingKycImages, setLoadingKycImages] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const [useCustomEmailConfig, setUseCustomEmailConfig] = useState(false); // 新增状态
 
-  // 添加日志
-  const addLog = useCallback((text: string, type: 'info' | 'success' | 'error' = 'info') => {
-    const timestamp = new Date().toLocaleTimeString();
-    const prefix = type === 'error' 
-      ? '❌ ' 
-      : type === 'success' 
-        ? '✅ ' 
-        : '📝 ';
-    
-    setLogs(prevLogs => [...prevLogs, `${prefix}[${timestamp}] ${text}`]);
-    
-    // 滚动到底部
-    setTimeout(() => {
-      if (logSectionRef.current) {
-        logSectionRef.current.scrollTop = logSectionRef.current.scrollHeight;
-      }
-    }, 10);
-  }, []);
-
-  // 获取邮箱账户
-  const fetchEmailAccounts = useCallback(async () => {
+  // 发送验证码
+  const sendVerificationCode = async () => {
     try {
-      setLoadingEmailAccounts(true);
-      const response = await api.get(`${apiBaseUrl}/api/email-accounts`);
-      
-      if (response.data.success) {
-        const accounts = response.data.data || [];
-        setEmailAccounts(accounts);
-        
-        // 如果有活跃账户，默认选择第一个
-        const activeAccount = accounts.find((acc: any) => acc.status === 'active');
-        if (activeAccount) {
-          setSelectedEmailAccount(activeAccount);
-          form.setFieldsValue({ emailAccountId: activeAccount.id });
-        }
-      } else {
-        message.error('获取邮箱账户失败');
-      }
-    } catch (error) {
-      console.error('获取邮箱账户失败:', error);
-      message.error('获取邮箱账户列表失败');
-    } finally {
-      setLoadingEmailAccounts(false);
-    }
-  }, [form]);
+      const email = form.getFieldValue('email');
 
-  // 获取账户分组
-  const fetchAccountGroups = useCallback(async () => {
-    try {
-      setLoadingGroups(true);
-      const response = await infiniAccountApi.getAllAccountGroups();
-      
+      // 验证邮箱格式
+      if (!email || !/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
+        message.error('请输入有效的邮箱地址');
+        return;
+      }
+
+      setSendingCode(true);
+      const response = await infiniAccountApi.sendVerificationCode(email);
+
       if (response.success) {
-        setAccountGroups(response.data || []);
+        message.success('验证码已发送，请检查邮箱');
+        // 开始倒计时
+        setCountdown(60);
+        const timer = setInterval(() => {
+          setCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
       } else {
-        message.error('获取账户分组失败');
+        message.error('发送验证码失败: ' + response.message);
       }
-    } catch (error) {
-      console.error('获取账户分组失败:', error);
-      message.error('获取账户分组列表失败');
+    } catch (error: any) {
+      message.error('发送验证码失败: ' + error.message);
     } finally {
-      setLoadingGroups(false);
+      setSendingCode(false);
     }
-  }, []);
+  };
+
+  // 获取验证码（仅用于测试）
+  const fetchCode = async () => {
+    try {
+      const email = form.getFieldValue('email');
+
+      if (!email) {
+        message.error('请先输入邮箱地址');
+        return;
+      }
+
+      const response = await infiniAccountApi.fetchVerificationCode(email);
+
+      if (response.success && response.data) {
+        setVerificationCode(response.data.code);
+        form.setFieldsValue({ verificationCode: response.data });
+        message.success('获取验证码成功: ' + response.data);
+      } else {
+        message.error('获取验证码失败: ' + response.message);
+      }
+    } catch (error: any) {
+      message.error('获取验证码失败: ' + error.message);
+    }
+  };
+
+  // 重置状态
+  const resetState = () => {
+    form.resetFields();
+    setKycEnabled(false);
+    setVerificationCode('');
+    setCountdown(0);
+  };
+
+  // 获取KYC图片列表
+  const fetchKycImages = async () => {
+    try {
+      setLoadingKycImages(true);
+      const response = await api.get(`${apiBaseUrl}/api/kyc-images`);
+
+      if (response.data.success) {
+        setKycImages(response.data.data || []);
+      } else {
+        message.error('获取KYC图片列表失败: ' + response.data.message);
+      }
+    } catch (error: any) {
+      message.error('获取KYC图片列表失败: ' + error.message);
+    } finally {
+      setLoadingKycImages(false);
+    }
+  };
+
+  // KYC选项变更时
+  const handleKycChange = (e: any) => {
+    const checked = e.target.checked;
+    setKycEnabled(checked);
+
+    if (checked) {
+      fetchKycImages();
+    }
+  };
 
   // 生成随机密码
   const generatePassword = () => {
@@ -2140,214 +2171,107 @@ const AccountRegisterModal: React.FC<{
     message.success('已生成随机强密码');
   };
 
+  // 生成随机KYC信息
+  const generateRandomKyc = () => {
+    // 随机国家列表
+    const countries = ['中国', '美国', '英国', '日本', '加拿大', '澳大利亚', '德国', '法国'];
+    // 随机证件类型
+    const idTypes = ['身份证', '护照', '驾照'];
+
+    // 随机生成手机号
+    const generateRandomPhone = () => {
+      return `1${Math.floor(Math.random() * 9 + 1)}${Array(9).fill(0).map(() => Math.floor(Math.random() * 10)).join('')}`;
+    };
+
+    // 随机生成证件号
+    const generateRandomIdNumber = () => {
+      return Array(18).fill(0).map(() => Math.floor(Math.random() * 10)).join('');
+    };
+
+    // 设置随机值
+    form.setFieldsValue({
+      country: countries[Math.floor(Math.random() * countries.length)],
+      phone: generateRandomPhone(),
+      idType: idTypes[Math.floor(Math.random() * idTypes.length)],
+      idNumber: generateRandomIdNumber(),
+    });
+
+    message.success('已生成随机KYC信息');
+  };
+
   // 处理关闭
   const handleClose = () => {
-    form.resetFields();
-    setLogs([]);
-    setRegistering(false);
+    resetState();
     onClose();
   };
 
-  // 打开新增邮箱模态框
-  const openAddEmailModal = () => {
-    // 这里应该触发邮箱账户列表页面的新增模态框
-    // 由于无法直接跨页面触发，可以通过导航或使用消息传递
-    message.info('请前往邮箱账户列表页面添加新邮箱');
-    // 可以选择跳转到邮箱管理页面
-    window.open('/email-manage', '_blank');
-  };
-
-  // 处理表单提交
-  const handleSubmit = async (values: any) => {
-    // 检查是否选择了邮箱账户
-    if (!values.emailAccountId) {
-      message.error('请选择系统维护的邮箱配置');
-      return;
-    }
-
+  // 提交表单
+  const handleSubmit = async (values: RegisterFormData & any) => { // 允许 any 访问自定义字段
     try {
       setLoading(true);
-      setRegistering(true);
-      addLog('开始注册流程...', 'info');
 
-      // 获取选中的邮箱账户
-      const emailAccount = emailAccounts.find(acc => acc.id === values.emailAccountId);
-      if (!emailAccount) {
-        throw new Error('未找到选中的邮箱账户');
-      }
-      
-      addLog(`步骤1: 使用 ${emailAccount.email} 作为主邮箱`, 'info');
+      // 提取表单数据
+      const {
+        email, password, needKyc, country, phone, idType, idNumber, kycImageId, enable2fa,
+        useCustomEmailConfig: formUseCustomEmailConfig, // 从 values 中获取
+        custom_email_address, custom_email_password,
+        custom_imap_host, custom_imap_port, imap_secure,
+        custom_smtp_host, custom_smtp_port, smtp_secure,
+        custom_email_status, custom_extra_config
+      } = values;
 
-      // 步骤1: 发送验证码
-      const email = values.email;
-      addLog(`步骤2: 正在向 ${email} 发送验证码...`, 'info');
-      const sendResponse = await infiniAccountApi.sendVerificationCode(email);
-      
-      if (!sendResponse.success) {
-        throw new Error(`发送验证码失败: ${sendResponse.message}`);
-      }
-      
-      addLog('验证码发送成功', 'success');
-      
-      // 步骤2: 获取验证码
-      addLog('步骤3: 正在获取验证码...', 'info');
-      // 延迟一下确保邮件已到达
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const codeResponse = await infiniAccountApi.fetchVerificationCode(email, emailAccount.email);
-      
-      if (!codeResponse.success || !codeResponse.data.code) {
-        throw new Error(`获取验证码失败: ${codeResponse.message}`);
-      }
-      
-      const verificationCode = codeResponse.data.code;
-      addLog(`成功获取验证码: ${verificationCode}`, 'success');
-      
-      // 步骤3: 注册Infini账户
-      addLog('步骤4: 正在注册Infini账户...', 'info');
+      // 模拟账户创建API调用
+      // 在实际应用中，这里会调用 infiniAccountApi.createAccount
+      // 并从响应中获取 newAccountId
+      console.log('模拟调用 infiniAccountApi.createAccount with:', { email, password /*, other fields */ });
+      const mockCreateAccountResponse = { success: true, data: { id: Date.now() }, message: '账户创建成功(模拟)' }; // 模拟成功响应和新账户ID
 
-      // 使用axios直接调用Infini API
-      const options = {
-        method: 'POST',
-        url: 'https://api-card.infini.money/user/registration/email',
-        headers: {
-          'sec-ch-ua-platform': '"macOS"',
-          'Referer': 'https://app.infini.money/',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
-          'Accept': 'application/json, text/plain, */*',
-          'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-          'sec-ch-ua-mobile': '?0',
-          'Content-Type': 'application/json'
-        },
-        data: {
-          email: email,
-          verification_code: verificationCode,
-          password: values.password,
-          invitation_code: values.invitationCode || 'TC7MLI9' // 使用默认邀请码
-        }
-      };
-      
-      addLog(`使用邀请码: ${values.invitationCode || 'TC7MLI9'}`, 'info');
+      if (mockCreateAccountResponse.success && mockCreateAccountResponse.data?.id) {
+        const newAccountId = mockCreateAccountResponse.data.id;
+        message.success(mockCreateAccountResponse.message);
 
-      try {
-        const response = await api.request(options);
-        
-        if (response.data && response.data.code === 0) {
-          addLog('Infini注册成功', 'success');
-          
-          // 步骤4: 保存账户信息到本地数据库
-          addLog('步骤5: 正在保存账户信息到本地数据库...', 'info');
-          
-          // 创建账户信息
-          const createData: any = {
-            email: email,
-            password: values.password,
-            emailAccountId: values.emailAccountId,
-            auto2fa: values.enable2fa,
-            autoKyc: values.needKyc,
-            autoApplyCard: values.enableCard
+        // 如果启用了自定义邮箱配置，则创建它
+        if (formUseCustomEmailConfig) {
+          const customEmailConfigData = {
+            email: custom_email_address,
+            password: custom_email_password,
+            imap_host: custom_imap_host,
+            imap_port: Number(custom_imap_port),
+            imap_secure: imap_secure,
+            smtp_host: custom_smtp_host,
+            smtp_port: Number(custom_smtp_port),
+            smtp_secure: smtp_secure,
+            status: custom_email_status,
+            extra_config: custom_extra_config ? JSON.parse(custom_extra_config) : null,
           };
-          
-          // 如果选择了账户分组，添加到请求数据
-          if (values.accountGroupId) {
-            createData.accountGroupId = values.accountGroupId;
+
+          try {
+            console.log(`尝试为新账户 ID ${newAccountId} 创建自定义邮箱配置:`, customEmailConfigData);
+            const customEmailResponse = await infiniAccountApi.createCustomEmailConfig(newAccountId, customEmailConfigData);
+            if (customEmailResponse.success) {
+              message.success('自定义邮箱配置已成功关联到新账户。');
+            } else {
+              message.error(`自定义邮箱配置失败: ${customEmailResponse.message || '未知错误'}`);
+            }
+          } catch (customEmailError: any) {
+            message.error(`创建自定义邮箱配置时出错: ${customEmailError.message || '未知网络错误'}`);
+            console.error("创建自定义邮箱配置错误:", customEmailError);
           }
-          
-          const createResponse = await infiniAccountApi.createAccount(
-            email, 
-            values.password,
-            undefined, // 不使用随机用户ID
-            createData
-          );
-          
-          if (!createResponse.success) {
-            throw new Error(`保存账户信息失败: ${createResponse.message}`);
-          }
-          
-          const createdAccount = createResponse.data;
-          addLog('账户信息保存成功', 'success');
-          
-          // 步骤5: 同步账户信息 
-          addLog('步骤6: 正在同步账户信息...', 'info');
-          const syncResponse = await infiniAccountApi.syncAccount(createdAccount.id);
-          
-          if (!syncResponse.success) {
-            throw new Error(`同步账户信息失败: ${syncResponse.message}`);
-          }
-          
-          addLog('账户信息同步成功，已获取最新账户资料', 'success');
-          addLog('注册流程完成!', 'success');
-          
-          // 注册成功
-          message.success('Infini账户注册成功!');
-          
-          // 延迟关闭模态框
-          setTimeout(() => {
-            handleClose();
-            onSuccess();
-          }, 1500);
-        } else {
-          throw new Error(`Infini API返回错误: ${response.data.message || JSON.stringify(response.data)}`);
         }
-      } catch (axiosError) {
-        console.error('Infini API调用失败:', axiosError);
-        throw new Error(`Infini API调用失败: ${(axiosError as Error).message}`);
+
+        resetState();
+        onSuccess(); // 调用外部传入的成功回调，例如刷新账户列表
+        onClose();   // 关闭模态框
+      } else {
+        message.error(mockCreateAccountResponse.message || '账户创建失败(模拟)');
       }
-    } catch (error) {
-      const errorMessage = (error as Error).message;
-      addLog(`注册失败: ${errorMessage}`, 'error');
-      message.error('注册失败: ' + errorMessage);
-      console.error('Infini账户注册失败:', error);
+    } catch (error: any) {
+      message.error('注册过程中发生错误: ' + error.message);
+      console.error("注册表单提交错误:", error);
     } finally {
       setLoading(false);
-      setRegistering(false);
     }
   };
-
-  // 初始化数据
-  useEffect(() => {
-    if (visible) {
-      fetchEmailAccounts();
-      fetchAccountGroups();
-    }
-  }, [visible, fetchEmailAccounts, fetchAccountGroups]);
-
-  // 日志面板组件
-  const LogPanel = React.memo(() => {
-    return (
-      <div 
-        id="log-container" 
-        ref={logSectionRef}
-        style={{
-          marginTop: 16,
-          maxHeight: 150,
-          overflowY: 'auto',
-          background: '#f5f5f5',
-          padding: 8,
-          borderRadius: 4
-        }}
-      >
-        {logs.length === 0 ? (
-          <Text type="secondary">暂无日志记录</Text>
-        ) : (
-          logs.map((log, index) => (
-            <div 
-              key={index}
-              style={{
-                marginBottom: 4,
-                fontFamily: 'monospace',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-all',
-                fontSize: 12
-              }}
-            >
-              {log}
-            </div>
-          ))
-        )}
-      </div>
-    );
-  });
 
   return (
     <Modal
@@ -2356,7 +2280,7 @@ const AccountRegisterModal: React.FC<{
       onCancel={handleClose}
       width={700}
       footer={[
-        <Button key="cancel" onClick={handleClose} disabled={registering}>
+        <Button key="cancel" onClick={handleClose}>
           取消
         </Button>,
         <Button
@@ -2364,7 +2288,6 @@ const AccountRegisterModal: React.FC<{
           type="primary"
           loading={loading}
           onClick={() => form.submit()}
-          disabled={registering}
         >
           注册账户
         </Button>,
@@ -2375,64 +2298,28 @@ const AccountRegisterModal: React.FC<{
         layout="vertical"
         onFinish={handleSubmit}
         initialValues={{
-          needKyc: false,
+          needKyc: false, // 保留一个即可
           enable2fa: false,
-          enableCard: false,
-          invitationCode: 'TC7MLI9'
+          useCustomEmailConfig: false, // 初始化
+          imap_secure: true, // 默认IMAP安全连接
+          smtp_secure: true, // 默认SMTP安全连接
+          custom_email_status: 'active', // 默认自定义邮箱状态
         }}
       >
         <Form.Item
-          name="emailAccountId"
-          label="系统邮箱配置"
-          rules={[{ required: true, message: '请选择系统维护的邮箱配置' }]}
-          extra="用于接收验证码和其他系统通知"
-        >
-          <Select
-            placeholder="请选择系统维护的邮箱配置"
-            loading={loadingEmailAccounts}
-            dropdownRender={menu => (
-              <>
-                {menu}
-                <Divider style={{ margin: '8px 0' }} />
-                <Button 
-                  type="link" 
-                  icon={<PlusOutlined />} 
-                  onClick={openAddEmailModal}
-                  style={{ padding: '8px', display: 'block', width: '100%', textAlign: 'left' }}
-                >
-                  新增邮箱配置
-                </Button>
-              </>
-            )}
-          >
-            {emailAccounts.map(account => (
-              <Option key={account.id} value={account.id}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <MailOutlined style={{ marginRight: 8 }} />
-                  <span>{account.email}</span>
-                  {account.status === 'active' && (
-                    <Tag color="green" style={{ marginLeft: 8 }}>活跃</Tag>
-                  )}
-                </div>
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
           name="email"
-          label="注册邮箱"
+          label="邮箱"
           rules={[
             { required: true, message: '请输入邮箱' },
             { type: 'email', message: '请输入有效的邮箱地址' }
           ]}
         >
-          <Input prefix={<MailOutlined />} placeholder="请输入要注册的Infini邮箱" />
+          <Input prefix={<MailOutlined />} placeholder="请输入邮箱" />
         </Form.Item>
 
         <Form.Item
           name="password"
-          label="注册密码"
+          label="密码"
           rules={[{ required: true, message: '请输入密码' }]}
           extra={<Button type="link" onClick={generatePassword} style={{ padding: 0 }}>生成随机强密码</Button>}
         >
@@ -2443,58 +2330,319 @@ const AccountRegisterModal: React.FC<{
         </Form.Item>
 
         <Form.Item
-          name="accountGroupId"
-          label="账户分组"
+          name="verificationCode"
+          label="邮箱验证码"
+          rules={[{ required: true, message: '请输入邮箱验证码' }]}
         >
-          <Select placeholder="请选择账户分组" loading={loadingGroups} allowClear>
-            {accountGroups.map(group => (
-              <Option key={group.id} value={group.id}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <UserOutlined style={{ marginRight: 8 }} />
-                  <span>{group.name}</span>
-                  {group.isDefault && (
-                    <Tag color="blue" style={{ marginLeft: 8 }}>默认</Tag>
-                  )}
-                </div>
-              </Option>
-            ))}
-          </Select>
+          <div style={{ display: 'flex' }}>
+            <Input
+              prefix={<SafetyOutlined />}
+              placeholder="请输入邮箱验证码"
+              value={verificationCode} // 如果需要手动输入或显示获取到的验证码
+              onChange={e => setVerificationCode(e.target.value)} // 如果需要手动输入
+            />
+            <Button
+              onClick={sendVerificationCode}
+              loading={sendingCode}
+              disabled={countdown > 0}
+              style={{ marginLeft: 8 }}
+            >
+              {countdown > 0 ? `${countdown}s后重发` : '发送验证码'}
+            </Button>
+            {/* <Button onClick={fetchCode} style={{ marginLeft: 8 }}>获取(测试)</Button> */}
+          </div>
+        </Form.Item>
+
+        <Form.Item name="useCustomEmailConfig" valuePropName="checked">
+          <Checkbox onChange={(e) => setUseCustomEmailConfig(e.target.checked)}>
+            使用自定义邮箱配置 (用于接收验证码等)
+          </Checkbox>
+        </Form.Item>
+
+        {useCustomEmailConfig && (
+          <Card size="small" title="自定义邮箱配置" style={{ marginBottom: 16, borderColor: '#bae7ff' }}>
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_email_address"
+                  label="邮箱地址"
+                  rules={[{ required: useCustomEmailConfig, type: 'email', message: '请输入有效的邮箱地址' }]}
+                >
+                  <Input prefix={<MailOutlined />} placeholder="例如: custom_user@example.com" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_email_password"
+                  label="邮箱密码/授权码"
+                  rules={[{ required: useCustomEmailConfig, message: '密码不能为空' }]}
+                >
+                  <Input.Password prefix={<LockOutlined />} placeholder="输入邮箱密码或应用授权码" />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_imap_host"
+                  label="IMAP 主机"
+                  rules={[{ required: useCustomEmailConfig, message: 'IMAP 主机不能为空' }]}
+                >
+                  <Input placeholder="例如: imap.example.com" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="custom_imap_port"
+                  label="IMAP 端口"
+                  rules={[{ required: useCustomEmailConfig, message: '请输入有效的IMAP端口号' }]}
+                >
+                  <Input type="number" placeholder="例如: 993" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="imap_secure"
+                  label="IMAP SSL/TLS"
+                  valuePropName="checked"
+                >
+                  <Checkbox>启用</Checkbox>
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="custom_smtp_host"
+                  label="SMTP 主机"
+                  rules={[{ required: useCustomEmailConfig, message: 'SMTP 主机不能为空' }]}
+                >
+                  <Input placeholder="例如: smtp.example.com" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="custom_smtp_port"
+                  label="SMTP 端口"
+                  rules={[{ required: useCustomEmailConfig, message: '请输入有效的SMTP端口号' }]}
+                >
+                  <Input type="number" placeholder="例如: 465 或 587" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Form.Item
+                  name="smtp_secure"
+                  label="SMTP SSL/TLS"
+                  valuePropName="checked"
+                >
+                  <Checkbox>启用</Checkbox>
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item
+              name="custom_email_status"
+              label="自定义邮箱状态"
+              rules={[{ required: useCustomEmailConfig, message: '请选择状态' }]}
+            >
+              <Radio.Group>
+                <Radio value="active">激活</Radio>
+                <Radio value="disabled">禁用</Radio>
+              </Radio.Group>
+            </Form.Item>
+            <Form.Item name="custom_extra_config" label="额外配置 (JSON格式)"
+              getValueFromEvent={(e) => {
+                const value = e.target.value;
+                return value.trim() === '' ? null : value;
+              }}
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || typeof value !== 'string' || !useCustomEmailConfig) { // 仅当启用自定义配置时校验
+                      return Promise.resolve();
+                    }
+                    try {
+                      JSON.parse(value);
+                      return Promise.resolve();
+                    } catch (e) {
+                      return Promise.reject(new Error('额外配置必须是有效的JSON格式'));
+                    }
+                  },
+                }),
+              ]}
+            >
+              <Input.TextArea rows={2} placeholder='例如: {"key": "value"}' />
+            </Form.Item>
+          </Card>
+        )}
+
+        <Form.Item name="needKyc" valuePropName="checked">
+          <Checkbox onChange={handleKycChange}>需要KYC认证</Checkbox>
+        </Form.Item>
+        <Form.Item
+          name="verificationCode"
+          label="验证码"
+          rules={[{ required: true, message: '请输入验证码' }]}
+        >
+          <div style={{ display: 'flex' }}>
+            <Input
+              placeholder="请输入验证码"
+              style={{ flex: 1 }}
+              value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value)}
+            />
+            <Button
+              type="primary"
+              loading={sendingCode}
+              disabled={countdown > 0}
+              onClick={sendVerificationCode}
+              style={{ marginLeft: 8, width: 120 }}
+            >
+              {countdown > 0 ? `${countdown}秒后重试` : '发送验证码'}
+            </Button>
+            <Button
+              type="link"
+              onClick={fetchCode}
+              style={{ marginLeft: 8 }}
+            >
+              提取验证码
+            </Button>
+          </div>
         </Form.Item>
 
         <Form.Item
-          name="invitationCode"
-          label="邀请码"
-          initialValue="TC7MLI9"
+          name="password"
+          label="密码"
+          rules={[{ required: true, message: '请输入密码' }]}
         >
-          <Input placeholder="请输入邀请码" />
+          <Input.Password
+            prefix={<LockOutlined />}
+            placeholder="请输入密码"
+            addonAfter={
+              <Button
+                type="text"
+                icon={<ReloadOutlined />}
+                onClick={generatePassword}
+                style={{ border: 'none', padding: 0 }}
+              />
+            }
+          />
         </Form.Item>
 
-        <Row gutter={16}>
-          <Col span={8}>
-            <Form.Item
-              name="enable2fa"
-              valuePropName="checked"
-            >
-              <Checkbox>自动开启2FA</Checkbox>
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item
-              name="needKyc"
-              valuePropName="checked"
-            >
-              <Checkbox>自动KYC认证</Checkbox>
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item
-              name="enableCard"
-              valuePropName="checked"
-            >
-              <Checkbox>自动开卡</Checkbox>
-            </Form.Item>
-          </Col>
-        </Row>
+        <Form.Item
+          name="needKyc"
+          valuePropName="checked"
+        >
+          <Checkbox onChange={handleKycChange}>进行KYC认证</Checkbox>
+        </Form.Item>
+
+        {kycEnabled && (
+          <Collapse defaultActiveKey={['1']} style={{ marginBottom: 16 }}>
+            <Panel header="KYC信息" key="1" extra={
+              <Button
+                type="text"
+                icon={<ReloadOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  generateRandomKyc();
+                }}
+                style={{ padding: '4px 8px' }}
+              >
+                随机生成
+              </Button>
+            }>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="country"
+                    label="国家"
+                    rules={[{ required: kycEnabled, message: '请选择国家' }]}
+                  >
+                    <Input
+                      prefix={<GlobalOutlined />}
+                      placeholder="请输入国家"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="phone"
+                    label="手机号"
+                    rules={[{ required: kycEnabled, message: '请输入手机号' }]}
+                  >
+                    <Input
+                      prefix={<MobileOutlined />}
+                      placeholder="请输入手机号"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="idType"
+                    label="证件类型"
+                    rules={[{ required: kycEnabled, message: '请选择证件类型' }]}
+                  >
+                    <Select placeholder="请选择证件类型" prefix={<IdcardOutlined />}>
+                      <Option value="身份证">身份证</Option>
+                      <Option value="护照">护照</Option>
+                      <Option value="驾照">驾照</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="idNumber"
+                    label="证件编号"
+                    rules={[{ required: kycEnabled, message: '请输入证件编号' }]}
+                  >
+                    <Input
+                      prefix={<NumberOutlined />}
+                      placeholder="请输入证件编号"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item
+                name="kycImageId"
+                label="KYC图片"
+                rules={[{ required: kycEnabled, message: '请选择KYC图片' }]}
+              >
+                <Select
+                  placeholder="请选择KYC图片"
+                  loading={loadingKycImages}
+                  optionLabelProp="label"
+                >
+                  {kycImages.map(image => (
+                    <Option
+                      key={image.id}
+                      value={image.id}
+                      label={`图片ID: ${image.id} - 标签: ${image.tags}`}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <img
+                          src={image.img_base64}
+                          alt="KYC图片"
+                          style={{ width: 40, height: 40, marginRight: 8, objectFit: 'cover' }}
+                        />
+                        <span>{`图片ID: ${image.id} - 标签: ${image.tags}`}</span>
+                      </div>
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Panel>
+          </Collapse>
+        )}
+
+        <Form.Item
+          name="enable2fa"
+          valuePropName="checked"
+        >
+          <Checkbox>自动开启2FA</Checkbox>
+        </Form.Item>
 
         <Form.Item>
           <Text type="secondary">
@@ -2503,9 +2651,6 @@ const AccountRegisterModal: React.FC<{
           </Text>
         </Form.Item>
       </Form>
-
-      {/* 日志面板 */}
-      {logs.length > 0 && <LogPanel />}
     </Modal>
   );
 };
