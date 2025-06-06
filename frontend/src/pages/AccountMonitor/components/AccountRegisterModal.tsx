@@ -55,7 +55,7 @@ const AccountRegisterModal: React.FC<AccountRegisterModalProps> = ({
   const fetchRandomUsers = async () => {
     try {
       setRandomUserLoading(true);
-      const response = await randomUserApi.getRandomUsers(1, 100, { status: 'available' });
+      const response = await randomUserApi.getRandomUsers();
       if (response.success) {
         setRandomUsers(response.data.users || []);
       } else {
@@ -147,11 +147,12 @@ const AccountRegisterModal: React.FC<AccountRegisterModalProps> = ({
 
       // 如果使用模拟用户ID
       if (useMockUserId && mockUserId) {
-        registerData.mockUserId = mockUserId;
+        // 使用类型断言来添加可选属性
+        (registerData as any).mockUserId = mockUserId;
       }
 
       // 调用注册API
-      const response = await infiniAccountApi.registerAccount(registerData);
+      const response = await infiniAccountApi.createAccount(registerData);
 
       if (response.success) {
         message.success('账户注册成功');
