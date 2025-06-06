@@ -13,7 +13,8 @@ import {
   Typography,
   Popconfirm,
   Checkbox,
-  Tooltip
+  Tooltip,
+  Tag
 } from 'antd';
 import {
   MailOutlined,
