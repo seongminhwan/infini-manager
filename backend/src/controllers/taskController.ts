@@ -545,8 +545,16 @@ export default {
       // 更新处理器参数
       if (handlerParams) {
         if (handler.type === 'function') {
-          // 合并现有参数和新参数
-          handler.params = { ...handler.params, ...handlerParams };
+          // 检查是否为内置邮件同步任务的特殊处理
+          if (existingTask.task_key === 'BUILTIN_INCREMENTAL_EMAIL_SYNC') {
+            // 直接使用前端传递的handlerParams作为处理器参数
+            // 这是为了处理前端传递的嵌套结构 {"handlerParams":{"accountIds":[...]}}
+            handler.params = handlerParams;
+            console.log(`更新邮件同步任务参数: ${JSON.stringify(handler.params)}`);
+          } else {
+            // 其他函数处理器，合并现有参数和新参数
+            handler.params = { ...handler.params, ...handlerParams };
+          }
         } else if (handler.type === 'http') {
           // 对于HTTP处理器，更新body中的参数
           handler.body = { ...handler.body, ...handlerParams };
