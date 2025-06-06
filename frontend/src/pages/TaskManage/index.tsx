@@ -608,6 +608,41 @@ const TaskManage: React.FC = () => {
     }
   };
   
+  // 切换任务状态(启用/禁用)
+  const handleToggleTaskStatus = async (taskId: number, newStatus: 'enabled' | 'disabled') => {
+    try {
+      setLoading(true);
+      
+      // 调用更新任务API，只更新状态
+      const response = await taskApi.updateTask(taskId.toString(), {
+        status: newStatus
+      });
+      
+      if (response.success) {
+        message.success(`任务${newStatus === 'enabled' ? '启用' : '禁用'}成功`);
+        
+        // 重新加载任务列表
+        fetchTasks();
+        
+        // 如果当前正在查看该任务，更新选中的任务信息
+        if (selectedTask && selectedTask.id === taskId) {
+          // 深拷贝并更新状态
+          setSelectedTask({
+            ...selectedTask,
+            status: newStatus
+          });
+        }
+      } else {
+        message.error(response.message || `任务${newStatus === 'enabled' ? '启用' : '禁用'}失败`);
+      }
+    } catch (error) {
+      console.error(`${newStatus === 'enabled' ? '启用' : '禁用'}任务失败:`, error);
+      message.error(`操作失败: ${(error as { message?: string }).message || '未知错误'}`); 
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // 删除任务
   const handleDeleteTask = async (taskId: number) => {
     try {
@@ -732,6 +767,14 @@ const TaskManage: React.FC = () => {
               />
             </Tooltip>
             
+            <Tooltip title={record.status === 'enabled' ? '禁用任务' : '启用任务'}>
+              <Button 
+                type="text" 
+                icon={record.status === 'enabled' ? <CloseCircleOutlined /> : <CheckCircleOutlined />} 
+                onClick={() => handleToggleTaskStatus(record.id, record.status === 'enabled' ? 'disabled' : 'enabled')}
+                disabled={record.status === 'deleted'}
+              />
+            </Tooltip>
             <Tooltip title="手动触发">
               <Button 
                 type="text" 
@@ -1250,7 +1293,7 @@ const TaskManage: React.FC = () => {
                           </Col>
                           <Col span={24}>
                             <Text strong>函数参数：</Text>
-                            <pre>{JSON.stringify(handler.params || {}, null, 2)}</pre>
+                            <pre>{typeof handler.params === 'string' ? handler.params : JSON.stringify(handler.params || {}, null, 2)}</pre>
                           </Col>
                         </>
                       )}
@@ -1301,6 +1344,16 @@ const TaskManage: React.FC = () => {
                       onClick={() => handleOpenEditTaskModal(selectedTask)}
                     >
                       编辑任务
+                    </Button>
+                    
+                    {/* 添加启用/禁用按钮 */}
+                    <Button 
+                      type={selectedTask.status === 'enabled' ? 'default' : 'primary'} 
+                      icon={selectedTask.status === 'enabled' ? <CloseCircleOutlined /> : <CheckCircleOutlined />} 
+                      onClick={() => handleToggleTaskStatus(selectedTask.id, selectedTask.status === 'enabled' ? 'disabled' : 'enabled')}
+                      disabled={selectedTask.status === 'deleted'}
+                    >
+                      {selectedTask.status === 'enabled' ? '禁用任务' : '启用任务'}
                     </Button>
                     
                     <Button 
