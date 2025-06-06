@@ -151,8 +151,13 @@ const AccountRegisterModal: React.FC<AccountRegisterModalProps> = ({
         (registerData as any).mockUserId = mockUserId;
       }
 
-      // 调用注册API
-      const response = await infiniAccountApi.createAccount(registerData);
+      // 调用注册API - 使用正确的参数格式
+      const mockUserIdNum = useMockUserId && mockUserId ? parseInt(mockUserId) : undefined;
+      const response = await infiniAccountApi.createAccount(
+        values.email,
+        customPassword ? password : generateRandomPassword(),
+        mockUserIdNum
+      );
 
       if (response.success) {
         message.success('账户注册成功');
