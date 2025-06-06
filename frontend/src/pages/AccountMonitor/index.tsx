@@ -1493,9 +1493,6 @@ const AccountMonitor: React.FC = () => {
               <Dropdown
                 overlay={
                   <Menu>
-                    <Menu.Item key="register" onClick={() => setRegisterModalVisible(true)}>
-                      注册账户
-                    </Menu.Item>
                     <Menu.Item key="randomRegister" onClick={() => setRandomUserRegisterModalVisible(true)}>
                       注册随机用户
                     </Menu.Item>
