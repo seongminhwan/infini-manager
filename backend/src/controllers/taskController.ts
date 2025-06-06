@@ -547,10 +547,19 @@ export default {
         if (handler.type === 'function') {
           // 检查是否为内置邮件同步任务的特殊处理
           if (existingTask.task_key === 'BUILTIN_INCREMENTAL_EMAIL_SYNC') {
-            // 直接使用前端传递的handlerParams作为处理器参数
-            // 这是为了处理前端传递的嵌套结构 {"handlerParams":{"accountIds":[...]}}
-            handler.params = handlerParams;
-            console.log(`更新邮件同步任务参数: ${JSON.stringify(handler.params)}`);
+            // 提取accountIds并明确设置到handler.params中
+            console.log(`更新前的邮件同步任务参数: ${JSON.stringify(handler.params)}`);
+            console.log(`接收到的handlerParams: ${JSON.stringify(handlerParams)}`);
+            
+            // 确保accountIds是一个数组
+            const accountIds = Array.isArray(handlerParams.accountIds) 
+              ? handlerParams.accountIds 
+              : [];
+            
+            // 直接设置accountIds到handler.params
+            handler.params = { accountIds };
+            
+            console.log(`更新后的邮件同步任务参数: ${JSON.stringify(handler.params)}`);
           } else {
             // 其他函数处理器，合并现有参数和新参数
             handler.params = { ...handler.params, ...handlerParams };
