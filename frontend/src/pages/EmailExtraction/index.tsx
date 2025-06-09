@@ -321,7 +321,8 @@ const EmailExtraction: React.FC = () => {
         subject: searchParams.subject,
         fromAddress: searchParams.fromAddress,
         startDate,
-        endDate
+        endDate,
+        pageSize: extractionAmount // 添加提取数量参数
       };
       
       const response = await api.post(`${apiBaseUrl}/api/email-extractions/extract`, requestData);
