@@ -26,6 +26,7 @@ import tasksRoutes from './routes/tasks';
 import axiosLogsRoutes from './routes/axiosLogs';
 import proxyPoolsRoutes from './routes/proxyPools';
 import emailsRoutes from './routes/emails';
+import emailExtractionsRoutes from './routes/emailExtractions';
 // 导入类型
 import { ApiResponse } from './types';
 
