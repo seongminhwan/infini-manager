@@ -131,6 +131,7 @@ app.use('/api/tasks', tasksRoutes);
 app.use('/api/axios-logs', axiosLogsRoutes);
 app.use('/api/proxy-pools', proxyPoolsRoutes);
 app.use('/api/emails', emailsRoutes);
+app.use('/api/email-extractions', emailExtractionsRoutes);
 
 // 404错误处理
 app.use((req: Request, res: Response, next: NextFunction) => {
