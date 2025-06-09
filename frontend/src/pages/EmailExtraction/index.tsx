@@ -340,7 +340,7 @@ const EmailExtraction: React.FC = () => {
     } finally {
       setExtractionLoading(false);
     }
-  }, [selectedAccountId, selectedTemplateId, selectedMailbox, searchForm]);
+  }, [selectedAccountId, selectedTemplateId, selectedMailbox, searchForm, extractionAmount]);
   
   // 复制内容到剪贴板
   const copyToClipboard = (text: string) => {
