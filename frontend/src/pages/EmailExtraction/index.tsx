@@ -186,6 +186,7 @@ const EmailExtraction: React.FC = () => {
   const [detailDrawerVisible, setDetailDrawerVisible] = useState<boolean>(false);
   const [selectedEmail, setSelectedEmail] = useState<EmailMessage | null>(null);
   const [viewMode, setViewMode] = useState<'rendered' | 'text' | 'raw'>('rendered');
+  const [extractionAmount, setExtractionAmount] = useState<number>(20); // 默认提取20封邮件
   
   // 获取邮箱账户列表
   const fetchEmailAccounts = useCallback(async () => {
