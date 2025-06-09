@@ -581,58 +581,37 @@ const EmailExtraction: React.FC = () => {
         </ActionContainer>
         
         {codes.length > 0 && (
-          <ExtractionResult>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Title level={4} style={{ margin: 0 }}>取件结果</Title>
-              <Dropdown 
-                menu={{
-                  items: [
-                    {
-                      key: 'csv',
-                      label: 'CSV格式',
-                      onClick: copyAsCSV
-                    },
-                    {
-                      key: 'custom',
-                      label: '自定义分隔符',
-                      onClick: openCustomDelimiterModal
-                    },
-                    {
-                      key: 'json',
-                      label: 'JSON数组',
-                      onClick: copyAsJSON
-                    }
-                  ]
-                }}
-                placement="bottomRight"
-              >
-                <Button type="primary">
-                  复制取件码 <DownOutlined />
-                </Button>
-              </Dropdown>
-            </div>
-            
-            <Paragraph>
-              已从{emails.length}封邮件中提取到{codes.length}个唯一结果:
-            </Paragraph>
-            <List
-              bordered
-              dataSource={codes}
-              renderItem={code => (
-                <List.Item>
-                  <CodeItem>
-                    <CodeValue>{code}</CodeValue>
-                    <CopyButton
-                      icon={<CopyOutlined />}
-                      onClick={() => copyToClipboard(code)}
-                      size="small"
-                    />
-                  </CodeItem>
-                </List.Item>
-              )}
-            />
-            <Divider />
-          </ExtractionResult>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '16px 0' }}>
+            <Text>
+              已从{emails.length}封邮件中提取到{codes.length}个唯一结果
+            </Text>
+            <Dropdown 
+              menu={{
+                items: [
+                  {
+                    key: 'csv',
+                    label: 'CSV格式',
+                    onClick: copyAsCSV
+                  },
+                  {
+                    key: 'custom',
+                    label: '自定义分隔符',
+                    onClick: openCustomDelimiterModal
+                  },
+                  {
+                    key: 'json',
+                    label: 'JSON数组',
+                    onClick: copyAsJSON
+                  }
+                ]
+              }}
+              placement="bottomRight"
+            >
+              <Button type="primary">
+                复制取件码 <DownOutlined />
+              </Button>
+            </Dropdown>
+          </div>
         )}
         
         {/* 自定义分隔符对话框 */}
