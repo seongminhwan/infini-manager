@@ -626,8 +626,8 @@ export async function extractEmailsWithTemplate(req: Request, res: Response): Pr
     });
 
     // 对每封邮件执行取件操作
-    const extractionResults = [];
-    const codes = [];
+    const extractionResults: Array<any> = [];
+    const codes: string[] = [];
 
     for (const email of emailsWithContent) {
       // 格式化邮件对象
