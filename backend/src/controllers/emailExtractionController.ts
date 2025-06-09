@@ -594,15 +594,18 @@ export async function extractEmailsWithTemplate(req: Request, res: Response): Pr
     const totalCountResult = await query.clone().count('id as count').first();
     const totalCount = totalCountResult ? (totalCountResult.count as number) : 0;
 
-    // 应用分页
+    // 应用分页，pageSize为-1时表示获取所有邮件
     const parsedPage = parseInt(page as string) || 1;
     const parsedPageSize = parseInt(pageSize as string) || 20;
-    const offset = (parsedPage - 1) * parsedPageSize;
-
-    query = query
-      .orderBy('date', 'desc')
-      .limit(parsedPageSize)
-      .offset(offset);
+    
+    // 排序查询
+    query = query.orderBy('date', 'desc');
+    
+    // 如果pageSize不为-1，则应用分页限制
+    if (parsedPageSize !== -1) {
+      const offset = (parsedPage - 1) * parsedPageSize;
+      query = query.limit(parsedPageSize).offset(offset);
+    }
 
     // 执行查询
     const emails = await query;
