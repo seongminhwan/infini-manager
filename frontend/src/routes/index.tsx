@@ -11,6 +11,8 @@ import NotificationManage from '../pages/NotificationManage';
 import TriggerManage from '../pages/TriggerManage';
 import EmailManage from '../pages/EmailManage';
 import EmailViewer from '../pages/EmailViewer';
+import EmailExtraction from '../pages/EmailExtraction';
+import EmailExtractionTemplate from '../pages/EmailExtractionTemplate';
 import KycImageManage from '../pages/KycImageManage';
 import RandomUserManage from '../pages/RandomUserManage';
 import AccountGroupManage from '../pages/AccountGroupManage';
