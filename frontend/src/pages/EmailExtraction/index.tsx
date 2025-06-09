@@ -582,7 +582,36 @@ const EmailExtraction: React.FC = () => {
         
         {codes.length > 0 && (
           <ExtractionResult>
-            <Title level={4}>取件结果</Title>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Title level={4} style={{ margin: 0 }}>取件结果</Title>
+              <Dropdown 
+                menu={{
+                  items: [
+                    {
+                      key: 'csv',
+                      label: 'CSV格式',
+                      onClick: copyAsCSV
+                    },
+                    {
+                      key: 'custom',
+                      label: '自定义分隔符',
+                      onClick: openCustomDelimiterModal
+                    },
+                    {
+                      key: 'json',
+                      label: 'JSON数组',
+                      onClick: copyAsJSON
+                    }
+                  ]
+                }}
+                placement="bottomRight"
+              >
+                <Button type="primary">
+                  复制取件码 <DownOutlined />
+                </Button>
+              </Dropdown>
+            </div>
+            
             <Paragraph>
               已从{emails.length}封邮件中提取到{codes.length}个唯一结果:
             </Paragraph>
@@ -605,6 +634,28 @@ const EmailExtraction: React.FC = () => {
             <Divider />
           </ExtractionResult>
         )}
+        
+        {/* 自定义分隔符对话框 */}
+        <Modal
+          title="设置自定义分隔符"
+          open={customDelimiterModalVisible}
+          onCancel={() => setCustomDelimiterModalVisible(false)}
+          onOk={copyWithCustomDelimiter}
+          okText="确定并复制"
+          cancelText="取消"
+        >
+          <Form form={customDelimiterForm} layout="vertical">
+            <Form.Item
+              name="delimiter"
+              label="分隔符"
+              initialValue={customDelimiter}
+              rules={[{ required: true, message: '请输入分隔符' }]}
+              help="请输入用于分隔取件码的字符，默认为'|'"
+            >
+              <Input placeholder="请输入分隔符" />
+            </Form.Item>
+          </Form>
+        </Modal>
         
         <Spin spinning={loading || extractionLoading}>
           {emails.length > 0 ? (
