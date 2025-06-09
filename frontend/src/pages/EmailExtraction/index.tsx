@@ -192,6 +192,11 @@ const EmailExtraction: React.FC = () => {
   const [viewMode, setViewMode] = useState<'rendered' | 'text' | 'raw'>('rendered');
   const [extractionAmount, setExtractionAmount] = useState<number>(20); // 默认提取20封邮件
   
+  // 自定义分隔符相关状态
+  const [customDelimiterModalVisible, setCustomDelimiterModalVisible] = useState<boolean>(false);
+  const [customDelimiter, setCustomDelimiter] = useState<string>('|'); // 默认分隔符为|
+  const [customDelimiterForm] = Form.useForm();
+  
   // 获取邮箱账户列表
   const fetchEmailAccounts = useCallback(async () => {
     try {
