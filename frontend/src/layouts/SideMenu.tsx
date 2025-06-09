@@ -272,6 +272,26 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
             </Space>
           ),
           requiresEmailAccount: true, // 标记需要邮箱账户的菜单项
+        },
+        {
+          key: '/email-extraction',
+          label: (
+            <Space>
+              邮件取件
+              <BetaBadge>Beta</BetaBadge>
+            </Space>
+          ),
+          requiresEmailAccount: true, // 标记需要邮箱账户的菜单项
+        },
+        {
+          key: '/email-extraction-template',
+          label: (
+            <Space>
+              取件模板管理
+              <BetaBadge>Beta</BetaBadge>
+            </Space>
+          ),
+          requiresEmailAccount: true, // 标记需要邮箱账户的菜单项
         }
       ]
     },
