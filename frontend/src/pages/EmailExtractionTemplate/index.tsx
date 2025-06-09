@@ -18,7 +18,11 @@ import {
   Typography,
   Popconfirm,
   Radio,
-  Badge
+  Badge,
+  Row,
+  Col,
+  Tooltip,
+  Spin
 } from 'antd';
 import {
   PlusOutlined,
@@ -27,7 +31,10 @@ import {
   ExperimentOutlined,
   SaveOutlined,
   CodeOutlined,
-  FileSearchOutlined
+  FileSearchOutlined,
+  SearchOutlined,
+  InfoCircleOutlined,
+  EyeOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import api, { apiBaseUrl } from '../../services/api';
@@ -52,6 +59,8 @@ const PreviewContainer = styled.div`
   border: 1px solid #f0f0f0;
   border-radius: 4px;
   background-color: #fafafa;
+  max-height: 300px;
+  overflow: auto;
 `;
 
 const ResultContainer = styled.div`
@@ -62,6 +71,27 @@ const ResultContainer = styled.div`
   background-color: #f5f5f5;
   font-family: monospace;
   white-space: pre-wrap;
+`;
+
+const TestButtonContainer = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+`;
+
+const TestResultPreview = styled.div`
+  display: inline-block;
+  margin-right: 8px;
+  padding: 4px 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+  font-family: monospace;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
 `;
 
 // 数据源选项
@@ -86,6 +116,23 @@ interface ExtractionTemplate {
   config: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// 邮箱账户接口
+interface EmailAccount {
+  id: number;
+  name: string;
+  email: string;
+}
+
+// 邮件接口
+interface EmailMessage {
+  id: number;
+  fromAddress: string;
+  fromName: string;
+  subject: string;
+  date: string;
+  snippet: string;
 }
 
 // 邮件对象模拟数据（用于测试）
@@ -129,9 +176,19 @@ const EmailExtractionTemplate: React.FC = () => {
   const [currentTemplate, setCurrentTemplate] = useState<ExtractionTemplate | null>(null);
   const [testResult, setTestResult] = useState<string>('');
   const [testLoading, setTestLoading] = useState<boolean>(false);
-  const [testData, setTestData] = useState<any>(mockEmailData);
   const [form] = Form.useForm();
-  const [configStep, setConfigStep] = useState<number>(0);
+  
+  // 邮件来源相关状态
+  const [dataSource, setDataSource] = useState<'mock' | 'select' | 'custom'>('mock');
+  const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [emails, setEmails] = useState<EmailMessage[]>([]);
+  const [selectedEmailId, setSelectedEmailId] = useState<number | null>(null);
+  const [emailLoading, setEmailLoading] = useState<boolean>(false);
+  const [emailDetail, setEmailDetail] = useState<any>(null);
+  const [customEmailData, setCustomEmailData] = useState<string>(JSON.stringify(mockEmailData, null, 2));
+  const [configTestResult, setConfigTestResult] = useState<string>('');
+  const [resultModalVisible, setResultModalVisible] = useState<boolean>(false);
   
   // 表格列定义
   const columns: ColumnsType<ExtractionTemplate> = [
@@ -246,17 +303,98 @@ const EmailExtractionTemplate: React.FC = () => {
     }
   };
 
+  // 获取邮箱账户列表
+  const fetchEmailAccounts = async () => {
+    try {
+      const response = await api.get(`${apiBaseUrl}/api/email-accounts`);
+      if (response.data.success) {
+        setEmailAccounts(response.data.data);
+      } else {
+        message.error('获取邮箱账户失败: ' + response.data.message);
+      }
+    } catch (error) {
+      console.error('获取邮箱账户失败:', error);
+      message.error('获取邮箱账户列表失败');
+    }
+  };
+
+  // 获取邮件列表
+  const fetchEmails = async (accountId: number) => {
+    setEmailLoading(true);
+    try {
+      const response = await api.get(`${apiBaseUrl}/api/emails/list`, {
+        params: {
+          accountId,
+          page: 1,
+          pageSize: 20,
+          sortField: 'date',
+          sortOrder: 'desc',
+          mailbox: 'INBOX'
+        }
+      });
+      
+      if (response.data.success) {
+        setEmails(response.data.data.emails);
+      } else {
+        message.error('获取邮件列表失败: ' + response.data.message);
+      }
+    } catch (error) {
+      console.error('获取邮件列表失败:', error);
+      message.error('获取邮件列表失败');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  // 获取邮件详情
+  const fetchEmailDetail = async (emailId: number) => {
+    try {
+      const response = await api.get(`${apiBaseUrl}/api/emails/${emailId}`);
+      
+      if (response.data.success) {
+        setEmailDetail(response.data.data);
+        // 更新自定义邮件数据的文本框
+        setCustomEmailData(JSON.stringify(response.data.data, null, 2));
+      } else {
+        message.error('获取邮件详情失败: ' + response.data.message);
+      }
+    } catch (error) {
+      console.error('获取邮件详情失败:', error);
+      message.error('获取邮件详情失败');
+    }
+  };
+
   // 初始化加载
   useEffect(() => {
     fetchTemplates();
+    fetchEmailAccounts();
   }, []);
+
+  // 账户变更时获取邮件列表
+  useEffect(() => {
+    if (selectedAccountId && dataSource === 'select') {
+      fetchEmails(selectedAccountId);
+    }
+  }, [selectedAccountId, dataSource]);
+
+  // 邮件变更时获取详情
+  useEffect(() => {
+    if (selectedEmailId && dataSource === 'select') {
+      fetchEmailDetail(selectedEmailId);
+    }
+  }, [selectedEmailId, dataSource]);
 
   // 打开创建模态窗
   const handleCreate = () => {
     setModalType('create');
     setModalTitle('创建取件模板');
     setCurrentTemplate(null);
-    setConfigStep(0);
+    setDataSource('mock');
+    setSelectedAccountId(null);
+    setSelectedEmailId(null);
+    setEmailDetail(null);
+    setTestResult('');
+    setConfigTestResult('');
     form.resetFields();
     setModalVisible(true);
   };
@@ -266,7 +404,12 @@ const EmailExtractionTemplate: React.FC = () => {
     setModalType('edit');
     setModalTitle('编辑取件模板');
     setCurrentTemplate(template);
-    setConfigStep(0);
+    setDataSource('mock');
+    setSelectedAccountId(null);
+    setSelectedEmailId(null);
+    setEmailDetail(null);
+    setTestResult('');
+    setConfigTestResult('');
     form.setFieldsValue({
       name: template.name,
       extractionType: template.extractionType,
@@ -281,14 +424,19 @@ const EmailExtractionTemplate: React.FC = () => {
     setModalType('test');
     setModalTitle('测试取件模板');
     setCurrentTemplate(template);
+    setDataSource('mock');
+    setSelectedAccountId(null);
+    setSelectedEmailId(null);
+    setEmailDetail(null);
     setTestResult('');
+    setConfigTestResult('');
     form.setFieldsValue({
       name: template.name,
       extractionType: template.extractionType,
       dataSource: template.dataSource,
       config: template.config,
-      testData: JSON.stringify(testData, null, 2)
     });
+    setCustomEmailData(JSON.stringify(mockEmailData, null, 2));
     setModalVisible(true);
   };
 
@@ -345,11 +493,69 @@ const EmailExtractionTemplate: React.FC = () => {
     }
   };
 
+  // 测试配置
+  const handleTestConfig = async () => {
+    try {
+      // 获取表单中的配置
+      const values = await form.validateFields(['extractionType', 'dataSource', 'config']);
+      let testDataObj;
+      
+      // 根据不同的数据源获取测试数据
+      if (dataSource === 'mock') {
+        testDataObj = mockEmailData;
+      } else if (dataSource === 'select' && emailDetail) {
+        testDataObj = emailDetail;
+      } else {
+        try {
+          testDataObj = JSON.parse(customEmailData);
+        } catch (error) {
+          message.error('JSON格式错误，请检查');
+          return;
+        }
+      }
+      
+      setTestLoading(true);
+      const response = await api.post(`${apiBaseUrl}/api/email-extractions/test`, {
+        template: {
+          extractionType: values.extractionType,
+          dataSource: values.dataSource,
+          config: values.config
+        },
+        testData: testDataObj
+      });
+      
+      if (response.data.success) {
+        setConfigTestResult(response.data.data.result || '');
+      } else {
+        message.error('测试失败: ' + response.data.message);
+      }
+    } catch (error: any) {
+      console.error('测试配置失败:', error);
+      message.error('测试配置失败: ' + error.message);
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
   // 测试模板
   const handleTestTemplate = async () => {
     try {
       const values = await form.validateFields();
-      const testDataObj = values.testData ? JSON.parse(values.testData) : testData;
+      let testDataObj;
+      
+      // 根据不同的数据源获取测试数据
+      if (dataSource === 'mock') {
+        testDataObj = mockEmailData;
+      } else if (dataSource === 'select' && emailDetail) {
+        testDataObj = emailDetail;
+      } else {
+        try {
+          testDataObj = JSON.parse(customEmailData);
+        } catch (error) {
+          message.error('JSON格式错误，请检查');
+          return;
+        }
+      }
       
       setTestLoading(true);
       const response = await api.post(`${apiBaseUrl}/api/email-extractions/test`, {
@@ -369,156 +575,163 @@ const EmailExtractionTemplate: React.FC = () => {
       }
     } catch (error: any) {
       console.error('测试模板失败:', error);
-      if (error.message.includes('JSON')) {
-        message.error('测试数据格式错误，请检查JSON格式是否正确');
-      } else {
-        message.error('测试模板失败: ' + error.message);
-      }
+      message.error('测试模板失败: ' + error.message);
     } finally {
       setTestLoading(false);
     }
   };
 
-  // 下一步
-  const handleNextStep = async () => {
-    try {
-      await form.validateFields(['name', 'extractionType']);
-      setConfigStep(1);
-    } catch (error) {
-      console.error('表单验证失败:', error);
+  // 查看完整结果
+  const handleViewFullResult = () => {
+    setResultModalVisible(true);
+  };
+
+  // 获取测试数据源
+  const getTestData = () => {
+    if (dataSource === 'mock') {
+      return mockEmailData;
+    } else if (dataSource === 'select' && emailDetail) {
+      return emailDetail;
+    } else {
+      try {
+        return JSON.parse(customEmailData);
+      } catch (error) {
+        return null;
+      }
     }
   };
 
-  // 上一步
-  const handlePrevStep = () => {
-    setConfigStep(0);
+  // 渲染邮件内容预览
+  const renderEmailPreview = () => {
+    const data = getTestData();
+    if (!data) return <div>无邮件数据</div>;
+    
+    return (
+      <Tabs defaultActiveKey="preview">
+        <TabPane tab="预览" key="preview">
+          {data.content?.html ? (
+            <div dangerouslySetInnerHTML={{ __html: data.content.html }} />
+          ) : (
+            <div>无HTML内容</div>
+          )}
+        </TabPane>
+        <TabPane tab="文本" key="text">
+          <pre>{data.content?.text || '无文本内容'}</pre>
+        </TabPane>
+        <TabPane tab="数据结构" key="structure">
+          <pre>{JSON.stringify(data, null, 2)}</pre>
+        </TabPane>
+      </Tabs>
+    );
   };
 
-  // 模态窗底部按钮
-  const renderModalFooter = () => {
-    if (modalType === 'test') {
-      return [
-        <Button key="cancel" onClick={() => setModalVisible(false)}>
-          关闭
-        </Button>,
-        <Button 
-          key="test" 
-          type="primary" 
-          onClick={handleTestTemplate} 
-          loading={testLoading}
-          icon={<ExperimentOutlined />}
-        >
-          测试
-        </Button>
-      ];
-    }
-
-    if (configStep === 0) {
-      return [
-        <Button key="cancel" onClick={() => setModalVisible(false)}>
-          取消
-        </Button>,
-        <Button 
-          key="next" 
-          type="primary" 
-          onClick={handleNextStep}
-        >
-          下一步
-        </Button>
-      ];
-    }
-
-    return [
-      <Button key="back" onClick={handlePrevStep}>
-        上一步
-      </Button>,
-      <Button key="cancel" onClick={() => setModalVisible(false)}>
-        取消
-      </Button>,
-      <Button 
-        key="submit" 
-        type="primary" 
-        onClick={handleSubmit}
-        icon={<SaveOutlined />}
-      >
-        保存
-      </Button>
-    ];
-  };
-
-  // 模态窗内容
+  // 渲染模态窗内容
   const renderModalContent = () => {
     if (modalType === 'test') {
       return (
         <Form form={form} layout="vertical">
-          <Tabs defaultActiveKey="template">
-            <TabPane tab="模板配置" key="template">
-              <Form.Item
-                name="name"
-                label="模板名称"
-                rules={[{ required: true, message: '请输入模板名称' }]}
-              >
-                <Input disabled />
-              </Form.Item>
-              <Form.Item
-                name="extractionType"
-                label="取件类型"
-                rules={[{ required: true, message: '请选择取件类型' }]}
-              >
-                <Radio.Group disabled>
-                  <Radio value="regex">正则表达式</Radio>
-                  <Radio value="javascript">JavaScript脚本</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <Form.Item
-                name="dataSource"
-                label="数据源"
-                rules={[{ required: true, message: '请选择数据源' }]}
-              >
-                <Select disabled>
-                  {dataSourceOptions.map(option => (
-                    <Option key={option.value} value={option.value}>
-                      {option.label}
+          <Radio.Group
+            value={dataSource}
+            onChange={(e) => setDataSource(e.target.value)}
+            style={{ marginBottom: 16 }}
+          >
+            <Radio.Button value="mock">使用示例数据</Radio.Button>
+            <Radio.Button value="select">选择邮件</Radio.Button>
+            <Radio.Button value="custom">自定义数据</Radio.Button>
+          </Radio.Group>
+          
+          {dataSource === 'select' && (
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col span={12}>
+                <Select
+                  placeholder="选择邮箱账户"
+                  style={{ width: '100%' }}
+                  value={selectedAccountId}
+                  onChange={setSelectedAccountId}
+                >
+                  {emailAccounts.map(account => (
+                    <Option key={account.id} value={account.id}>
+                      {account.name} ({account.email})
                     </Option>
                   ))}
                 </Select>
-              </Form.Item>
-              <Form.Item
-                name="config"
-                label="配置"
-                rules={[{ required: true, message: '请输入配置' }]}
-              >
-                <TextArea rows={6} disabled />
-              </Form.Item>
-            </TabPane>
-            <TabPane tab="测试数据" key="testData">
-              <Form.Item
-                name="testData"
-                label="测试数据 (JSON格式)"
-                rules={[
-                  { required: true, message: '请输入测试数据' },
-                  {
-                    validator: (_, value) => {
-                      try {
-                        if (value) JSON.parse(value);
-                        return Promise.resolve();
-                      } catch (error) {
-                        return Promise.reject('JSON格式错误');
-                      }
-                    }
-                  }
-                ]}
-              >
-                <TextArea rows={10} />
-              </Form.Item>
-              <Button 
-                type="default" 
-                onClick={() => form.setFieldsValue({ testData: JSON.stringify(mockEmailData, null, 2) })}
-              >
-                使用示例数据
-              </Button>
-            </TabPane>
-          </Tabs>
+              </Col>
+              <Col span={12}>
+                <Select
+                  placeholder="选择邮件"
+                  style={{ width: '100%' }}
+                  value={selectedEmailId}
+                  onChange={setSelectedEmailId}
+                  loading={emailLoading}
+                  disabled={!selectedAccountId}
+                >
+                  {emails.map(email => (
+                    <Option key={email.id} value={email.id}>
+                      {email.subject || '(无主题)'} - {email.fromName || email.fromAddress}
+                    </Option>
+                  ))}
+                </Select>
+              </Col>
+            </Row>
+          )}
+          
+          {dataSource === 'custom' && (
+            <Form.Item
+              label="自定义邮件数据 (JSON格式)"
+              style={{ marginBottom: 16 }}
+            >
+              <TextArea
+                rows={8}
+                value={customEmailData}
+                onChange={(e) => setCustomEmailData(e.target.value)}
+              />
+            </Form.Item>
+          )}
+          
+          <Divider orientation="left">邮件内容预览</Divider>
+          <PreviewContainer>
+            {renderEmailPreview()}
+          </PreviewContainer>
+          
+          <Divider orientation="left">模板配置</Divider>
+          <Form.Item
+            name="name"
+            label="模板名称"
+            rules={[{ required: true, message: '请输入模板名称' }]}
+          >
+            <Input disabled />
+          </Form.Item>
+          <Form.Item
+            name="extractionType"
+            label="取件类型"
+            rules={[{ required: true, message: '请选择取件类型' }]}
+          >
+            <Radio.Group disabled>
+              <Radio value="regex">正则表达式</Radio>
+              <Radio value="javascript">JavaScript脚本</Radio>
+            </Radio.Group>
+          </Form.Item>
+          <Form.Item
+            name="dataSource"
+            label="数据源"
+            rules={[{ required: true, message: '请选择数据源' }]}
+          >
+            <Select disabled>
+              {dataSourceOptions.map(option => (
+                <Option key={option.value} value={option.value}>
+                  {option.label}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="config"
+            label="配置"
+            rules={[{ required: true, message: '请输入配置' }]}
+          >
+            <TextArea rows={6} disabled />
+          </Form.Item>
+          
           <Divider />
           <Title level={5}>测试结果：</Title>
           <ResultContainer>
@@ -528,33 +741,90 @@ const EmailExtractionTemplate: React.FC = () => {
       );
     }
 
-    if (configStep === 0) {
-      return (
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label="模板名称"
-            rules={[{ required: true, message: '请输入模板名称' }]}
-          >
-            <Input placeholder="请输入模板名称" />
-          </Form.Item>
-          <Form.Item
-            name="extractionType"
-            label="取件类型"
-            rules={[{ required: true, message: '请选择取件类型' }]}
-          >
-            <Radio.Group>
-              <Radio value="regex">正则表达式</Radio>
-              <Radio value="javascript">JavaScript脚本</Radio>
-            </Radio.Group>
-          </Form.Item>
-        </Form>
-      );
-    }
-
-    // 第二步
+    // 创建或编辑模板
     return (
       <Form form={form} layout="vertical">
+        <Radio.Group
+          value={dataSource}
+          onChange={(e) => setDataSource(e.target.value)}
+          style={{ marginBottom: 16 }}
+        >
+          <Radio.Button value="mock">使用示例数据</Radio.Button>
+          <Radio.Button value="select">选择邮件</Radio.Button>
+          <Radio.Button value="custom">自定义数据</Radio.Button>
+        </Radio.Group>
+        
+        {dataSource === 'select' && (
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col span={12}>
+              <Select
+                placeholder="选择邮箱账户"
+                style={{ width: '100%' }}
+                value={selectedAccountId}
+                onChange={setSelectedAccountId}
+              >
+                {emailAccounts.map(account => (
+                  <Option key={account.id} value={account.id}>
+                    {account.name} ({account.email})
+                  </Option>
+                ))}
+              </Select>
+            </Col>
+            <Col span={12}>
+              <Select
+                placeholder="选择邮件"
+                style={{ width: '100%' }}
+                value={selectedEmailId}
+                onChange={setSelectedEmailId}
+                loading={emailLoading}
+                disabled={!selectedAccountId}
+              >
+                {emails.map(email => (
+                  <Option key={email.id} value={email.id}>
+                    {email.subject || '(无主题)'} - {email.fromName || email.fromAddress}
+                  </Option>
+                ))}
+              </Select>
+            </Col>
+          </Row>
+        )}
+        
+        {dataSource === 'custom' && (
+          <Form.Item
+            label="自定义邮件数据 (JSON格式)"
+            style={{ marginBottom: 16 }}
+          >
+            <TextArea
+              rows={8}
+              value={customEmailData}
+              onChange={(e) => setCustomEmailData(e.target.value)}
+            />
+          </Form.Item>
+        )}
+        
+        <Divider orientation="left">邮件内容预览</Divider>
+        <PreviewContainer>
+          {renderEmailPreview()}
+        </PreviewContainer>
+        
+        <Divider orientation="left">模板配置</Divider>
+        <Form.Item
+          name="name"
+          label="模板名称"
+          rules={[{ required: true, message: '请输入模板名称' }]}
+        >
+          <Input placeholder="请输入模板名称" />
+        </Form.Item>
+        <Form.Item
+          name="extractionType"
+          label="取件类型"
+          rules={[{ required: true, message: '请选择取件类型' }]}
+        >
+          <Radio.Group>
+            <Radio value="regex">正则表达式</Radio>
+            <Radio value="javascript">JavaScript脚本</Radio>
+          </Radio.Group>
+        </Form.Item>
         <Form.Item
           name="dataSource"
           label="数据源"
@@ -578,34 +848,73 @@ const EmailExtractionTemplate: React.FC = () => {
               : 'JavaScript函数应返回提取的内容。输入参数为所选数据源的内容。例如: return data.match(/订单号：(\\w+)/)?.[1] || "";'
           }
         >
-          <TextArea 
-            rows={8} 
-            placeholder={
-              form.getFieldValue('extractionType') === 'regex'
-                ? '例如: 订单号：(\\w+)'
-                : '例如: return data.match(/订单号：(\\w+)/)?.[1] || "";'
-            }
-          />
+          <div>
+            <TextArea 
+              rows={6} 
+              placeholder={
+                form.getFieldValue('extractionType') === 'regex'
+                  ? '例如: 订单号：(\\w+)'
+                  : '例如: return data.match(/订单号：(\\w+)/)?.[1] || "";'
+              }
+            />
+            <TestButtonContainer>
+              {configTestResult && (
+                <Tooltip title="点击查看完整结果">
+                  <TestResultPreview onClick={handleViewFullResult}>
+                    {configTestResult.length > 20 
+                      ? configTestResult.substring(0, 20) + '...' 
+                      : configTestResult || '无匹配结果'}
+                  </TestResultPreview>
+                </Tooltip>
+              )}
+              <Button
+                type="default"
+                icon={<ExperimentOutlined />}
+                onClick={handleTestConfig}
+                loading={testLoading}
+                size="small"
+              >
+                测试提取
+              </Button>
+            </TestButtonContainer>
+          </div>
         </Form.Item>
-        <Divider />
-        <PreviewContainer>
-          <Title level={5}>
-            <FileSearchOutlined /> 数据源参考示例
-          </Title>
-          <Tabs defaultActiveKey="preview">
-            <TabPane tab="预览" key="preview">
-              <div dangerouslySetInnerHTML={{ __html: mockEmailData.content.html }} />
-            </TabPane>
-            <TabPane tab="文本" key="text">
-              <pre>{mockEmailData.content.text}</pre>
-            </TabPane>
-            <TabPane tab="数据结构" key="structure">
-              <pre>{JSON.stringify(mockEmailData, null, 2)}</pre>
-            </TabPane>
-          </Tabs>
-        </PreviewContainer>
       </Form>
     );
+  };
+
+  // 模态窗底部按钮
+  const renderModalFooter = () => {
+    if (modalType === 'test') {
+      return [
+        <Button key="cancel" onClick={() => setModalVisible(false)}>
+          关闭
+        </Button>,
+        <Button 
+          key="test" 
+          type="primary" 
+          onClick={handleTestTemplate} 
+          loading={testLoading}
+          icon={<ExperimentOutlined />}
+        >
+          测试
+        </Button>
+      ];
+    }
+
+    return [
+      <Button key="cancel" onClick={() => setModalVisible(false)}>
+        取消
+      </Button>,
+      <Button 
+        key="submit" 
+        type="primary" 
+        onClick={handleSubmit}
+        icon={<SaveOutlined />}
+      >
+        保存
+      </Button>
+    ];
   };
 
   return (
@@ -644,6 +953,22 @@ const EmailExtractionTemplate: React.FC = () => {
         destroyOnClose
       >
         {renderModalContent()}
+      </Modal>
+
+      {/* 完整结果查看弹窗 */}
+      <Modal
+        title="完整提取结果"
+        open={resultModalVisible}
+        onCancel={() => setResultModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setResultModalVisible(false)}>
+            关闭
+          </Button>
+        ]}
+      >
+        <ResultContainer>
+          {configTestResult || '无匹配结果'}
+        </ResultContainer>
       </Modal>
     </div>
   );
