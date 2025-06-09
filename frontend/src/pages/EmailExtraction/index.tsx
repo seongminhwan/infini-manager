@@ -363,6 +363,46 @@ const EmailExtraction: React.FC = () => {
     );
   };
   
+  // 复制CSV格式的取件码
+  const copyAsCSV = () => {
+    if (codes.length === 0) return;
+    
+    // 生成CSV格式（简单处理，没有处理特殊字符）
+    const csvContent = codes.join('\n');
+    copyToClipboard(csvContent);
+    message.success('已复制CSV格式的取件码');
+  };
+  
+  // 打开自定义分隔符对话框
+  const openCustomDelimiterModal = () => {
+    setCustomDelimiterModalVisible(true);
+    customDelimiterForm.setFieldsValue({ delimiter: customDelimiter });
+  };
+  
+  // 使用自定义分隔符复制取件码
+  const copyWithCustomDelimiter = () => {
+    if (codes.length === 0) return;
+    
+    customDelimiterForm.validateFields().then(values => {
+      const delimiter = values.delimiter || '|';
+      setCustomDelimiter(delimiter);
+      
+      const content = codes.join(delimiter);
+      copyToClipboard(content);
+      message.success(`已使用 "${delimiter}" 分隔符复制取件码`);
+      setCustomDelimiterModalVisible(false);
+    });
+  };
+  
+  // 复制JSON数组格式的取件码
+  const copyAsJSON = () => {
+    if (codes.length === 0) return;
+    
+    const jsonContent = JSON.stringify(codes, null, 2);
+    copyToClipboard(jsonContent);
+    message.success('已复制JSON数组格式的取件码');
+  };
+  
   // 创建新模板
   const handleCreateTemplate = () => {
     navigate('/email-extraction-template');
