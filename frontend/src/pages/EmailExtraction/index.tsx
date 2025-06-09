@@ -498,6 +498,18 @@ const EmailExtraction: React.FC = () => {
             ))}
           </Select>
           
+          <Select
+            placeholder="提取数量"
+            style={{ width: 140 }}
+            value={extractionAmount}
+            onChange={setExtractionAmount}
+          >
+            <Option value={20}>提取20封</Option>
+            <Option value={50}>提取50封</Option>
+            <Option value={100}>提取100封</Option>
+            <Option value={-1}>提取全部</Option>
+          </Select>
+          
           <Button
             icon={<FilterOutlined />}
             onClick={() => setSearchDrawerVisible(true)}
