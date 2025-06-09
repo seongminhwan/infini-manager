@@ -47,6 +47,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/trigger-manage" element={<TriggerManage />} />
         <Route path="/email-manage" element={<EmailManage />} />
         <Route path="/email-viewer" element={<EmailViewer />} />
+        <Route path="/email-extraction" element={<EmailExtraction />} />
+        <Route path="/email-extraction-template" element={<EmailExtractionTemplate />} />
         <Route path="/kyc-image-manage" element={<KycImageManage />} />
         <Route path="/random-user-manage" element={<RandomUserManage />} />
         {/* AFF返现相关路由 */}
