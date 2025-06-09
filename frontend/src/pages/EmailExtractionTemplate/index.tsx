@@ -249,7 +249,7 @@ const EmailExtractionTemplate: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      width: 240,
+      width: 300,
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -257,6 +257,7 @@ const EmailExtractionTemplate: React.FC = () => {
             onClick={() => handleEdit(record)}
             type="primary"
             ghost
+            size="small"
           >
             编辑
           </Button>
@@ -264,6 +265,7 @@ const EmailExtractionTemplate: React.FC = () => {
             icon={<ExperimentOutlined />}
             onClick={() => handleTest(record)}
             type="default"
+            size="small"
           >
             测试
           </Button>
@@ -276,6 +278,7 @@ const EmailExtractionTemplate: React.FC = () => {
             <Button
               icon={<DeleteOutlined />}
               danger
+              size="small"
             >
               删除
             </Button>
