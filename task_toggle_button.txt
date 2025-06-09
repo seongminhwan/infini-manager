@@ -1,0 +1,8 @@
+            <Tooltip title={record.status === 'enabled' ? '禁用任务' : '启用任务'}>
+              <Button 
+                type="text" 
+                icon={record.status === 'enabled' ? <CloseCircleOutlined /> : <CheckCircleOutlined />} 
+                onClick={() => handleToggleTaskStatus(record.id, record.status === 'enabled' ? 'disabled' : 'enabled')}
+                disabled={record.status === 'deleted'}
+              />
+            </Tooltip>

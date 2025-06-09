@@ -329,7 +329,7 @@ export const batchTransferApi = {
   executeBatchTransfer: async (id: string, auto2FA: boolean = false) => {
     try {
       console.log(`执行批量转账, ID: ${id}, 自动2FA: ${auto2FA}`);
-      const response = await api.post(`${apiBaseUrl}/api/batch-transfers/${id}/trigger`, { auto2FA });
+      const response = await api.post(`${apiBaseUrl}/api/batch-transfers/${id}/execute`, { auto2FA });
       return response.data;
     } catch (error) {
       console.error('执行批量转账失败:', error);

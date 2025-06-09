@@ -1,0 +1,16 @@
+      // 处理函数类型的处理器
+      if (values.handlerType === 'function') {
+        handler.functionName = values.functionName;
+        
+        // 处理函数参数
+        if (values.functionParams) {
+          try {
+            // 尝试解析JSON参数
+            handler.params = JSON.parse(values.functionParams);
+          } catch (error) {
+            // 如果不是有效的JSON，则作为字符串保存
+            handler.params = values.functionParams;
+          }
+        } else {
+          handler.params = {};
+        }

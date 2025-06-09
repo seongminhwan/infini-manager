@@ -1,0 +1,6 @@
+              // 其他函数任务，解析JSON参数
+              try {
+                params = values.handlerParams ? JSON.parse(values.handlerParams) : {};
+              } catch (error) {
+                console.error('解析函数参数JSON失败:', error);
+                params = values.handlerParams || {};

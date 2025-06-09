@@ -1,0 +1,13 @@
+              // 其他函数任务，处理参数
+              if (values.handlerParams) {
+                try {
+                  // 尝试解析JSON参数
+                  params = JSON.parse(values.handlerParams);
+                } catch (error) {
+                  // 如果不是有效的JSON，则保持原始字符串
+                  params = values.handlerParams;
+                  console.log('使用原始字符串作为参数:', params);
+                }
+              } else {
+                params = {};
+              }

@@ -1,0 +1,10 @@
+                    
+                    {/* 添加启用/禁用按钮 */}
+                    <Button 
+                      type={selectedTask.status === 'enabled' ? 'default' : 'primary'} 
+                      icon={selectedTask.status === 'enabled' ? <CloseCircleOutlined /> : <CheckCircleOutlined />} 
+                      onClick={() => handleToggleTaskStatus(selectedTask.id, selectedTask.status === 'enabled' ? 'disabled' : 'enabled')}
+                      disabled={selectedTask.status === 'deleted'}
+                    >
+                      {selectedTask.status === 'enabled' ? '禁用任务' : '启用任务'}
+                    </Button>

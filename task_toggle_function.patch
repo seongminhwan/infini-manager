@@ -1,0 +1,34 @@
+// 切换任务状态(启用/禁用)
+  const handleToggleTaskStatus = async (taskId: number, newStatus: 'enabled' | 'disabled') => {
+    try {
+      setLoading(true);
+      
+      // 调用更新任务API，只更新状态
+      const response = await taskApi.updateTask(taskId.toString(), {
+        status: newStatus
+      });
+      
+      if (response.success) {
+        message.success(`任务${newStatus === 'enabled' ? '启用' : '禁用'}成功`);
+        
+        // 重新加载任务列表
+        fetchTasks();
+        
+        // 如果当前正在查看该任务，更新选中的任务信息
+        if (selectedTask && selectedTask.id === taskId) {
+          // 深拷贝并更新状态
+          setSelectedTask({
+            ...selectedTask,
+            status: newStatus
+          });
+        }
+      } else {
+        message.error(response.message || `任务${newStatus === 'enabled' ? '启用' : '禁用'}失败`);
+      }
+    } catch (error) {
+      console.error(`${newStatus === 'enabled' ? '启用' : '禁用'}任务失败:`, error);
+      message.error(`操作失败: ${error.message || '未知错误'}`); 
+    } finally {
+      setLoading(false);
+    }
+  };
