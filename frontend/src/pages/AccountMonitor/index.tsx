@@ -968,12 +968,13 @@ const AccountMonitor: React.FC = () => {
               </Menu>
             }
             trigger={['click']}
-            onClick={(e) => e.stopPropagation()}
           >
             <Button 
               type="primary" 
               size="small"
-              onClick={(e) => e.stopPropagation()} // 阻止事件冒泡到表格行
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation(); // 阻止事件冒泡到表格行
+              }}
             >
               查看 <DownOutlined />
             </Button>
@@ -1006,12 +1007,13 @@ const AccountMonitor: React.FC = () => {
               </Menu>
             }
             trigger={['click']}
-            onClick={(e) => e.stopPropagation()}
           >
             <Button 
               type="primary" 
               ghost
-              onClick={(e) => e.stopPropagation()} // 阻止事件冒泡到表格行
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation(); // 阻止事件冒泡到表格行
+              }}
             >
               同步 <DownOutlined />
             </Button>
