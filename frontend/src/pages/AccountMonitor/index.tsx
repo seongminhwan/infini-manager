@@ -625,7 +625,7 @@ const AccountMonitor: React.FC = () => {
       const response = await api.get(`${API_BASE_URL}/api/infini-cards/list`, {
         params: { accountId: account.id }
       });
-        setSelectedCardId(firstCard.card_id || firstCard.id || '');
+      
       console.log('获取到卡片列表响应:', response.data);
 
       if (response.data.success && response.data.data && response.data.data.length > 0) {
@@ -633,6 +633,7 @@ const AccountMonitor: React.FC = () => {
         const firstCard = response.data.data[0];
         console.log('选择展示的卡片信息:', firstCard);
         setSelectedCardInfo(firstCard);
+        setSelectedCardId(firstCard.card_id || firstCard.id || '');
       } else {
         // 即使没有卡片信息，也保持模态框可见，但显示提示信息
         setSelectedCardInfo(null);
