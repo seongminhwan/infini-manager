@@ -944,7 +944,7 @@ const AccountMonitor: React.FC = () => {
           {/* 查看下拉按钮 - 包含详情和卡片详情选项 */}
           <Dropdown
             overlay={
-              <Menu>
+              <Menu onClick={(e) => e.domEvent.stopPropagation()}>
                 <Menu.Item
                   key="detail"
                   icon={<InfoCircleOutlined />}
@@ -968,6 +968,7 @@ const AccountMonitor: React.FC = () => {
               </Menu>
             }
             trigger={['click']}
+            onClick={(e) => e.stopPropagation()}
           >
             <Button 
               type="primary" 
@@ -981,7 +982,7 @@ const AccountMonitor: React.FC = () => {
           {/* 同步下拉按钮 - 包含同步和同步KYC选项 */}
           <Dropdown
             overlay={
-              <Menu>
+              <Menu onClick={(e) => e.domEvent.stopPropagation()}>
                 <Menu.Item
                   key="sync"
                   icon={<SyncOutlined spin={syncingAccount === record.id} />}
@@ -1005,6 +1006,7 @@ const AccountMonitor: React.FC = () => {
               </Menu>
             }
             trigger={['click']}
+            onClick={(e) => e.stopPropagation()}
           >
             <Button 
               type="primary" 
