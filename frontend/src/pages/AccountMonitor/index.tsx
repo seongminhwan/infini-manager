@@ -560,7 +560,12 @@ const AccountMonitor: React.FC = () => {
   // 右键菜单处理函数
   const handleContextMenu = (e: React.MouseEvent, record: InfiniAccount) => {
     e.preventDefault();
-    setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    e.stopPropagation(); // 确保不触发行点击事件
+    // 使用页面坐标而不是客户端坐标，确保菜单位置正确
+    setContextMenuPosition({ 
+      x: e.pageX, 
+      y: e.pageY 
+    });
     setContextMenuAccount(record);
     setContextMenuVisible(true);
   };
@@ -1821,11 +1826,11 @@ const AccountMonitor: React.FC = () => {
         onRefresh={refreshCardInfo}
       />
 
-      {/* 右键菜单 - 使用position:fixed确保相对于视口定位 */}
+      {/* 右键菜单 - 使用position:absolute确保相对于页面定位 */}
       {contextMenuVisible && contextMenuAccount && (
         <div
           style={{
-            position: 'fixed',
+            position: 'absolute',
             left: `${contextMenuPosition.x}px`,
             top: `${contextMenuPosition.y}px`,
             zIndex: 1000,
