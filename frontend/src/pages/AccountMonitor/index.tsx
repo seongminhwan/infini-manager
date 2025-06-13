@@ -1751,6 +1751,62 @@ const AccountMonitor: React.FC = () => {
         onClose={() => setRegisterEmailSameNameModalVisible(false)}
         onSuccess={fetchAccounts}
       />
+
+      {/* 2FA查看模态框 */}
+      <TwoFaViewModal
+        visible={twoFaViewModalVisible}
+        onClose={() => setTwoFaViewModalVisible(false)}
+        accountId={selectedAccount?.id.toString()}
+        twoFaEnabled={selectedAccount?.google2faIsBound === true || selectedAccount?.google2faIsBound === 1}
+      />
+
+      {/* 右键菜单 */}
+      {contextMenuVisible && contextMenuAccount && (
+        <div
+          style={{
+            position: 'fixed',
+            left: contextMenuPosition.x,
+            top: contextMenuPosition.y,
+            zIndex: 1000,
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+            backgroundColor: '#fff',
+            borderRadius: '4px',
+          }}
+        >
+          <Menu>
+            <Menu.Item 
+              key="detail" 
+              icon={<InfoCircleOutlined />} 
+              onClick={() => {
+                setContextMenuVisible(false);
+                viewAccountDetail(contextMenuAccount);
+              }}
+            >
+              查看账户详情
+            </Menu.Item>
+            <Menu.Item 
+              key="2fa" 
+              icon={<SafetyCertificateOutlined />} 
+              onClick={() => {
+                setContextMenuVisible(false);
+                view2FAInfo(contextMenuAccount);
+              }}
+            >
+              查看2FA信息
+            </Menu.Item>
+            <Menu.Item 
+              key="card" 
+              icon={<CreditCardOutlined />} 
+              onClick={() => {
+                setContextMenuVisible(false);
+                viewCardDetail(contextMenuAccount);
+              }}
+            >
+              查看卡片信息
+            </Menu.Item>
+          </Menu>
+        </div>
+      )}
     </div>
   );
 };
