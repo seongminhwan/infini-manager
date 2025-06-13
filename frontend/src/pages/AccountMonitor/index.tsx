@@ -601,6 +601,13 @@ const AccountMonitor: React.FC = () => {
     };
   }, []);
 
+  // 刷新卡片信息
+  const refreshCardInfo = async () => {
+    if (selectedAccountForCard) {
+      await viewCardDetail(selectedAccountForCard);
+    }
+  };
+
   // 处理查看卡片详情
   const viewCardDetail = async (account: InfiniAccount, event?: React.MouseEvent) => {
     // 如果有事件对象，阻止冒泡
@@ -611,20 +618,14 @@ const AccountMonitor: React.FC = () => {
       setLoading(true);
       setSelectedAccountForCard(account);
       console.log('查看卡片详情，账户ID:', account.id);
-        setSelectedCardId(firstCard.card_id || firstCard.id || '');
+      
       // 先设置模态框为可见，这样即使在加载数据过程中也能向用户提供反馈
       setCardDetailModalVisible(true);
-  // 刷新卡片信息
-  const refreshCardInfo = async () => {
-    if (selectedAccountForCard) {
-      await viewCardDetail(selectedAccountForCard);
-    }
-  };
       // 获取卡片列表
       const response = await api.get(`${API_BASE_URL}/api/infini-cards/list`, {
         params: { accountId: account.id }
       });
-
+        setSelectedCardId(firstCard.card_id || firstCard.id || '');
       console.log('获取到卡片列表响应:', response.data);
 
       if (response.data.success && response.data.data && response.data.data.length > 0) {
