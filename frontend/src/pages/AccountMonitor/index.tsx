@@ -969,7 +969,11 @@ const AccountMonitor: React.FC = () => {
             }
             trigger={['click']}
           >
-            <Button type="primary" size="small">
+            <Button 
+              type="primary" 
+              size="small"
+              onClick={(e) => e.stopPropagation()} // 阻止事件冒泡到表格行
+            >
               查看 <DownOutlined />
             </Button>
           </Dropdown>
@@ -1002,7 +1006,11 @@ const AccountMonitor: React.FC = () => {
             }
             trigger={['click']}
           >
-            <Button type="primary" ghost>
+            <Button 
+              type="primary" 
+              ghost
+              onClick={(e) => e.stopPropagation()} // 阻止事件冒泡到表格行
+            >
               同步 <DownOutlined />
             </Button>
           </Dropdown>
