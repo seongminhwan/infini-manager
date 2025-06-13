@@ -172,13 +172,93 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       icon: <DashboardOutlined />,
       label: '概览',
     },
-    {
-      key: '/account-monitor',
-      icon: <MonitorOutlined />,
-      label: '账户监控',
-    },
     
-    // ------------ 账户管理 ------------
+    // ------------ INFINI账户 ------------
+    {
+      key: 'infini-account',
+      icon: <TeamOutlined />,
+      label: 'INFINI账户',
+      children: [
+        {
+          key: '/account-monitor',
+          icon: <MonitorOutlined />,
+          label: '账户管理',
+        },
+        {
+          key: '/account-group-manage',
+          icon: <TeamOutlined />,
+          label: '账户分组管理',
+          showWhenDisabled: true, // 当禁用注册功能时仍然显示
+        },
+        {
+          key: 'fund-ops',
+          icon: <SwapOutlined />,
+          label: '资金管理',
+          children: [
+            {
+              key: '/account-transfer',
+              label: '账户转账',
+            },
+            {
+              key: '/batch-transfer',
+              label: (
+                <Space>
+                  批量转账
+                  <BetaBadge>Beta</BetaBadge>
+                </Space>
+              ),
+            },
+            {
+              key: '/batch-transfer-details',
+              label: '批量转账明细',
+            },
+            {
+              key: '/account-details',
+              label: '账户明细',
+            }
+          ]
+        },
+        {
+          key: 'aff-ops',
+          icon: <DollarOutlined />,
+          label: 'AFF返现',
+          children: [
+            {
+              key: '/aff-cashback',
+              label: 'AFF批量返现',
+            },
+            {
+              key: '/aff-history',
+              label: 'AFF历史记录',
+            }
+          ]
+        },
+        {
+          key: '/batch-card-apply',
+          icon: <CreditCardOutlined />,
+          label: '批量开卡',
+          showWhenDisabled: false, // 当禁用注册功能时不显示
+        },
+        {
+          key: '/account-register',
+          icon: <UserAddOutlined />,
+          label: '账户批量注册',
+          showWhenDisabled: false, // 当禁用注册功能时不显示
+        },
+        {
+          key: '/kyc-image-manage',
+          icon: <FileImageOutlined />,
+          label: 'KYC图片管理',
+          showWhenDisabled: false, // 当禁用注册功能时不显示
+        },
+        {
+          key: '/random-user-manage',
+          icon: <IdcardOutlined />,
+          label: '模拟用户数据管理',
+          showWhenDisabled: false, // 当禁用注册功能时不显示
+        },
+      ]
+    },
     {
       key: '/account-register',
       icon: <UserAddOutlined />,
