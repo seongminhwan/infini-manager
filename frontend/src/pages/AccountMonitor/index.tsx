@@ -69,6 +69,7 @@ import AccountDetailModal from './components/AccountDetailModal';
 import BatchSyncResultModal from './components/BatchSyncResultModal';
 import AccountCreateModal from './components/AccountCreateModal';
 import BatchAddAccountModal from './components/BatchAddAccountModal';
+import CardDetailModal from '../../components/CardDetailModal';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -547,11 +548,14 @@ const AccountMonitor: React.FC = () => {
   
   // 2FA查看模态框状态
   const [twoFaViewModalVisible, setTwoFaViewModalVisible] = useState(false);
+  const [twoFaInfo, setTwoFaInfo] = useState<any>(null);
+  const [loadingTwoFa, setLoadingTwoFa] = useState(false);
   
   // 用于卡片详情的状态
   const [cardDetailModalVisible, setCardDetailModalVisible] = useState(false);
   const [selectedAccountForCard, setSelectedAccountForCard] = useState<InfiniAccount | null>(null);
   const [selectedCardInfo, setSelectedCardInfo] = useState<any>(null);
+  const [selectedCardId, setSelectedCardId] = useState<string>('');
 
   // 右键菜单处理函数
   const handleContextMenu = (e: React.MouseEvent, record: InfiniAccount) => {
@@ -562,9 +566,27 @@ const AccountMonitor: React.FC = () => {
   };
 
   // 查看2FA信息
-  const view2FAInfo = (account: InfiniAccount) => {
+  const view2FAInfo = async (account: InfiniAccount) => {
     setSelectedAccount(account);
     setTwoFaViewModalVisible(true);
+    
+    try {
+      setLoadingTwoFa(true);
+      
+      // 获取2FA信息
+      const response = await api.get(`${API_BASE_URL}/api/infini-accounts/${account.id}/2fa-info`);
+      
+      if (response.data.success && response.data.data) {
+        setTwoFaInfo(response.data.data);
+      } else {
+        message.warning('获取2FA信息失败: ' + (response.data.message || '未知错误'));
+      }
+    } catch (error: any) {
+      console.error('获取2FA信息失败:', error);
+      message.error('获取2FA信息失败: ' + error.message);
+    } finally {
+      setLoadingTwoFa(false);
+    }
   };
 
   // 点击页面其他地方关闭右键菜单
@@ -580,15 +602,24 @@ const AccountMonitor: React.FC = () => {
   }, []);
 
   // 处理查看卡片详情
-  const viewCardDetail = async (account: InfiniAccount) => {
+  const viewCardDetail = async (account: InfiniAccount, event?: React.MouseEvent) => {
+    // 如果有事件对象，阻止冒泡
+    if (event) {
+      event.stopPropagation();
+    }
     try {
       setLoading(true);
       setSelectedAccountForCard(account);
       console.log('查看卡片详情，账户ID:', account.id);
-
+        setSelectedCardId(firstCard.card_id || firstCard.id || '');
       // 先设置模态框为可见，这样即使在加载数据过程中也能向用户提供反馈
       setCardDetailModalVisible(true);
-
+  // 刷新卡片信息
+  const refreshCardInfo = async () => {
+    if (selectedAccountForCard) {
+      await viewCardDetail(selectedAccountForCard);
+    }
+  };
       // 获取卡片列表
       const response = await api.get(`${API_BASE_URL}/api/infini-cards/list`, {
         params: { accountId: account.id }
@@ -911,14 +942,20 @@ const AccountMonitor: React.FC = () => {
                 <Menu.Item
                   key="detail"
                   icon={<InfoCircleOutlined />}
-                  onClick={() => viewAccountDetail(record)}
+                  onClick={(e) => {
+                    e.domEvent.stopPropagation();
+                    viewAccountDetail(record);
+                  }}
                 >
                   账户详情
                 </Menu.Item>
                 <Menu.Item
                   key="cardDetail"
                   icon={<CreditCardOutlined />}
-                  onClick={() => viewCardDetail(record)}
+                  onClick={(e) => {
+                    e.domEvent.stopPropagation();
+                    viewCardDetail(record);
+                  }}
                 >
                   卡片详情
                 </Menu.Item>
@@ -938,14 +975,20 @@ const AccountMonitor: React.FC = () => {
                 <Menu.Item
                   key="sync"
                   icon={<SyncOutlined spin={syncingAccount === record.id} />}
-                  onClick={() => syncAccount(record.id)}
+                  onClick={(e) => {
+                    e.domEvent.stopPropagation();
+                    syncAccount(record.id);
+                  }}
                 >
                   同步账户
                 </Menu.Item>
                 <Menu.Item
                   key="syncKyc"
                   icon={<IdcardOutlined spin={syncingKycAccount === record.id} />}
-                  onClick={() => syncKycStatus(record.id)}
+                  onClick={(e) => {
+                    e.domEvent.stopPropagation();
+                    syncKycStatus(record.id);
+                  }}
                 >
                   同步KYC
                 </Menu.Item>
@@ -965,7 +1008,12 @@ const AccountMonitor: React.FC = () => {
             cancelText="取消"
             icon={<ExclamationCircleOutlined style={{ color: 'red' }} />}
           >
-            <Button danger icon={<DeleteOutlined />} type="text">
+          <Button 
+            danger 
+            icon={<DeleteOutlined />} 
+            type="text"
+            onClick={(e) => e.stopPropagation()}
+          >
               删除
             </Button>
           </Popconfirm>
@@ -1758,15 +1806,26 @@ const AccountMonitor: React.FC = () => {
         onClose={() => setTwoFaViewModalVisible(false)}
         accountId={selectedAccount?.id.toString()}
         twoFaEnabled={selectedAccount?.google2faIsBound === true || selectedAccount?.google2faIsBound === 1}
+        twoFaInfo={twoFaInfo}
+      />
+      
+      {/* 卡片详情模态框 */}
+      <CardDetailModal
+        visible={cardDetailModalVisible}
+        onClose={() => setCardDetailModalVisible(false)}
+        accountId={selectedAccountForCard?.id || 0}
+        cardId={selectedCardId}
+        cardInfo={selectedCardInfo}
+        onRefresh={refreshCardInfo}
       />
 
-      {/* 右键菜单 */}
+      {/* 右键菜单 - 使用position:fixed确保相对于视口定位 */}
       {contextMenuVisible && contextMenuAccount && (
         <div
           style={{
             position: 'fixed',
-            left: contextMenuPosition.x,
-            top: contextMenuPosition.y,
+            left: `${contextMenuPosition.x}px`,
+            top: `${contextMenuPosition.y}px`,
             zIndex: 1000,
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
             backgroundColor: '#fff',
