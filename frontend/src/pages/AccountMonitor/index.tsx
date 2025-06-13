@@ -1567,6 +1567,10 @@ const AccountMonitor: React.FC = () => {
             }}
             scroll={{ x: 1400 }}
             onChange={handleTableChange}
+            onRow={(record) => ({
+              onClick: () => viewAccountDetail(record),
+              style: { cursor: 'pointer' }
+            })}
             components={{
               header: {
                 cell: ResizableTitle,
