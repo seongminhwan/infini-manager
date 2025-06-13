@@ -302,12 +302,6 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggleCollapsed }) => {
       ]
     },
     {
-      key: '/kyc-image-manage',
-      icon: <FileImageOutlined />,
-      label: 'KYC图片管理',
-      showWhenDisabled: false, // 当禁用注册功能时不显示
-    },
-    {
       key: '/proxy-pool-manage',
       icon: <ApiOutlined />,
       label: (
