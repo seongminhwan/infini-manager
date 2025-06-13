@@ -1604,6 +1604,7 @@ const AccountMonitor: React.FC = () => {
             onChange={handleTableChange}
             onRow={(record) => ({
               onClick: () => viewAccountDetail(record),
+              onContextMenu: (e) => handleContextMenu(e, record),
               style: { cursor: 'pointer' }
             })}
             components={{
