@@ -572,17 +572,16 @@ const AccountMonitor: React.FC = () => {
 
   // 查看2FA信息
   const view2FAInfo = async (account: InfiniAccount) => {
-    setSelectedAccount(account);
-    setTwoFaViewModalVisible(true);
-    
     try {
       setLoadingTwoFa(true);
+      setSelectedAccount(account);
       
-      // 获取2FA信息
+      // 先获取2FA信息，成功后再显示模态框
       const response = await api.get(`${API_BASE_URL}/api/infini-accounts/${account.id}/2fa-info`);
       
       if (response.data.success && response.data.data) {
         setTwoFaInfo(response.data.data);
+        setTwoFaViewModalVisible(true); // 获取数据成功后再显示模态框
       } else {
         message.warning('获取2FA信息失败: ' + (response.data.message || '未知错误'));
       }
