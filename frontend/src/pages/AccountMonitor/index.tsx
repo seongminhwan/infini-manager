@@ -59,6 +59,7 @@ import OneClickSetupModal from '../../components/OneClickSetupModal';
 import BatchRegisterModal from '../../components/BatchRegisterModal';
 import BatchRecoverAccountModal from '../../components/BatchRecoverAccountModal';
 import RegisterEmailSameNameModal from '../../components/RegisterEmailSameNameModal';
+import TwoFaViewModal from '../../components/TwoFaViewModal';
 import styled from 'styled-components';
 import TransferActionPopover from '../../components/TransferActionPopover';
 import { InfiniAccount, AccountGroup, BatchSyncResult } from './types';
