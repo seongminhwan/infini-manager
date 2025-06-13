@@ -539,10 +539,44 @@ const AccountMonitor: React.FC = () => {
     }
   };
 
+  // 右键菜单状态
+  const [contextMenuVisible, setContextMenuVisible] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [contextMenuAccount, setContextMenuAccount] = useState<InfiniAccount | null>(null);
+  
+  // 2FA查看模态框状态
+  const [twoFaViewModalVisible, setTwoFaViewModalVisible] = useState(false);
+  
   // 用于卡片详情的状态
   const [cardDetailModalVisible, setCardDetailModalVisible] = useState(false);
   const [selectedAccountForCard, setSelectedAccountForCard] = useState<InfiniAccount | null>(null);
   const [selectedCardInfo, setSelectedCardInfo] = useState<any>(null);
+
+  // 右键菜单处理函数
+  const handleContextMenu = (e: React.MouseEvent, record: InfiniAccount) => {
+    e.preventDefault();
+    setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    setContextMenuAccount(record);
+    setContextMenuVisible(true);
+  };
+
+  // 查看2FA信息
+  const view2FAInfo = (account: InfiniAccount) => {
+    setSelectedAccount(account);
+    setTwoFaViewModalVisible(true);
+  };
+
+  // 点击页面其他地方关闭右键菜单
+  useEffect(() => {
+    const handleClick = () => {
+      setContextMenuVisible(false);
+    };
+
+    document.addEventListener('click', handleClick);
+    return () => {
+      document.removeEventListener('click', handleClick);
+    };
+  }, []);
 
   // 处理查看卡片详情
   const viewCardDetail = async (account: InfiniAccount) => {
